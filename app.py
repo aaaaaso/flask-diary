@@ -6,35 +6,41 @@ import os
 
 app = Flask(__name__)
 
-def load_diary():
-    with open('diary.md', encoding='utf-8') as f:
-        content = f.read()
+def load_diary_from_file():
+    try:
+        with open('diary.md', encoding='utf-8') as f:
+            content = f.read()
+    except FileNotFoundError:
+        return []
 
-    # "## 2025-06-22" のような形式にマッチ
     entries = re.split(r'^## (\d{4}-\d{2}-\d{2})\n', content, flags=re.MULTILINE)
 
     diary = []
     for i in range(1, len(entries), 2):
-        raw_date = entries[i]  # e.g. "2025-06-22"
+        raw_date = entries[i]
         md_text = entries[i + 1]
-        
         try:
             date_obj = datetime.strptime(raw_date, "%Y-%m-%d")
-            display_date = date_obj.strftime("%-m/%-d")  # Mac/Linux: 6/22
+            display_date = date_obj.strftime("%-m/%-d")
         except ValueError:
-            display_date = raw_date  # 変換失敗したらそのまま
-
+            display_date = raw_date
         html = markdown.markdown(md_text.strip())
         diary.append({'date': display_date, 'html': html})
     return diary
+
+def load_diary():
+    try:
+        from notion_fetcher import fetch_diary_entries
+        return fetch_diary_entries()
+    except Exception as e:
+        print(f"[Notion読み込み失敗] {e}\n→ diary.md を読み込みます")
+        return load_diary_from_file()
 
 @app.route('/')
 def index():
     diary = load_diary()
     return render_template('index.html', diary=diary)
 
-import os
-
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5001))  # PORTがあれば使い、なければ5000を使う
+    port = int(os.environ.get('PORT', 5001))
     app.run(host='0.0.0.0', port=port, debug=True)
