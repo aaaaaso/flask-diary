@@ -2,6 +2,7 @@ from flask import Flask, render_template
 import markdown
 import re
 from datetime import datetime
+import os
 
 app = Flask(__name__)
 
@@ -19,7 +20,7 @@ def load_diary():
         
         try:
             date_obj = datetime.strptime(raw_date, "%Y-%m-%d")
-            display_date = date_obj.strftime("%-m/%-d")  # 6/22 の形式（Mac/Linux）
+            display_date = date_obj.strftime("%-m/%-d")  # Mac/Linux: 6/22
         except ValueError:
             display_date = raw_date  # 変換失敗したらそのまま
 
@@ -31,3 +32,7 @@ def load_diary():
 def index():
     diary = load_diary()
     return render_template('index.html', diary=diary)
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
