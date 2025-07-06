@@ -2,11 +2,36 @@
 <html>
 <head>
   <meta charset="UTF-8">
+<<<<<<< HEAD
   <title>Render上のFlaskアプリ</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <h1>ようこそ！</h1>
   <p>これはRenderで公開しているPythonアプリです。</p>
+=======
+  <title>日記</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/aos.css">
+</head>
+<body>
+  <div class="container">
+    {% for entry in diary %}
+      <div class="entry" data-aos="fade-up">
+        <h2>{{ entry.date }}</h2>
+        <div class="content">{{ entry.html | safe }}</div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <script src="/static/aos.js"></script>
+  <script>
+    AOS.init({
+      duration: 800,
+      once: true,
+      easing: 'ease-out',
+    });
+  </script>
+>>>>>>> b36ea6b (first upload)
 </body>
 </html>
