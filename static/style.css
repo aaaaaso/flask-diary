@@ -43,5 +43,7 @@ h2 {
   white-space: pre-line;
 }
 
-
-
+.diary-block {
+  margin-top: 0em;
+  margin-bottom: 0em;
+}
