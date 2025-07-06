@@ -1,6 +1,7 @@
 from flask import Flask, render_template
 import markdown
 import re
+import os  # ← 環境変数PORTを取得するために必要
 
 app = Flask(__name__)
 
@@ -22,3 +23,8 @@ def load_diary():
 def index():
     diary = load_diary()
     return render_template('index.html', diary=diary)
+
+# ✅ ここがRenderで必要な部分！
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port)
