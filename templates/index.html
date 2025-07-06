@@ -2,10 +2,35 @@
 <html>
 <head>
   <meta charset="UTF-8">
-
   <title>日記</title>
+
   <link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="/static/aos.css">
+
+  <style>
+    /* スクロール演出が映えるように少し間隔をあける */
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    h2 {
+      margin-top: 60px;
+      font-size: 1.4em;
+      color: #555;
+    }
+
+    .entry {
+      margin-bottom: 60px;
+      opacity: 0.95;
+    }
+
+    .content {
+      margin-top: 0.5em;
+      white-space: pre-line;
+    }
+  </style>
 </head>
 <body>
   <div class="container">
@@ -20,9 +45,9 @@
   <script src="/static/aos.js"></script>
   <script>
     AOS.init({
-      duration: 800,
-      once: true,
-      easing: 'ease-out',
+      duration: 500,
+      easing: 'ease-in-out',
+      once: false
     });
   </script>
 </body>
