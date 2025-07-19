@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,21 +10,21 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='aos.css') }}">
 
-<!-- OGP -->
-<meta property="og:title" content="日記" />
-<meta property="og:description" content="日々とそこにいる私を忘れないための記録" />
-<meta property="og:image" content="{{ url_for('static', filename='zou.JPG', _external=True) }}" />
-<meta property="og:url" content="{{ request.url_root }}" />
-<meta property="og:type" content="website" />
-<meta property="og:site_name" content="私の日記サイト" />
-<meta property="og:locale" content="ja_JP" />
+  <!-- OGP -->
+  <meta property="og:title" content="日記" />
+  <meta property="og:description" content="日々とそこにいる私を忘れないための記録" />
+  <meta property="og:image" content="{{ url_for('static', filename='zou.JPG', _external=True, _scheme='https') }}" />
+  <meta property="og:url" content="{{ request.url_root | replace('http://', 'https://') }}" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="私の日記サイト" />
+  <meta property="og:locale" content="ja_JP" />
 
-<!-- Twitterカード -->
-<meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="日記" />
-<meta name="twitter:description" content="日々とそこにいる私を忘れないための記録" />
-<meta name="twitter:image" content="{{ url_for('static', filename='zou.JPG', _external=True) }}" />
-<meta name="twitter:site" content="@your_twitter_id" />  <!-- 任意 -->
+  <!-- Twitterカード -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="日記" />
+  <meta name="twitter:description" content="日々とそこにいる私を忘れないための記録" />
+  <meta name="twitter:image" content="{{ url_for('static', filename='zou.JPG', _external=True, _scheme='https') }}" />
+  <meta name="twitter:site" content="@aso_aaaaa" />
 </head>
 
 <body>
