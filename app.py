@@ -45,10 +45,11 @@ def index():
 def page2():
     try:
         page2_id = os.getenv('NOTION_PAGE_ID_PAGE2')
+        print(f"[INFO] Using page2_id = {page2_id}")  # デバッグ用
         diary = fetch_diary_entries(page2_id)
     except Exception as e:
-        print(f"[WARN] Notion page2 fetch failed. Reason: {e}")
-        diary = [{"date": "error", "html": "<p>日記の取得に失敗しました。</p>"}]
+        print(f"[ERROR] Notion page2 fetch failed. Reason: {e}")  # 詳細表示
+        diary = [{"date": "error", "html": f"<p>日記の取得に失敗しました。<br>{e}</p>"}]
 
     return render_template('index.html', diary=diary)
 
