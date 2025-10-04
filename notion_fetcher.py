@@ -1,3 +1,4 @@
+# notion_fetcher.py
 import os
 from notion_client import Client
 from datetime import datetime
@@ -6,18 +7,19 @@ from dotenv import load_dotenv
 load_dotenv()
 
 NOTION_TOKEN = os.getenv('NOTION_TOKEN')
-NOTION_PAGE_ID = os.getenv('NOTION_PAGE_ID')
-
 client = Client(auth=NOTION_TOKEN)
 
-def fetch_diary_entries():
+def fetch_diary_entries(page_id=None):
+    if page_id is None:
+        page_id = os.getenv('NOTION_PAGE_ID')
+
     diary = []
     current_date = None
     current_lines = []
     cursor = None
 
     while True:
-        response = client.blocks.children.list(NOTION_PAGE_ID, start_cursor=cursor)
+        response = client.blocks.children.list(page_id, start_cursor=cursor)
         blocks = response["results"]
 
         for block in blocks:

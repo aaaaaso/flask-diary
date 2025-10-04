@@ -34,10 +34,21 @@ def fetch_from_local_md():
 @app.route('/')
 def index():
     try:
-        diary = fetch_from_notion()
+        diary = fetch_diary_entries()
     except Exception as e:
         print(f"[WARN] Notion fetch failed, fallback to local file. Reason: {e}")
         diary = fetch_from_local_md()
+
+    return render_template('index.html', diary=diary)
+
+@app.route('/page2')
+def page2():
+    try:
+        page2_id = os.getenv('NOTION_PAGE_ID_PAGE2')
+        diary = fetch_diary_entries(page2_id)
+    except Exception as e:
+        print(f"[WARN] Notion page2 fetch failed. Reason: {e}")
+        diary = [{"date": "error", "html": "<p>日記の取得に失敗しました。</p>"}]
 
     return render_template('index.html', diary=diary)
 
