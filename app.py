@@ -4,8 +4,9 @@ import re
 from datetime import datetime
 import os
 
-from notion_fetcher import fetch_diary_entries as fetch_from_notion
+from notion_fetcher import fetch_diary_entries
 from notion_client.errors import APIResponseError
+
 
 app = Flask(__name__)
 
@@ -45,7 +46,6 @@ def index():
 def page2():
     try:
         page2_id = os.getenv('NOTION_PAGE_ID_PAGE2')
-        print(f"[INFO] Using page2_id = {page2_id}")  # デバッグ用
         diary = fetch_diary_entries(page2_id)
     except Exception as e:
         print(f"[ERROR] Notion page2 fetch failed. Reason: {e}")  # 詳細表示
