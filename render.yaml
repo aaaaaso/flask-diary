@@ -2,6 +2,6 @@ services:
   - type: web
     name: flask-diary
     env: python
-    plan: free
+    plan: starter
     buildCommand: ""
     startCommand: "python app.py"
