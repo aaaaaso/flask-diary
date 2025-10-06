@@ -5,25 +5,16 @@ from datetime import datetime
 import os
 
 from notion_fetcher import fetch_diary_entries
+from notion_client.errors import APIResponseError
+
 
 app = Flask(__name__)
 
-# 各ルートパスと NotionページID の対応表（"" は `/` に対応）
-PAGE_ID_MAP = {
-    "": os.getenv("NOTION_PAGE_ID"),           # /
-    "page2": os.getenv("NOTION_PAGE_ID_PAGE2"),  # /page2
-    "page3": os.getenv("NOTION_PAGE_ID_PAGE3"),  # /page3（将来用）
-    "page4": os.getenv("NOTION_PAGE_ID_PAGE4"),  # /page4（将来用）
-}
-
 def fetch_from_local_md():
-    """Notionが取得できなかったときのフォールバックロジック（Markdownファイルから）"""
-    try:
-        with open('diary.md', encoding='utf-8') as f:
-            content = f.read()
-    except FileNotFoundError:
-        return [{"date": "error", "html": "<p>ローカル日記ファイルが見つかりませんでした。</p>"}]
+    with open('diary.md', encoding='utf-8') as f:
+        content = f.read()
 
+    # "## 2025-06-22" のような形式にマッチ
     entries = re.split(r'^## (\d{4}-\d{2}-\d{2})\n', content, flags=re.MULTILINE)
 
     diary = []
@@ -42,23 +33,26 @@ def fetch_from_local_md():
     return diary
 
 @app.route('/')
-@app.route('/<page>')
-def dynamic_page(page=""):
-    page_id = PAGE_ID_MAP.get(page)
-
-    # 未定義のページは404扱い
-    if not page_id:
-        return "404 Not Found", 404
-
+def index():
     try:
-        diary = fetch_diary_entries(page_id)
+        diary = fetch_diary_entries()
     except Exception as e:
-        print(f"[ERROR] Failed to fetch Notion data for /{page or 'root'}: {e}")
-
-        # トップページだけMarkdownにフォールバック
-        if page == "":
-            diary = fetch_from_local_md()
-        else:
-            diary = [{"date": "error", "html": "<p>日記の取得に失敗しました。</p>"}]
+        print(f"[WARN] Notion fetch failed, fallback to local file. Reason: {e}")
+        diary = fetch_from_local_md()
 
     return render_template('index.html', diary=diary)
+
+@app.route('/page2')
+def page2():
+    try:
+        page2_id = os.getenv('NOTION_PAGE_ID_PAGE2')
+        diary = fetch_diary_entries(page2_id)
+    except Exception as e:
+        print(f"[ERROR] Notion page2 fetch failed. Reason: {e}")  # 詳細表示
+        diary = [{"date": "error", "html": f"<p>日記の取得に失敗しました。<br>{e}</p>"}]
+
+    return render_template('index.html', diary=diary)
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5001))
+    app.run(host='0.0.0.0', port=port, debug=True)
