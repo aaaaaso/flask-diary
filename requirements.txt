@@ -2,3 +2,4 @@ flask
 markdown
 notion-client
 python-dotenv
+gunicorn
