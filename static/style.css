@@ -118,6 +118,13 @@ h2 {
 
 /* 数字トークンの横幅を一定に（1桁でも中央に見える） */
 .pager-item {
-  min-width: 2.8ch; /* 2桁まで想定ならこのくらい。3桁想定なら 4.2ch などに */
+  min-width: 1.8ch; /* 枠の横幅 */
   text-align:center;
+
+/* 追記：pager内だけは字間を戻す（bodyの letter-spacing の影響を打ち消す）*/
+.pager-item,
+.pager-prev,
+.pager-next {
+  letter-spacing: 0;
+  box-sizing: border-box; /* padding込みでセンタリングが安定 */
 }
