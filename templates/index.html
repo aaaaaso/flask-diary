@@ -32,9 +32,18 @@
     window.dataLayer = window.dataLayer || [];
     function gtag(){ dataLayer.push(arguments); }
     gtag('js', new Date());
-
     gtag('config', 'G-LR4KH39PNY');
   </script>
+
+  {# ページャ用の rel="prev/next"（SEO用）。current_page/total_pages は app.py から渡す #}
+  {% if current_page and total_pages %}
+    {% if current_page > 1 %}
+      <link rel="prev" href="{{ '/' if current_page == 2 else '/page' ~ (current_page - 1) }}">
+    {% endif %}
+    {% if current_page < total_pages %}
+      <link rel="next" href="{{ '/page' ~ (current_page + 1) }}">
+    {% endif %}
+  {% endif %}
 </head>
 
 <body>
@@ -45,6 +54,28 @@
         <div class="content">{{ entry.html | safe }}</div>
       </div>
     {% endfor %}
+  </div>
+
+  <!-- Pager: 最下部ナビゲーション（既存トンマナに合わせた最小UI） -->
+  <div class="pager" data-aos="fade-up" aria-label="Pagination">
+    {% if current_page > 1 %}
+      <a class="pager-prev" href="{{ '/' if current_page == 2 else '/page' ~ (current_page - 1) }}" rel="prev">← 前へ</a>
+    {% endif %}
+
+    <nav class="pager-list" aria-label="Pages">
+      {% for n in range(1, total_pages + 1) %}
+        {% set href = '/' if n == 1 else '/page' ~ n %}
+        {% if n == current_page %}
+          <span class="pager-item is-current" aria-current="page">{{ n }}</span>
+        {% else %}
+          <a class="pager-item" href="{{ href }}">{{ n }}</a>
+        {% endif %}
+      {% endfor %}
+    </nav>
+
+    {% if current_page < total_pages %}
+      <a class="pager-next" href="{{ '/page' ~ (current_page + 1) }}" rel="next">次へ →</a>
+    {% endif %}
   </div>
 
   <!-- JS -->

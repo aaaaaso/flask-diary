@@ -47,3 +47,59 @@ h2 {
   margin-top: 0em;
   margin-bottom: 0em;
 }
+
+/* === Pager (bottom navigation) === */
+.pager {
+  margin: 48px auto 16px;
+  padding: 8px 0;
+  text-align: center;
+}
+
+.pager-list {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 10px;
+  vertical-align: middle;
+}
+
+.pager-item,
+.pager-prev,
+.pager-next {
+  display: inline-block;
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: 9999px;
+  text-decoration: none;
+  color: #333;
+  background: #fdfdfb;
+  line-height: 1.25;
+}
+
+.pager-item:hover,
+.pager-prev:hover,
+.pager-next:hover {
+  transform: translateY(-1px);
+}
+
+.pager-item.is-current {
+  font-weight: 600;
+  border-color: #555;
+  cursor: default;
+}
+
+.pager a:focus,
+.pager-item:focus,
+.pager-prev:focus,
+.pager-next:focus {
+  outline: 2px solid #555;
+  outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+  .pager-item,
+  .pager-prev,
+  .pager-next {
+    padding: 6px 10px;
+  }
+}
