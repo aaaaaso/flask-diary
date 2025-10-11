@@ -48,58 +48,23 @@ h2 {
   margin-bottom: 0em;
 }
 
-/* === Pager (bottom navigation) === */
-.pager {
-  margin: 48px auto 16px;
-  padding: 8px 0;
-  text-align: center;
-}
+/* === Pager compact pill === */
+.pager{margin:32px auto 8px;padding:4px 0;text-align:center}
+.pager-list{display:inline-flex;flex-wrap:wrap;gap:4px;margin:0 6px;vertical-align:middle}
 
-.pager-list {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 0 10px;
-  vertical-align: middle;
+.pager-item,.pager-prev,.pager-next{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:28px;min-height:28px;padding:0 8px;
+  font-size:13px;line-height:1;letter-spacing:.01em;
+  font-variant-numeric:lining-nums tabular-nums;
+  border:1px solid #e6e3dd;border-radius:9999px;
+  text-decoration:none;color:#333;background:transparent;
+  vertical-align:middle;transition:background-color .15s, border-color .15s;
 }
+.pager-item.is-current{font-weight:600;border-color:#777;background:#f7f5f0}
+.pager-item:hover,.pager-prev:hover,.pager-next:hover{border-color:#bbb}
+.pager-item:focus,.pager-prev:focus,.pager-next:focus{outline:2px solid #555;outline-offset:2px}
 
-.pager-item,
-.pager-prev,
-.pager-next {
-  display: inline-block;
-  padding: 6px 12px;
-  border: 1px solid #ddd;
-  border-radius: 9999px;
-  text-decoration: none;
-  color: #333;
-  background: #fdfdfb;
-  line-height: 1.25;
-}
-
-.pager-item:hover,
-.pager-prev:hover,
-.pager-next:hover {
-  transform: translateY(-1px);
-}
-
-.pager-item.is-current {
-  font-weight: 600;
-  border-color: #555;
-  cursor: default;
-}
-
-.pager a:focus,
-.pager-item:focus,
-.pager-prev:focus,
-.pager-next:focus {
-  outline: 2px solid #555;
-  outline-offset: 2px;
-}
-
-@media (max-width: 480px) {
-  .pager-item,
-  .pager-prev,
-  .pager-next {
-    padding: 6px 10px;
-  }
+@media(max-width:480px){
+  .pager-item,.pager-prev,.pager-next{min-width:26px;min-height:26px;padding:0 6px;font-size:12px}
 }
