@@ -63,41 +63,29 @@ h2 {
   vertical-align: middle;
 }
 
-/* 置き換え推奨: .pager-item, .pager-prev, .pager-next の共通定義 */
 .pager-item,
 .pager-prev,
 .pager-next {
-  display: inline-flex;              /* 縦横センターの土台 */
-  align-items: center;               /* 垂直センター */
-  justify-content: center;           /* 水平センター */
-
-  min-width: 40px;                   /* クリックしやすさ */
-  min-height: 40px;                  /* 44pxでもOK */
-  padding: 0 10px;                   /* 横だけパディング */
-  line-height: 1;                    /* 行高の影響をゼロに */
-
+  display: inline-block;
+  padding: 6px 12px;
   border: 1px solid #ddd;
   border-radius: 9999px;
   text-decoration: none;
   color: #333;
   background: #fdfdfb;
-
-  vertical-align: middle;            /* 行内整列の微調整 */
-  font-variant-numeric: lining-nums tabular-nums; /* 数字の見え方を安定化 */
+  line-height: 1.25;
 }
 
-/* 現在ページ */
-.pager-item.is-current {
-  font-weight: 600;
-  border-color: #555;
-  cursor: default;
-}
-
-/* ホバー効果はそのまま */
 .pager-item:hover,
 .pager-prev:hover,
 .pager-next:hover {
   transform: translateY(-1px);
+}
+
+.pager-item.is-current {
+  font-weight: 600;
+  border-color: #555;
+  cursor: default;
 }
 
 .pager a:focus,
