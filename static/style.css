@@ -118,8 +118,9 @@ h2 {
 
 /* 数字トークンの横幅を一定に（1桁でも中央に見える） */
 .pager-item {
-  min-width: 1.8ch; /* 枠の横幅 */
+  min-width: 2.8ch; /* 枠の横幅 */
   text-align:center;
+}
 
 /* 追記：pager内だけは字間を戻す（bodyの letter-spacing の影響を打ち消す）*/
 .pager-item,
