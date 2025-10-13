@@ -129,3 +129,19 @@ h2 {
   letter-spacing: 0;
   box-sizing: border-box; /* padding込みでセンタリングが安定 */
 }
+
+/* 縦の区切り棒（最後のエントリとページャの間） */
+.diary-divider {
+  /* 細い1px線を中央に */
+  width: 0;                          /* 要素自体は幅0 */
+  height: 6em;                       /* ≒3行分（bodyの line-height:2.0 を前提） */
+  margin: 32px auto 24px;            /* 上下の余白で呼吸感 */
+  border-left: 1px solid rgba(0,0,0,.15); /* 細く、紙背景に馴染む色 */
+}
+
+/* 必要なら、長さを可変にしたいとき：行数を変えるだけでOK */
+:root { --divider-lines: 3; }        /* 3行ぶん相当 */
+.diary-divider { height: calc(var(--divider-lines) * 2em); }
+
+/* AOSと相性の良いわずかな演出（任意） */
+.diary-divider[data-aos="fade-up"] { will-change: transform, opacity; }
