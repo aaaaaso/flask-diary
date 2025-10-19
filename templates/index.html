@@ -60,7 +60,8 @@
   <div class="diary-divider" aria-hidden="true" data-aos="fade-up"></div>
 
   <!-- Pager: 最下部ナビゲーション（既存トンマナに合わせた最小UI） -->
-  <div class="pager" data-aos="fade-up" aria-label="Pagination">
+  <!-- <div class="pager" data-aos="fade-up" aria-label="Pagination"> -->
+  <div class="pager" data-aos="fade-up" data-aos-once="true" aria-label="Pagination">
     {% if current_page > 1 %}
       <a class="pager-prev" href="{{ '/' if current_page == 2 else '/page' ~ (current_page - 1) }}" rel="prev">← 前へ</a>
     {% endif %}
