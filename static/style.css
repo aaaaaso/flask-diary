@@ -154,7 +154,7 @@ h2 {
   background: none;
   border: none;
   cursor: pointer;
-  opacity: 0.6;
+  opacity: 0.35; /* アイコンの薄さ */
   transition: opacity 0.3s ease;
   z-index: 1000;
 
