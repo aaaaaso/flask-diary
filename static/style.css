@@ -145,3 +145,26 @@ h2 {
 
 /* AOSと相性の良いわずかな演出 */
 .diary-divider[data-aos="fade-up"] { will-change: transform, opacity; }
+
+/* Shuffleボタン */
+#shuffle-btn {
+  position: fixed;
+  top: 24px;
+  left: 24px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
+  z-index: 1000;
+}
+
+#shuffle-btn:hover {
+  opacity: 1;
+}
+
+#shuffle-btn img {
+  width: 24px;
+  height: 24px;
+  display: block;
+}
