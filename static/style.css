@@ -157,14 +157,37 @@ h2 {
   opacity: 0.6;
   transition: opacity 0.3s ease;
   z-index: 1000;
+
+  /* 押下時の黒変化を防ぐ */
+  outline: none;
+  filter: none;
+  box-shadow: none;
+  appearance: none;
+  -webkit-appearance: none; /* iOS Safari対策 */
 }
 
 #shuffle-btn:hover {
   opacity: 1;
 }
 
+#shuffle-btn:focus,
+#shuffle-btn:active {
+  background: none;
+  border: none;
+  outline: none;
+  filter: none;
+  box-shadow: none;
+}
+
+/* 画像そのものの指定 */
 #shuffle-btn img {
   width: 24px;
   height: 24px;
   display: block;
+  transition: opacity 0.3s ease;
+}
+
+/* hover時だけ軽く反応 */
+#shuffle-btn:hover img {
+  opacity: 0.8;
 }
