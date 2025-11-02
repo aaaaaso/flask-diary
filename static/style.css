@@ -169,7 +169,7 @@ h2 {
 
 /* ON状態：背景グレー＋アイコン白 */
 #shuffle-btn.is-active {
-  background: rgba(60, 60, 60, 0.9); /* 落ち着いたグレー */
+  background: rgba(60, 60, 60, 0.9);
   border: 1px solid rgba(0, 0, 0, 0.2);
   box-shadow:
     0 4px 10px rgba(0, 0, 0, 0.25),
@@ -177,21 +177,21 @@ h2 {
   opacity: 1;
 }
 
-/* アイコン共通 */
+/* アイコン共通（OFF時） */
 #shuffle-btn img {
   width: 22px;
   height: 22px;
   display: block;
   margin: auto;
   opacity: 0.7;
-  filter: brightness(1.1) grayscale(1);
+  filter: brightness(1.1) grayscale(1); /* やや薄いグレー */
   transition: opacity 0.35s ease, filter 0.35s ease;
 }
 
-/* ON状態のアイコン（白く浮かび上がる） */
+/* ON状態のアイコンを白く反転 */
 #shuffle-btn.is-active img {
   opacity: 0.95;
-  filter: brightness(3) grayscale(1); /* 白化 */
+  filter: invert(1) brightness(1.6); /* 完全反転＋少し明るく */
 }
 
 /* 回転アニメーション */
