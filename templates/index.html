@@ -108,26 +108,23 @@
     btn.addEventListener('click', () => {
       const container = document.querySelector('.container');
       const entries = Array.from(container.querySelectorAll('.entry'));
-
-      // 現在の状態に応じて順序を決定
-      const newEntries = isShuffled
-        ? originalOrder // OFF：元の順番に戻す
-        : shuffleArray([...entries]); // ON：シャッフルする
+      const newEntries = isShuffled ? originalOrder : shuffleArray([...entries]);
 
       // 再描画
       container.innerHTML = '';
       newEntries.forEach(e => container.appendChild(e));
-
-      // AOSを再初期化
       AOS.refreshHard();
 
-      // 状態切り替え
+      // 状態を切り替え
+      const prevState = isShuffled;
       isShuffled = !isShuffled;
       btn.classList.toggle('is-active', isShuffled);
 
-      // 🔄 回転アニメーション（毎回1回転）
-      btn.classList.add('spin');
-      setTimeout(() => btn.classList.remove('spin'), 600); // 0.6秒で1回転完了
+      // 回転アニメーション（ON→OFFのときだけ回転）
+      if (prevState) {
+        btn.classList.add('spin');
+        setTimeout(() => btn.classList.remove('spin'), 600);
+      }
     });
 
     // Fisher–Yates shuffle関数
