@@ -216,8 +216,40 @@ h2 {
   to { transform: rotate(360deg); }
 }
 
-/* 回転対象を img に限定 */
-#shuffle-btn.spin img {
+/* ここだけ回転させる */
+#shuffle-btn.spin .icon-wrap {
   animation: rotate-once 0.6s ease-in-out;
   transform-origin: center center;
+}
+
+/* ボタン位置などはそのまま */
+#shuffle-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity 0.3s ease, transform 0.2s ease;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+#shuffle-btn img {
+  width: 22px;
+  height: 22px;
+  opacity: 0.65;
+  filter: brightness(1.1) grayscale(1);
+}
+
+#shuffle-btn.is-active img {
+  opacity: 0.85;
+  filter: brightness(1.0) grayscale(1);
+  transform: scale(1.08);
 }
