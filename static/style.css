@@ -209,5 +209,5 @@ h2 {
 /* active時のhoverでさらにふわっと */
 #shuffle-btn.is-active:hover {
   opacity: 1;
-  transform: translateY(-3px);
+  transform: translateY(3px);
 }
