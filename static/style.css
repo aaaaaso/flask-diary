@@ -153,7 +153,7 @@ h2 {
     inset 0 0 3px rgba(255, 255, 255, 0.6);
   cursor: pointer;
   opacity: 0.85;
-  transition: opacity 0.3s ease;
+  transition: background 0.35s ease, opacity 0.3s ease, box-shadow 0.3s ease;
   z-index: 1000;
   backdrop-filter: blur(4px);
   outline: none;
@@ -162,36 +162,36 @@ h2 {
   -webkit-appearance: none;
 }
 
-/* hover */
+/* hover時（OFF） */
 #shuffle-btn:hover {
   opacity: 1;
 }
 
-/* ON状態 */
+/* ON状態：背景グレー＋アイコン白 */
 #shuffle-btn.is-active {
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: rgba(60, 60, 60, 0.9); /* 落ち着いたグレー */
+  border: 1px solid rgba(0, 0, 0, 0.2);
   box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.18),
-    inset 0 0 2px rgba(255, 255, 255, 0.9);
+    0 4px 10px rgba(0, 0, 0, 0.25),
+    inset 0 0 4px rgba(255, 255, 255, 0.2);
   opacity: 1;
 }
 
-/* アイコン */
+/* アイコン共通 */
 #shuffle-btn img {
   width: 22px;
   height: 22px;
   display: block;
   margin: auto;
-  opacity: 0.65;
+  opacity: 0.7;
   filter: brightness(1.1) grayscale(1);
-  transition: opacity 0.3s ease, filter 0.3s ease;
+  transition: opacity 0.35s ease, filter 0.35s ease;
 }
 
-/* ONアイコン */
+/* ON状態のアイコン（白く浮かび上がる） */
 #shuffle-btn.is-active img {
-  opacity: 0.85;
-  filter: brightness(1.0) grayscale(1);
+  opacity: 0.95;
+  filter: brightness(3) grayscale(1); /* 白化 */
 }
 
 /* 回転アニメーション */
@@ -200,7 +200,7 @@ h2 {
   to { transform: rotate(360deg); }
 }
 
-/* 回転だけ適用（競合なし） */
+/* 回転だけ適用（transform競合なし） */
 #shuffle-btn.spin img {
   animation: rotate-once 0.6s ease-in-out;
   transform-origin: center center;
