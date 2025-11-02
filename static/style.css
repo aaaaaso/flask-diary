@@ -138,6 +138,8 @@ h2 {
 
 /* === Shuffleボタン === */
 
+/* === Shuffleボタン === */
+
 /* OFF状態 */
 #shuffle-btn {
   position: fixed;
@@ -153,7 +155,7 @@ h2 {
     inset 0 0 3px rgba(255, 255, 255, 0.6);
   cursor: pointer;
   opacity: 0.85;
-  transition: background 0.35s ease, opacity 0.3s ease, box-shadow 0.3s ease;
+  transition: background 0.6s ease, opacity 0.6s ease, box-shadow 0.6s ease;
   z-index: 1000;
   backdrop-filter: blur(4px);
   outline: none;
@@ -177,21 +179,21 @@ h2 {
   opacity: 1;
 }
 
-/* アイコン共通（OFF時） */
+/* アイコン共通（OFF） */
 #shuffle-btn img {
   width: 22px;
   height: 22px;
   display: block;
   margin: auto;
   opacity: 0.7;
-  filter: brightness(1.1) grayscale(1); /* やや薄いグレー */
-  transition: opacity 0.35s ease, filter 0.35s ease;
+  filter: brightness(1.1) grayscale(1);
+  transition: opacity 0.6s ease, filter 0.6s ease;
 }
 
-/* ON状態のアイコンを白く反転 */
+/* ON状態のアイコン（白く反転） */
 #shuffle-btn.is-active img {
   opacity: 0.95;
-  filter: invert(1) brightness(1.6); /* 完全反転＋少し明るく */
+  filter: invert(1) brightness(1.6);
 }
 
 /* 回転アニメーション */

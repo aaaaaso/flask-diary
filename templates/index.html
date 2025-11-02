@@ -99,14 +99,7 @@
     });
 
     // ---- Shuffle機能（ON/OFF切り替え）----
-    const btn = document.getElementById('shuffle-btn');
-    const container = document.querySelector('.container');
-    const entries = Array.from(container.querySelectorAll('.entry'));
-    const originalOrder = entries.map(e => e); // 元の順番を保持
-    let isShuffled = false; // 状態フラグ
-
     btn.addEventListener('click', () => {
-      const container = document.querySelector('.container');
       const entries = Array.from(container.querySelectorAll('.entry'));
       const newEntries = isShuffled ? originalOrder : shuffleArray([...entries]);
 
@@ -120,8 +113,8 @@
       isShuffled = !isShuffled;
       btn.classList.toggle('is-active', isShuffled);
 
-      // 回転アニメーション（ON→OFFのときだけ回転）
-      if (prevState) {
+      // 回転アニメーション（OFF→ONのときだけ回転）
+      if (!prevState) {
         btn.classList.add('spin');
         setTimeout(() => btn.classList.remove('spin'), 600);
       }
