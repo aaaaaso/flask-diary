@@ -196,14 +196,18 @@ h2 {
 
 /* ON状態の見た目 */
 #shuffle-btn.is-active {
-  opacity: 0.85; /* 少し濃く */
-  background: rgba(230, 240, 255, 0.9); /* 淡い青み。優しいトーン */
-  border: 1px solid rgba(80, 130, 200, 0.3); /* ほのかに青寄りの線 */
-  box-shadow: 0 3px 8px rgba(100, 140, 200, 0.15); /* 柔らかい影 */
-  transform: translateY(-1px);
+  opacity: 0.9; /* 少し濃くして存在感を出す */
+  background: rgba(255, 255, 255, 0.85); /* 透明度を下げて実体感を出す */
+  border: 1px solid rgba(0, 0, 0, 0.15); /* わずかにエッジを強調 */
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.15),      /* 下方向に柔らかい影 */
+    inset 0 0 4px rgba(255, 255, 255, 0.8); /* 内側に光を反射させる */
+  transform: translateY(-2px); /* 少し浮いたように見せる */
+  backdrop-filter: blur(4px); /* ほんのりガラスのような質感 */
 }
 
-/* hover時も軽く反応 */
+/* active時のhoverでさらにふわっと */
 #shuffle-btn.is-active:hover {
   opacity: 1;
+  transform: translateY(-3px);
 }
