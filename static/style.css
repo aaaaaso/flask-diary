@@ -209,3 +209,14 @@ h2 {
   filter: brightness(1.0) grayscale(1);
   transform: scale(1.08);
 }
+
+/* 回転アニメーション */
+@keyframes rotate-once {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 回転用クラス */
+#shuffle-btn.spin img {
+  animation: rotate-once 0.6s ease-in-out;
+}
