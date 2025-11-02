@@ -1,6 +1,5 @@
 body {
   position: relative;
-  /* font-family: 'Noto Serif JP', serif; */
   font-family: 'Shippori Mincho B1', serif;
   letter-spacing: 0.15em;
   background-color: #fdfdfb;
@@ -22,9 +21,9 @@ body::before {
   background-image: url("/static/paper_texture.png");
   background-repeat: repeat;
   background-size: auto;
-  opacity: 0.2;  /* ← ここで透明度を調整 */
+  opacity: 0.2;
   z-index: -1;
-  pointer-events: none; /* テキスト操作などに影響させない */
+  pointer-events: none;
 }
 
 h2 {
@@ -48,7 +47,7 @@ h2 {
   margin-bottom: 0em;
 }
 
-/* === Pager (bottom navigation) === */
+/* === Pager === */
 .pager {
   margin: 48px auto 16px;
   padding: 8px 0;
@@ -104,49 +103,42 @@ h2 {
   }
 }
 
-/* pagerの数字を光学的にもど真ん中に */
+/* 数字位置調整 */
 .pager-item,
 .pager-prev,
 .pager-next {
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  /* 数字幅を均等化（対応フォントなら有効） */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-variant-numeric: tabular-nums lining-nums;
   font-feature-settings: "tnum" 1, "lnum" 1;
-}
-
-/* 数字トークンの横幅を一定に（1桁でも中央に見える） */
-.pager-item {
-  min-width: 2.8ch; /* 枠の横幅 */
-  text-align:center;
-}
-
-/* 追記：pager内だけは字間を戻す（bodyの letter-spacing の影響を打ち消す）*/
-.pager-item,
-.pager-prev,
-.pager-next {
   letter-spacing: 0;
-  box-sizing: border-box; /* padding込みでセンタリングが安定 */
+  box-sizing: border-box;
 }
 
-/* ページ最下部の縦棒 */
+.pager-item {
+  min-width: 2.8ch;
+  text-align: center;
+}
+
+/* === 縦棒 === */
 .diary-divider {
-  /* 細い1px線を中央に */
-  width: 0;                          /* 要素自体は幅0 */
-  height: 10em;                       /* ≒3行分（bodyの line-height:2.0 を前提） */
-  margin: 42px auto 34px;            /* 上下の余白で呼吸感 */
-  border-left: 0.5px solid rgba(0,0,0,.15); /* 細さ、色 */
+  width: 0;
+  height: 10em;
+  margin: 42px auto 34px;
+  border-left: 0.5px solid rgba(0, 0, 0, .15);
 }
 
-/* 必要なら、長さを可変にしたいとき：行数を変えるだけでOK */
-:root { --divider-lines: 3; }        /* 3行ぶん相当 */
+:root { --divider-lines: 3; }
 .diary-divider { height: calc(var(--divider-lines) * 2em); }
 
-/* AOSと相性の良いわずかな演出 */
-.diary-divider[data-aos="fade-up"] { will-change: transform, opacity; }
+.diary-divider[data-aos="fade-up"] {
+  will-change: transform, opacity;
+}
 
-/* OFF状態（静かで背景に馴染む） */
+/* === Shuffleボタン === */
+
+/* OFF状態 */
 #shuffle-btn {
   position: fixed;
   bottom: 32px;
@@ -155,13 +147,13 @@ h2 {
   height: 48px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(0, 0, 0, 0.08); /* ← 枠線をより薄く */
+  border: 1px solid rgba(0, 0, 0, 0.08);
   box-shadow:
     0 2px 6px rgba(0, 0, 0, 0.1),
     inset 0 0 3px rgba(255, 255, 255, 0.6);
   cursor: pointer;
   opacity: 0.85;
-  transition: all 0.35s ease;
+  transition: opacity 0.3s ease;
   z-index: 1000;
   backdrop-filter: blur(4px);
   outline: none;
@@ -170,44 +162,36 @@ h2 {
   -webkit-appearance: none;
 }
 
-/* hover（OFF時） */
+/* hover */
 #shuffle-btn:hover {
-  transform: translateY(-2px);
-  opacity: 0.95;
+  opacity: 1;
 }
 
-/* ON状態（少し厚みが出て、立体感が強まる） */
+/* ON状態 */
 #shuffle-btn.is-active {
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(0, 0, 0, 0.15);
   box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.18), /* 影を強めて浮いた印象 */
+    0 4px 12px rgba(0, 0, 0, 0.18),
     inset 0 0 2px rgba(255, 255, 255, 0.9);
-  transform: translateY(-3px) scale(1.03);
   opacity: 1;
 }
 
-/* hover時（ONでもわずかに動く） */
-#shuffle-btn.is-active:hover {
-  transform: translateY(-4px) scale(1.05);
-}
-
-/* アイコン共通 */
+/* アイコン */
 #shuffle-btn img {
   width: 22px;
   height: 22px;
   display: block;
   margin: auto;
-  opacity: 0.65; /* ← ここで濃さを調整 */
-  filter: brightness(1.1) grayscale(1); /* 明度を少し上げて、黒味をやわらげる */
-  transition: opacity 0.3s ease, transform 0.3s ease, filter 0.3s ease;
+  opacity: 0.65;
+  filter: brightness(1.1) grayscale(1);
+  transition: opacity 0.3s ease, filter 0.3s ease;
 }
 
-/* ON状態のアイコンは少しだけ濃く＆前に出る */
+/* ONアイコン */
 #shuffle-btn.is-active img {
   opacity: 0.85;
   filter: brightness(1.0) grayscale(1);
-  transform: scale(1.08);
 }
 
 /* 回転アニメーション */
@@ -216,40 +200,8 @@ h2 {
   to { transform: rotate(360deg); }
 }
 
-/* ここだけ回転させる */
-#shuffle-btn.spin .icon-wrap {
+/* 回転だけ適用（競合なし） */
+#shuffle-btn.spin img {
   animation: rotate-once 0.6s ease-in-out;
   transform-origin: center center;
-}
-
-/* ボタン位置などはそのまま */
-#shuffle-btn {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  background: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 50%;
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: opacity 0.3s ease, transform 0.2s ease;
-  z-index: 1000;
-  backdrop-filter: blur(4px);
-}
-
-#shuffle-btn img {
-  width: 22px;
-  height: 22px;
-  opacity: 0.65;
-  filter: brightness(1.1) grayscale(1);
-}
-
-#shuffle-btn.is-active img {
-  opacity: 0.85;
-  filter: brightness(1.0) grayscale(1);
-  transform: scale(1.08);
 }
