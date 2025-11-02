@@ -193,3 +193,11 @@ h2 {
 #shuffle-btn:hover img {
   opacity: 0.9;
 }
+
+/* ON状態の見た目 */
+#shuffle-btn.is-active {
+  opacity: 0.8; /* 通常より少し濃くしてONを示す */
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+}
