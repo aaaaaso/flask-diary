@@ -216,7 +216,8 @@ h2 {
   to { transform: rotate(360deg); }
 }
 
-/* 回転用クラス */
+/* 回転対象を img に限定 */
 #shuffle-btn.spin img {
   animation: rotate-once 0.6s ease-in-out;
+  transform-origin: center center;
 }
