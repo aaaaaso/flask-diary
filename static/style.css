@@ -148,8 +148,8 @@ h2 {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.75); /* ← 透明度を調整 */
+  border: 1px solid rgba(0, 0, 0, 0.07);
   box-shadow:
     0 2px 6px rgba(0, 0, 0, 0.1),
     inset 0 0 3px rgba(255, 255, 255, 0.6);
