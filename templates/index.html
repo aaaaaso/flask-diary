@@ -107,38 +107,26 @@
     let isShuffled = false; // 状態フラグ
 
     btn.addEventListener('click', () => {
-      const prevState = isShuffled; // 現在の状態を保持（OFF→ONを判定に使う）
+      const entries = Array.from(container.querySelectorAll('.entry'));
+      const newEntries = isShuffled ? originalOrder : shuffleArray([...entries]);
 
-      // フェードアウト開始
-      container.classList.add('is-fading');
+      // 再描画
+      container.innerHTML = '';
+      newEntries.forEach(e => container.appendChild(e));
+      AOS.refreshHard();
 
-      // 少し待ってから再描画（0.3秒後）
-      setTimeout(() => {
-        const entries = Array.from(container.querySelectorAll('.entry'));
-        const newEntries = isShuffled ? originalOrder : shuffleArray([...entries]);
+      // 状態を切り替え
+      const prevState = isShuffled;
+      isShuffled = !isShuffled;
+      btn.classList.toggle('is-active', isShuffled);
 
-        // コンテンツ入れ替え
-        container.innerHTML = '';
-        newEntries.forEach(e => container.appendChild(e));
-
-        // AOS再適用
-        AOS.refreshHard();
-
-        // 状態を切り替え
-        isShuffled = !isShuffled;
-        btn.classList.toggle('is-active', isShuffled);
-
-        // 回転アニメーション（OFF→ONのときだけ）
-        if (!prevState) {
-          btn.classList.remove('spin');   // リセット
-          void btn.offsetWidth;           // 再描画強制（連打対応）
-          btn.classList.add('spin');      // 回転付与
-          setTimeout(() => btn.classList.remove('spin'), 600);
-        }
-
-        // フェードイン
-        container.classList.remove('is-fading');
-      }, 300); // 0.3秒のフェードアウト後に再描画
+      // 回転アニメーション（OFF→ONのときだけ回転）
+      if (!prevState) {
+        btn.classList.remove('spin');   // リセット
+        void btn.offsetWidth;           // 再描画強制（連打対応）
+        btn.classList.add('spin');      // 回転付与
+        setTimeout(() => btn.classList.remove('spin'), 600);
+      }
     });
 
     // Fisher–Yates shuffle関数
