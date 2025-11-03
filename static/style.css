@@ -161,9 +161,9 @@ h2 {
 }
 
 /* hover時（OFF） */
-#shuffle-btn:hover {
+/* #shuffle-btn:hover {
   opacity: 1;
-}
+} */
 
 /* ON状態：背景グレー＋アイコン白 */
 #shuffle-btn.is-active {
