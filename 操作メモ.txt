@@ -1,0 +1,5 @@
+# ローカル環境で確認する
+cd ~/Desktop/flask-diary
+python app.py
+→ ブラウザで http://127.0.0.1:5001/
+→ 終了するときは「Ctrl + C」
