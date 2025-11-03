@@ -136,6 +136,15 @@ h2 {
   will-change: transform, opacity;
 }
 
+
+/* containerにtransition */
+.container {
+  transition: opacity 0.5s ease;
+}
+
+.container.is-fading {
+  opacity: 0;
+}
 /* === Shuffleボタン === */
 
 /* OFF状態 */
