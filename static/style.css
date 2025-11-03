@@ -140,7 +140,9 @@ h2 {
 
 /* OFF状態 */
 #shuffle-btn {
+  isolation: isolate;
   position: fixed;
+  overflow: hidden;
   bottom: 32px;
   right: 32px;
   width: 48px;
