@@ -207,3 +207,35 @@ h2 {
   animation: rotate-once 0.6s ease-in-out;
   transform-origin: center center;
 }
+
+/* === 最新の日リンク === */
+#scroll-latest {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  padding: 6px 14px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.55);
+  text-decoration: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.8s ease, transform 0.8s ease, background 0.6s ease, color 0.6s ease;
+  z-index: 999;
+}
+
+#scroll-latest:hover {
+  background: rgba(255, 255, 255, 0.35);
+  color: rgba(0, 0, 0, 0.75);
+}
+
+#scroll-latest.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
