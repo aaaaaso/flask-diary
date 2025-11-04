@@ -47,26 +47,17 @@
 
 <body>
 
-  <!-- 最新の日記リンク -->
-  <div class="latest-link" title="最新の日記へ">
-    <a href="#first-entry">
-      <span>最新の日記</span>
-      <span class="arrow">∨</span>
-    </a>
-  </div>
-
-
   <!-- Shuffleボタン -->
-  <button id="shuffle-btn" title="日記をランダムに並べ替え">
-    <span class="icon-wrap">
-      <img src="{{ url_for('static', filename='shuffle_icon.png') }}" alt="Shuffle" />
-    </span>
-  </button>
+<button id="shuffle-btn" title="日記をランダムに並べ替え">
+  <span class="icon-wrap">
+    <img src="{{ url_for('static', filename='shuffle_icon.png') }}" alt="Shuffle" />
+  </span>
+</button>
 
   <!-- 日記本体 -->
   <div class="container">
     {% for entry in diary %}
-      <div class="entry" id="{% if loop.first %}first-entry{% endif %}" data-aos="fade-up">
+      <div class="entry" data-aos="fade-up">
         <h2>{{ entry.date }}</h2>
         <div class="content">{{ entry.html | safe }}</div>
       </div>
