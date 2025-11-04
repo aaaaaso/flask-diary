@@ -48,14 +48,11 @@
 <body>
 
   <!-- Shuffleボタン -->
-  <button id="shuffle-btn" title="日記をランダムに並べ替え">
-    <span class="icon-wrap">
-      <img src="{{ url_for('static', filename='shuffle_icon.png') }}" alt="Shuffle" />
-    </span>
-  </button>
-
-  <!-- 最新の日リンク -->
-  <a href="#" id="scroll-latest">最新の日</a>
+<button id="shuffle-btn" title="日記をランダムに並べ替え">
+  <span class="icon-wrap">
+    <img src="{{ url_for('static', filename='shuffle_icon.png') }}" alt="Shuffle" />
+  </span>
+</button>
 
   <!-- 日記本体 -->
   <div class="container">
@@ -101,12 +98,13 @@
       once: false
     });
 
-    // ---- Shuffle機能 ----
+    // ---- Shuffle機能（ON/OFF切り替え）----
+
     const btn = document.getElementById('shuffle-btn');
     const container = document.querySelector('.container');
     const entries = Array.from(container.querySelectorAll('.entry'));
-    const originalOrder = entries.map(e => e);
-    let isShuffled = false;
+    const originalOrder = entries.map(e => e); // 元の順番を保持
+    let isShuffled = false; // 状態フラグ
 
     btn.addEventListener('click', () => {
       const entries = Array.from(container.querySelectorAll('.entry'));
@@ -117,17 +115,21 @@
       newEntries.forEach(e => container.appendChild(e));
       AOS.refreshHard();
 
+      // 状態を切り替え
       const prevState = isShuffled;
       isShuffled = !isShuffled;
       btn.classList.toggle('is-active', isShuffled);
 
       // 回転アニメーション（OFF→ONのときだけ回転）
       if (!prevState) {
-        btn.classList.add('spin');
+        btn.classList.remove('spin');   // リセット
+        void btn.offsetWidth;           // 再描画強制（連打対応）
+        btn.classList.add('spin');      // 回転付与
         setTimeout(() => btn.classList.remove('spin'), 600);
       }
     });
 
+    // Fisher–Yates shuffle関数
     function shuffleArray(array) {
       for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -135,22 +137,6 @@
       }
       return array;
     }
-
-    // ---- 最新の日ボタンのフェード表示とスクロール ----
-    const latestBtn = document.getElementById('scroll-latest');
-    window.addEventListener('scroll', () => {
-      if (window.scrollY > 120) {
-        latestBtn.classList.add('is-visible');
-      } else {
-        latestBtn.classList.remove('is-visible');
-      }
-    });
-
-    latestBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const pager = document.querySelector('.pager');
-      if (pager) pager.scrollIntoView({ behavior: 'smooth' });
-    });
   </script>
 </body>
 </html>
