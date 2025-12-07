@@ -2,11 +2,9 @@ from flask import Flask, render_template, abort
 import os
 
 from notion_fetcher import fetch_diary_entries
+from settings import TOTAL_PAGES
 
 app = Flask(__name__)
-
-# 総ページ数（Render環境変数で管理）。未設定なら2ページ想定。
-TOTAL_PAGES = int(os.getenv("TOTAL_PAGES", "2"))
 
 def env_key_for(n: int) -> str:
     # 1ページ目は NOTION_PAGE_ID、2ページ目以降は NOTION_PAGE_ID_PAGE{n}
