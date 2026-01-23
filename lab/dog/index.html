@@ -89,11 +89,7 @@
         if (spawnTimer >= spawnIntervalMs && circles.length < maxCircles) {
           const c = makeCircle();
           circles.push(c);
-          if (c.isDog) {
-            playDog();
-          } else {
-            playPop(c.freq);
-          }
+          playPop(c.freq);
           spawnTimer = 0;
         }
 
@@ -203,6 +199,27 @@
         } catch (e) {
           // no-op: some browsers may block playback
         }
+      }
+
+      function tryPlayDogVoice(x, y) {
+        for (let i = circles.length - 1; i >= 0; i--) {
+          const c = circles[i];
+          if (!c.isDog) continue;
+          const d = dist(x, y, c.x, c.y);
+          if (d <= c.r) {
+            playDog();
+            break;
+          }
+        }
+      }
+
+      function mousePressed() {
+        tryPlayDogVoice(mouseX, mouseY);
+      }
+
+      function touchStarted() {
+        tryPlayDogVoice(mouseX, mouseY);
+        return false;
       }
 
       function updateSoundButton() {
