@@ -14,7 +14,7 @@
         width: 100%;
         height: 100%;
         overflow: hidden;
-        background: radial-gradient(circle at 20% 20%, #fef6e4, #f3d2c1 45%, #8bd3dd 100%);
+        background: radial-gradient(circle at 20% 20%, #f4f6f8, #d3d9e0 45%, #aeb6c2 100%);
         font-family: "Trebuchet MS", "Segoe UI", sans-serif;
       }
       canvas {
@@ -45,6 +45,14 @@
       const spawnIntervalMs = 100;
       const dogChance = 0.05;
       let spawnTimer = 0;
+      const softPalette = [
+        { h: 210, s: 18, b: 96 },
+        { h: 200, s: 22, b: 92 },
+        { h: 225, s: 16, b: 90 },
+        { h: 190, s: 20, b: 94 },
+        { h: 250, s: 14, b: 92 },
+        { h: 170, s: 18, b: 90 }
+      ];
 
       let audioCtx = null;
       let masterGain = null;
@@ -111,19 +119,29 @@
       function makeCircle() {
         const r = random(10, 60);
         const isDog = random() < dogChance;
+        const tone = pickSoftColor();
         return {
           x: random(width),
           y: random(height),
           r,
           grow: random(0.2, 1.6),
-          hue: random(0, 360),
-          sat: random(60, 100),
-          bri: random(70, 100),
+          hue: tone.h,
+          sat: tone.s,
+          bri: tone.b,
           alpha: 90,
           maxLife: int(random(60, 180)),
           life: int(random(60, 180)),
           freq: sizeToFreq(r),
           isDog
+        };
+      }
+
+      function pickSoftColor() {
+        const base = random(softPalette);
+        return {
+          h: (base.h + random(-6, 6) + 360) % 360,
+          s: constrain(base.s + random(-4, 4), 10, 30),
+          b: constrain(base.b + random(-4, 4), 82, 98)
         };
       }
 
