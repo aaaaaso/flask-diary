@@ -1,8 +1,11 @@
 from flask import Flask, render_template, abort
 from settings import TOTAL_PAGES, PAGE_IDS     # settings.pyから読む
 from notion_fetcher import fetch_diary_entries
+from lab import lab_bp
 
 app = Flask(__name__)
+
+app.register_blueprint(lab_bp)
 
 def fetch_diary_by_page(n: int):
     page_id = PAGE_IDS.get(n)   # ← 直接PAGE_IDSから取得

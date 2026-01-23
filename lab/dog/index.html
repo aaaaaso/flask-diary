@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Colorful Pop Circles</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: radial-gradient(circle at 20% 20%, #fef6e4, #f3d2c1 45%, #8bd3dd 100%);
+        font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      }
+      canvas {
+        display: block;
+      }
+      .sound-toggle {
+        position: fixed;
+        right: 16px;
+        bottom: 14px;
+        padding: 8px 14px;
+        border: 0;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.85);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        font-size: 13px;
+        letter-spacing: 0.04em;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <button class="sound-toggle" id="soundToggle">🔈 音をオン</button>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.9.3/lib/p5.min.js"></script>
+    <script>
+      const circles = [];
+      const maxCircles = 120;
+      const timeScale = 0.25;
+      const spawnIntervalMs = 100;
+      const dogChance = 0.05;
+      let spawnTimer = 0;
+
+      let audioCtx = null;
+      let masterGain = null;
+      const baseFreq = 660;
+      let audioEnabled = false;
+      let audioUnlocked = false;
+      let dogImg = null;
+      let dogAudio = null;
+
+      function preload() {
+        dogImg = loadImage("dog.png");
+      }
+
+      function setup() {
+        createCanvas(windowWidth, windowHeight);
+        noStroke();
+        colorMode(HSB, 360, 100, 100, 100);
+        background(0, 0, 100, 0);
+        dogAudio = new Audio("dog_voice.mp3");
+        dogAudio.volume = 0.7;
+      }
+
+      function windowResized() {
+        resizeCanvas(windowWidth, windowHeight);
+      }
+
+      function draw() {
+        clear();
+        background(0, 0, 100, 10);
+
+        const dt = (deltaTime / 16.6667) * timeScale;
+        spawnTimer += deltaTime * timeScale;
+
+        if (spawnTimer >= spawnIntervalMs && circles.length < maxCircles) {
+          const c = makeCircle();
+          circles.push(c);
+          if (c.isDog) {
+            playDog();
+          } else {
+            playPop(c.freq);
+          }
+          spawnTimer = 0;
+        }
+
+        for (let i = circles.length - 1; i >= 0; i--) {
+          const c = circles[i];
+          c.life -= dt;
+          c.r += c.grow * dt;
+          c.alpha = map(c.life, 0, c.maxLife, 0, 90);
+          fill(c.hue, c.sat, c.bri, c.alpha);
+          if (c.isDog && dogImg) {
+            tint(0, 0, 100, c.alpha);
+            image(dogImg, c.x - c.r, c.y - c.r, c.r * 2, c.r * 2);
+            noTint();
+          } else {
+            ellipse(c.x, c.y, c.r * 2);
+          }
+          if (c.life <= 0) {
+            circles.splice(i, 1);
+          }
+        }
+      }
+
+      function makeCircle() {
+        const r = random(10, 60);
+        const isDog = random() < dogChance;
+        return {
+          x: random(width),
+          y: random(height),
+          r,
+          grow: random(0.2, 1.6),
+          hue: random(0, 360),
+          sat: random(60, 100),
+          bri: random(70, 100),
+          alpha: 90,
+          maxLife: int(random(60, 180)),
+          life: int(random(60, 180)),
+          freq: sizeToFreq(r),
+          isDog
+        };
+      }
+
+      function sizeToFreq(r) {
+        // smaller circle -> higher pitch
+        return map(r, 10, 60, 880, 220);
+      }
+
+      function initAudio() {
+        if (audioCtx) return;
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        masterGain = audioCtx.createGain();
+        masterGain.gain.value = 0.35;
+        masterGain.connect(audioCtx.destination);
+        audioEnabled = true;
+        updateSoundButton();
+      }
+
+      function playPop(freq) {
+        if (!audioEnabled || !audioCtx) return;
+        if (audioCtx.state !== "running") return;
+        const now = audioCtx.currentTime;
+        const oscA = audioCtx.createOscillator();
+        const oscB = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        const filter = audioCtx.createBiquadFilter();
+
+        const f = freq || baseFreq;
+        oscA.type = "triangle";
+        oscB.type = "sine";
+        oscA.frequency.value = f;
+        oscB.frequency.value = f * 1.005;
+
+        filter.type = "lowpass";
+        filter.frequency.value = 2400;
+        filter.Q.value = 0.7;
+
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.7);
+
+        oscA.connect(filter);
+        oscB.connect(filter);
+        filter.connect(gain);
+        gain.connect(masterGain);
+
+        oscA.start(now);
+        oscB.start(now);
+        oscA.stop(now + 0.75);
+        oscB.stop(now + 0.75);
+      }
+
+      function playDog() {
+        if (!audioEnabled || !audioUnlocked || !dogAudio) return;
+        try {
+          const a = dogAudio.cloneNode();
+          a.volume = dogAudio.volume;
+          a.play();
+        } catch (e) {
+          // no-op: some browsers may block playback
+        }
+      }
+
+      function updateSoundButton() {
+        const btn = document.getElementById("soundToggle");
+        if (!btn) return;
+        if (!audioUnlocked) {
+          btn.textContent = "🔈 音をオン";
+          return;
+        }
+        btn.textContent = audioEnabled ? "🔊 音オン" : "🔈 音オフ";
+      }
+
+
+      async function unlockAudio() {
+        if (!audioCtx) {
+          initAudio();
+        }
+        if (audioCtx && audioCtx.state === "suspended") {
+          await audioCtx.resume();
+        }
+        if (audioCtx && audioCtx.state === "running") {
+          audioUnlocked = true;
+          audioEnabled = true;
+          updateSoundButton();
+          playPop();
+        }
+      }
+
+      document.getElementById("soundToggle").addEventListener("click", async () => {
+        if (!audioUnlocked) {
+          await unlockAudio();
+          return;
+        }
+        audioEnabled = !audioEnabled;
+        if (audioCtx) {
+          if (audioEnabled && audioCtx.state === "suspended") {
+            await audioCtx.resume();
+          }
+          if (!audioEnabled && audioCtx.state === "running") {
+            await audioCtx.suspend();
+          }
+        }
+        updateSoundButton();
+      });
+
+      window.addEventListener("pointerdown", () => {
+        if (!audioUnlocked) {
+          unlockAudio();
+        }
+      }, { once: true });
+    </script>
+  </body>
+</html>
