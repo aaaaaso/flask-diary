@@ -196,17 +196,17 @@
         <label for="scaleSelect">Scale</label>
         <div class="dropdown" id="scaleSelect">
           <button class="dropdown-toggle" type="button" aria-haspopup="listbox" aria-expanded="false">
-            Random
+            Ionian
           </button>
           <ul class="dropdown-menu" role="listbox">
-            <li class="dropdown-option" role="option" data-value="random" aria-selected="true">Random</li>
-            <li class="dropdown-option" role="option" data-value="ionian">Ionian</li>
+            <li class="dropdown-option" role="option" data-value="ionian" aria-selected="true">Ionian</li>
             <li class="dropdown-option" role="option" data-value="dorian">Dorian</li>
             <li class="dropdown-option" role="option" data-value="phrygian">Phrygian</li>
             <li class="dropdown-option" role="option" data-value="lydian">Lydian</li>
             <li class="dropdown-option" role="option" data-value="mixolydian">Mixolydian</li>
             <li class="dropdown-option" role="option" data-value="aeolian">Aeolian</li>
             <li class="dropdown-option" role="option" data-value="locrian">Locrian</li>
+            <li class="dropdown-option" role="option" data-value="random">Random</li>
           </ul>
         </div>
       </span>
@@ -264,7 +264,7 @@
       let circleCount = 0;
       let dogCount = 0;
       let dogAltCount = 0;
-      let scaleMode = "random";
+      let scaleMode = "ionian";
       let keyRootMidi = 61;
       let lastScaleMidi = null;
       const scaleModes = {
@@ -335,7 +335,7 @@
           const c = circles[i];
           c.life -= dt;
           c.r += c.grow * dt;
-          c.alpha = map(c.life, 0, c.maxLife, 20, 80);
+          c.alpha = map(c.life, 0, c.maxLife, 30, 80);
           fill(c.hue, c.sat, c.bri, c.alpha);
           if (c.isDog && dogImg) {
             tint(0, 0, 100, c.alpha);
@@ -509,7 +509,7 @@
           toggle.setAttribute("aria-expanded", "false");
         });
 
-        selectValue(options.find((opt) => opt.getAttribute("aria-selected") === "true")?.dataset.value || options[0].dataset.value);
+        selectValue(options.find((opt) => opt.getAttribute("aria-selected") === "true")?.dataset.value || "ionian");
       }
 
       function initAudio() {
