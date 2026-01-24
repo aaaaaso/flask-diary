@@ -37,13 +37,200 @@
         letter-spacing: 0.04em;
         cursor: pointer;
       }
+      .counter {
+        position: fixed;
+        top: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 2;
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        padding: 8px 16px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.78);
+        box-shadow: 0 8px 26px rgba(0, 0, 0, 0.1);
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        max-width: min(92vw, 560px);
+      }
+      .counter span {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        white-space: nowrap;
+      }
+      .counter b {
+        font-weight: 600;
+        letter-spacing: 0.04em;
+      }
+      .control-bar {
+        position: fixed;
+        top: 62px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0;
+        font-size: 12px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        max-width: min(92vw, 560px);
+      }
+      .scale-select {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .key-select {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .dropdown {
+        position: relative;
+      }
+      .dropdown-toggle {
+        border: 0;
+        background: rgba(255, 255, 255, 0.7);
+        border-radius: 999px;
+        padding: 4px 28px 4px 10px;
+        font-size: 12px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        cursor: pointer;
+        position: relative;
+      }
+      .dropdown-toggle::after {
+        content: "▾";
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-48%);
+        font-size: 11px;
+        opacity: 0.7;
+      }
+      .dropdown-toggle[aria-disabled="true"] {
+        opacity: 0.45;
+        filter: grayscale(0.4);
+        cursor: not-allowed;
+      }
+      .dropdown-menu {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        min-width: 120px;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 12px;
+        box-shadow: 0 14px 26px rgba(0, 0, 0, 0.12);
+        padding: 6px;
+        list-style: none;
+        margin: 0;
+        display: none;
+        z-index: 3;
+      }
+      .dropdown.open .dropdown-menu {
+        display: block;
+      }
+      .dropdown-option {
+        padding: 6px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        font-size: 12px;
+      }
+      .dropdown-option[aria-selected="true"] {
+        background: rgba(0, 0, 0, 0.06);
+        font-weight: 600;
+      }
+      .dropdown-option:hover {
+        background: rgba(0, 0, 0, 0.05);
+      }
+      @media (max-width: 600px) {
+        .counter {
+          top: 10px;
+          gap: 8px;
+          padding: 8px 12px;
+          font-size: 11px;
+          letter-spacing: 0.06em;
+        }
+        .control-bar {
+          top: 54px;
+          gap: 8px;
+          padding: 6px 10px;
+          font-size: 12px;
+          letter-spacing: 0.05em;
+        }
+        .counter span {
+          gap: 6px;
+        }
+        .dropdown-toggle {
+          padding: 3px 24px 3px 8px;
+          font-size: 12px;
+        }
+        .dropdown-option {
+          font-size: 12px;
+        }
+      }
     </style>
   </head>
   <body>
-    <button class="sound-toggle" id="soundToggle">🔈 音をオン</button>
+    <div class="counter" aria-live="polite">
+      <span>Circles <b id="circleCount">0</b></span>
+      <span>Dogs <b id="dogCount">0</b></span>
+      <span id="dogAltWrap" style="display: none;">DOG?S <b id="dogAltCount">0</b></span>
+    </div>
+    <div class="control-bar" aria-label="Scale controls">
+      <span class="scale-select">
+        <label for="scaleSelect">Scale</label>
+        <div class="dropdown" id="scaleSelect">
+          <button class="dropdown-toggle" type="button" aria-haspopup="listbox" aria-expanded="false">
+            Random
+          </button>
+          <ul class="dropdown-menu" role="listbox">
+            <li class="dropdown-option" role="option" data-value="random" aria-selected="true">Random</li>
+            <li class="dropdown-option" role="option" data-value="ionian">Ionian</li>
+            <li class="dropdown-option" role="option" data-value="dorian">Dorian</li>
+            <li class="dropdown-option" role="option" data-value="phrygian">Phrygian</li>
+            <li class="dropdown-option" role="option" data-value="lydian">Lydian</li>
+            <li class="dropdown-option" role="option" data-value="mixolydian">Mixolydian</li>
+            <li class="dropdown-option" role="option" data-value="aeolian">Aeolian</li>
+            <li class="dropdown-option" role="option" data-value="locrian">Locrian</li>
+          </ul>
+        </div>
+      </span>
+      <span class="key-select">
+        <label for="keySelect">Key</label>
+        <div class="dropdown" id="keySelect">
+          <button class="dropdown-toggle" type="button" aria-haspopup="listbox" aria-expanded="false">
+            D♭
+          </button>
+          <ul class="dropdown-menu" role="listbox">
+            <li class="dropdown-option" role="option" data-value="C">C</li>
+            <li class="dropdown-option" role="option" data-value="Db" aria-selected="true">D♭</li>
+            <li class="dropdown-option" role="option" data-value="D">D</li>
+            <li class="dropdown-option" role="option" data-value="Eb">E♭</li>
+            <li class="dropdown-option" role="option" data-value="E">E</li>
+            <li class="dropdown-option" role="option" data-value="F">F</li>
+            <li class="dropdown-option" role="option" data-value="Gb">G♭</li>
+            <li class="dropdown-option" role="option" data-value="G">G</li>
+            <li class="dropdown-option" role="option" data-value="Ab">A♭</li>
+            <li class="dropdown-option" role="option" data-value="A">A</li>
+            <li class="dropdown-option" role="option" data-value="Bb">B♭</li>
+            <li class="dropdown-option" role="option" data-value="B">B</li>
+          </ul>
+        </div>
+      </span>
+    </div>
+    <button class="sound-toggle" id="soundToggle">🔊 ON</button>
     <script src="https://cdn.jsdelivr.net/npm/p5@1.9.3/lib/p5.min.js"></script>
     <script>
       const circles = [];
+      const effects = [];
       const maxCircles = 120;
       const timeScale = 0.25;
       const spawnIntervalMs = 100;
@@ -64,7 +251,23 @@
       let audioEnabled = false;
       let audioUnlocked = false;
       let dogImg = null;
-      let dogAudio = null;
+      let dogAudioChoices = [];
+      let popAudio = null;
+      let circleCount = 0;
+      let dogCount = 0;
+      let dogAltCount = 0;
+      let scaleMode = "random";
+      let keyRootMidi = 61;
+      let lastScaleMidi = null;
+      const scaleModes = {
+        ionian: [0, 2, 4, 5, 7, 9, 11],
+        dorian: [0, 2, 3, 5, 7, 9, 10],
+        phrygian: [0, 1, 3, 5, 7, 8, 10],
+        lydian: [0, 2, 4, 6, 7, 9, 11],
+        mixolydian: [0, 2, 4, 5, 7, 9, 10],
+        aeolian: [0, 2, 3, 5, 7, 8, 10],
+        locrian: [0, 1, 3, 5, 6, 8, 10]
+      };
 
       function preload() {
         dogImg = loadImage("dog.png");
@@ -75,14 +278,32 @@
         noStroke();
         colorMode(HSB, 360, 100, 100, 100);
         background(0, 0, 100, 0);
-        dogAudio = new Audio("dog_voice.mp3");
-        dogAudio.volume = 0.7;
+        dogAudioChoices = [
+          { audio: new Audio("dog_voice.mp3"), weight: 0.8, type: "dog" },
+          { audio: new Audio("guaa.mp3"), weight: 0.2, type: "dogAlt" }
+        ];
+        dogAudioChoices.forEach((entry) => {
+          entry.audio.volume = 0.7;
+        });
+        popAudio = new Audio("pon.mp3");
+        popAudio.volume = 0.6;
+        initDropdown("scaleSelect", (value) => {
+          scaleMode = value;
+          if (scaleMode === "random") {
+            lastScaleMidi = null;
+          }
+          updateKeyAvailability();
+        });
+        initDropdown("keySelect", (value) => {
+          keyRootMidi = keyNameToMidi(value);
+        });
+        updateKeyAvailability();
         canvas.elt.addEventListener("pointerdown", (event) => {
           if (event.pointerType === "mouse" && event.button !== 0) return;
           const rect = canvas.elt.getBoundingClientRect();
           const x = event.clientX - rect.left;
           const y = event.clientY - rect.top;
-          tryPlayDogVoice(x, y);
+          tryTapCircle(x, y);
         });
       }
 
@@ -101,6 +322,9 @@
           const c = makeCircle();
           circles.push(c);
           playPop(c.freq);
+          if (scaleMode !== "random" && c.midi) {
+            lastScaleMidi = c.midi;
+          }
           spawnTimer = 0;
         }
 
@@ -108,7 +332,7 @@
           const c = circles[i];
           c.life -= dt;
           c.r += c.grow * dt;
-          c.alpha = map(c.life, 0, c.maxLife, 0, 90);
+          c.alpha = map(c.life, 0, c.maxLife, 0, 80);
           fill(c.hue, c.sat, c.bri, c.alpha);
           if (c.isDog && dogImg) {
             tint(0, 0, 100, c.alpha);
@@ -121,12 +345,29 @@
             circles.splice(i, 1);
           }
         }
+
+        for (let i = effects.length - 1; i >= 0; i--) {
+          const e = effects[i];
+          e.t += dt;
+          const progress = e.t / e.maxT;
+          const alpha = map(progress, 0, 1, e.alpha, 0);
+          const radius = e.r + e.expand * progress;
+          noFill();
+          stroke(210, 8, 96, alpha);
+          strokeWeight(2);
+          ellipse(e.x, e.y, radius * 2);
+          if (progress >= 1) {
+            effects.splice(i, 1);
+          }
+        }
+        noStroke();
       }
 
       function makeCircle() {
         const r = random(10, 60);
         const isDog = random() < dogChance;
         const tone = pickSoftColor();
+        const pitch = sizeToPitch(r);
         return {
           x: random(width),
           y: random(height),
@@ -138,7 +379,8 @@
           alpha: 90,
           maxLife: int(random(60, 180)),
           life: int(random(60, 180)),
-          freq: sizeToFreq(r),
+          freq: pitch.freq,
+          midi: pitch.midi,
           isDog
         };
       }
@@ -152,9 +394,115 @@
         };
       }
 
-      function sizeToFreq(r) {
+      function sizeToPitch(r) {
         // smaller circle -> higher pitch
-        return map(r, 10, 60, 880, 220);
+        const raw = map(r, 10, 60, 560, 140);
+        if (scaleMode === "random") {
+          return { freq: raw, midi: null };
+        }
+        const midi = quantizeToScaleMidi(raw, scaleMode);
+        return { freq: midiToFreq(midi), midi };
+      }
+
+      function quantizeToScaleMidi(freq, mode) {
+        const steps = scaleModes[mode];
+        if (!steps) return freqToMidi(freq);
+        const minMidi = 48;
+        const maxMidi = 84;
+        const candidates = [];
+        for (let m = minMidi; m <= maxMidi; m++) {
+          const degree = (m - keyRootMidi + 1200) % 12;
+          if (steps.includes(degree)) {
+            candidates.push(m);
+          }
+        }
+        let best = candidates[0];
+        let bestDiff = Math.abs(freq - midiToFreq(best));
+        for (let i = 1; i < candidates.length; i++) {
+          const diff = Math.abs(freq - midiToFreq(candidates[i]));
+          if (diff < bestDiff) {
+            bestDiff = diff;
+            best = candidates[i];
+          }
+        }
+        return best ?? freqToMidi(freq);
+      }
+
+      function midiToFreq(midi) {
+        return 440 * Math.pow(2, (midi - 69) / 12);
+      }
+
+      function freqToMidi(freq) {
+        return Math.round(69 + 12 * Math.log2(freq / 440));
+      }
+
+      function keyNameToMidi(name) {
+        const keyMap = {
+          C: 60,
+          Db: 61,
+          D: 62,
+          Eb: 63,
+          E: 64,
+          F: 65,
+          Gb: 66,
+          G: 67,
+          Ab: 68,
+          A: 69,
+          Bb: 70,
+          B: 71
+        };
+        return keyMap[name] ?? 61;
+      }
+
+      function updateKeyAvailability() {
+        const keySelect = document.getElementById("keySelect");
+        if (!keySelect) return;
+        const toggle = keySelect.querySelector(".dropdown-toggle");
+        if (!toggle) return;
+        const disabled = scaleMode === "random";
+        toggle.setAttribute("aria-disabled", disabled ? "true" : "false");
+        if (disabled) {
+          keySelect.classList.remove("open");
+        }
+      }
+
+      function initDropdown(id, onChange) {
+        const root = document.getElementById(id);
+        if (!root) return;
+        const toggle = root.querySelector(".dropdown-toggle");
+        const menu = root.querySelector(".dropdown-menu");
+        const options = Array.from(root.querySelectorAll(".dropdown-option"));
+        if (!toggle || !menu || options.length === 0) return;
+
+        const selectValue = (value) => {
+          const option = options.find((opt) => opt.dataset.value === value) || options[0];
+          options.forEach((opt) => opt.setAttribute("aria-selected", opt === option ? "true" : "false"));
+          toggle.textContent = option.textContent;
+          toggle.setAttribute("aria-expanded", "false");
+          root.classList.remove("open");
+          onChange(option.dataset.value);
+        };
+
+        options.forEach((opt) => {
+          opt.addEventListener("click", (event) => {
+            event.stopPropagation();
+            selectValue(opt.dataset.value);
+          });
+        });
+
+        toggle.addEventListener("click", (event) => {
+          event.stopPropagation();
+          if (toggle.getAttribute("aria-disabled") === "true") return;
+          const open = root.classList.toggle("open");
+          toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        });
+
+        document.addEventListener("click", () => {
+          root.classList.remove("open");
+          toggle.setAttribute("aria-expanded", "false");
+        });
+
+        selectValue(options.find((opt) => opt.getAttribute("aria-selected") === "true")?.dataset.value || options[0].dataset.value);
       }
 
       function initAudio() {
@@ -201,26 +549,163 @@
         oscB.stop(now + 0.75);
       }
 
-      function playDog() {
-        if (!audioEnabled || !audioUnlocked || !dogAudio) return;
+      function playMetallic(freq) {
+        if (!audioEnabled || !audioUnlocked || !popAudio) return;
         try {
-          const a = dogAudio.cloneNode();
-          a.volume = dogAudio.volume;
+          const a = popAudio.cloneNode();
+          a.volume = popAudio.volume;
           a.play();
         } catch (e) {
           // no-op: some browsers may block playback
         }
       }
 
-      function tryPlayDogVoice(x, y) {
-        for (let i = circles.length - 1; i >= 0; i--) {
-          const c = circles[i];
-          if (!c.isDog) continue;
-          const d = dist(x, y, c.x, c.y);
-          if (d <= c.r) {
-            playDog();
-            break;
+      function playScaleChord(rootMidi) {
+        if (!audioEnabled || !audioUnlocked || !audioCtx) return;
+        if (audioCtx.state !== "running") return;
+        const steps = scaleModes[scaleMode];
+        if (!steps) return;
+        const root = rootMidi;
+        const third = shiftScaleDegree(root, 2);
+        const fifth = shiftScaleDegree(root, 4);
+        const freqs = [root, third, fifth].map(midiToFreq);
+        const now = audioCtx.currentTime;
+        const gain = audioCtx.createGain();
+        const filter = audioCtx.createBiquadFilter();
+
+        filter.type = "lowpass";
+        filter.frequency.value = 1500;
+        filter.Q.value = 0.8;
+
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.09, now + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.7);
+
+        const oscA = audioCtx.createOscillator();
+        const oscB = audioCtx.createOscillator();
+        const oscC = audioCtx.createOscillator();
+        oscA.type = "triangle";
+        oscB.type = "sine";
+        oscC.type = "sine";
+        oscA.frequency.value = freqs[0];
+        oscB.frequency.value = freqs[1];
+        oscC.frequency.value = freqs[2];
+
+        oscA.connect(filter);
+        oscB.connect(filter);
+        oscC.connect(filter);
+        filter.connect(gain);
+        gain.connect(masterGain);
+
+        oscA.start(now);
+        oscB.start(now);
+        oscC.start(now);
+        oscA.stop(now + 0.8);
+        oscB.stop(now + 0.8);
+        oscC.stop(now + 0.8);
+      }
+
+      function shiftScaleDegree(midi, degreeSteps) {
+        let current = midi;
+        let count = 0;
+        while (count < degreeSteps) {
+          current += 1;
+          if (isScaleTone(current)) {
+            count += 1;
           }
+        }
+        return current;
+      }
+
+      function isScaleTone(midi) {
+        const steps = scaleModes[scaleMode];
+        if (!steps) return false;
+        const degree = (midi - keyRootMidi + 1200) % 12;
+        return steps.includes(degree);
+      }
+
+      function playDog() {
+        if (!audioEnabled || !audioUnlocked || dogAudioChoices.length === 0) return;
+        try {
+          const picked = pickDogAudio();
+          if (!picked) return;
+          picked.audio.play();
+          return picked.type;
+        } catch (e) {
+          // no-op: some browsers may block playback
+        }
+      }
+
+      function pickDogAudio() {
+        const roll = random();
+        let acc = 0;
+        for (let i = 0; i < dogAudioChoices.length; i++) {
+          acc += dogAudioChoices[i].weight;
+          if (roll <= acc) {
+            const base = dogAudioChoices[i].audio;
+            const clone = base.cloneNode();
+            clone.volume = base.volume;
+            return { audio: clone, type: dogAudioChoices[i].type };
+          }
+        }
+        return null;
+      }
+
+      function addEffect(x, y, r) {
+        effects.push({
+          x,
+          y,
+          r: r * 0.7,
+          expand: r * 2.2,
+          alpha: 70,
+          t: 0,
+          maxT: 18
+        });
+      }
+
+      function tryTapCircle(x, y) {
+        for (let i = 0; i < circles.length; i++) {
+          const c = circles[i];
+          const d = dist(x, y, c.x, c.y);
+          if (d > c.r) continue;
+          if (c.isDog) {
+            const played = playDog();
+            if (played === "dogAlt") {
+              dogAltCount += 1;
+              updateDogAltVisibility();
+            } else {
+              dogCount += 1;
+            }
+          } else {
+            if (scaleMode === "random") {
+              playMetallic(c.freq);
+            } else {
+              const rootMidi = lastScaleMidi ?? c.midi ?? quantizeToScaleMidi(c.freq, scaleMode);
+              playScaleChord(rootMidi);
+            }
+            circleCount += 1;
+          }
+          updateCounters();
+          addEffect(c.x, c.y, c.r);
+          circles.splice(i, 1);
+          break;
+        }
+      }
+
+      function updateCounters() {
+        const circleEl = document.getElementById("circleCount");
+        const dogEl = document.getElementById("dogCount");
+        const dogAltEl = document.getElementById("dogAltCount");
+        if (circleEl) circleEl.textContent = String(circleCount);
+        if (dogEl) dogEl.textContent = String(dogCount);
+        if (dogAltEl) dogAltEl.textContent = String(dogAltCount);
+      }
+
+      function updateDogAltVisibility() {
+        const wrap = document.getElementById("dogAltWrap");
+        if (!wrap) return;
+        if (dogAltCount > 0) {
+          wrap.style.display = "inline-flex";
         }
       }
 
@@ -228,10 +713,10 @@
         const btn = document.getElementById("soundToggle");
         if (!btn) return;
         if (!audioUnlocked) {
-          btn.textContent = "🔈 音をオン";
+          btn.textContent = "🔊 ON";
           return;
         }
-        btn.textContent = audioEnabled ? "🔊 音オン" : "🔈 音オフ";
+        btn.textContent = audioEnabled ? "🔊 ON" : "🔇 OFF";
       }
 
 
