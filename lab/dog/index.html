@@ -328,7 +328,7 @@
           const c = circles[i];
           c.life -= dt;
           c.r += c.grow * dt;
-          c.alpha = map(c.life, 0, c.maxLife, 0, 80);
+          c.alpha = map(c.life, 0, c.maxLife, 20, 80);
           fill(c.hue, c.sat, c.bri, c.alpha);
           if (c.isDog && dogImg) {
             tint(0, 0, 100, c.alpha);
