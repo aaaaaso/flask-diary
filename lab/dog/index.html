@@ -356,9 +356,13 @@
           const alpha = map(progress, 0, 1, e.alpha, 0);
           const radius = e.r + e.expand * progress;
           noFill();
-          stroke(210, 8, 96, alpha);
-          strokeWeight(2);
+          stroke(e.hue ?? 210, e.sat ?? 8, e.bri ?? 96, alpha);
+          strokeWeight(e.weight || 2);
           ellipse(e.x, e.y, radius * 2);
+          if (e.rings === 2) {
+            const inner = radius * 0.72;
+            ellipse(e.x, e.y, inner * 2);
+          }
           if (progress >= 1) {
             effects.splice(i, 1);
           }
@@ -562,15 +566,12 @@
         }
       }
 
-      function playScaleChord(rootMidi) {
+      function playScaleChord(notes, variant) {
         if (!audioEnabled || !audioUnlocked || !audioCtx) return;
         if (audioCtx.state !== "running") return;
-        const steps = scaleModes[scaleMode];
-        if (!steps) return;
-        const root = rootMidi;
-        const third = shiftScaleDegree(root, 2);
-        const fifth = shiftScaleDegree(root, 4);
-        const freqs = [root, third, fifth].map(midiToFreq);
+        if (!notes || notes.length === 0) return;
+        const adjusted = adjustChordOctave(notes, variant);
+        const freqs = adjusted.map(midiToFreq);
         const now = audioCtx.currentTime;
         const gain = audioCtx.createGain();
         const filter = audioCtx.createBiquadFilter();
@@ -583,28 +584,115 @@
         gain.gain.exponentialRampToValueAtTime(0.09, now + 0.03);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.7);
 
-        const oscA = audioCtx.createOscillator();
-        const oscB = audioCtx.createOscillator();
-        const oscC = audioCtx.createOscillator();
-        oscA.type = "triangle";
-        oscB.type = "sine";
-        oscC.type = "sine";
-        oscA.frequency.value = freqs[0];
-        oscB.frequency.value = freqs[1];
-        oscC.frequency.value = freqs[2];
-
-        oscA.connect(filter);
-        oscB.connect(filter);
-        oscC.connect(filter);
+        const oscillators = freqs.map((freq, index) => {
+          const osc = audioCtx.createOscillator();
+          osc.type = index === 0 ? "triangle" : "sine";
+          osc.frequency.value = freq;
+          osc.connect(filter);
+          return osc;
+        });
         filter.connect(gain);
         gain.connect(masterGain);
 
-        oscA.start(now);
-        oscB.start(now);
-        oscC.start(now);
-        oscA.stop(now + 0.8);
-        oscB.stop(now + 0.8);
-        oscC.stop(now + 0.8);
+        oscillators.forEach((osc) => {
+          osc.start(now);
+          osc.stop(now + 0.8);
+        });
+      }
+
+      function adjustChordOctave(notes, variant) {
+        if (variant === "triad") return notes;
+        const lowest = Math.min(...notes);
+        if (lowest < 60) {
+          return notes.map((m) => m + 12);
+        }
+        return notes;
+      }
+
+      function buildScaleChord(rootMidi, count) {
+        if (count && count % 100 === 0) {
+          return {
+            notes: [
+              rootMidi,
+              shiftScaleDegree(rootMidi, 4),
+              shiftScaleDegree(rootMidi, 6),
+              shiftScaleDegree(rootMidi, 10)
+            ],
+            variant: "eleventh"
+          };
+        }
+        if (count && count % 10 === 0) {
+          const roll = random();
+          if (roll < 0.25) {
+            return {
+              notes: [
+                rootMidi,
+                shiftScaleDegree(rootMidi, 1),
+                shiftScaleDegree(rootMidi, 4)
+              ],
+              variant: "sus2"
+            };
+          }
+          if (roll < 0.5) {
+            return {
+              notes: [
+                rootMidi,
+                shiftScaleDegree(rootMidi, 3),
+                shiftScaleDegree(rootMidi, 4)
+              ],
+              variant: "sus4"
+            };
+          }
+          if (roll < 0.75) {
+            return {
+              notes: [
+                shiftScaleDegree(rootMidi, 1),
+                shiftScaleDegree(rootMidi, 4),
+                shiftScaleDegree(rootMidi, 6)
+              ],
+              variant: "noRoot257"
+            };
+          }
+          return {
+            notes: [
+              rootMidi,
+              shiftScaleDegree(rootMidi, 2),
+              shiftScaleDegree(rootMidi, 4),
+              shiftScaleDegree(rootMidi, 8)
+            ],
+            variant: "add9"
+          };
+        }
+        if (count && count % 7 === 0) {
+          const useInversion = random() < 0.5;
+          if (useInversion) {
+            return {
+              notes: [
+                shiftScaleDegree(rootMidi, 2),
+                shiftScaleDegree(rootMidi, 4),
+                shiftScaleDegree(rootMidi, 6)
+              ],
+              variant: "invA"
+            };
+          }
+          return {
+            notes: [
+              rootMidi,
+              shiftScaleDegree(rootMidi, 2),
+              shiftScaleDegree(rootMidi, 4),
+              shiftScaleDegree(rootMidi, 6)
+            ],
+            variant: "seventh"
+          };
+        }
+        return {
+          notes: [
+            rootMidi,
+            shiftScaleDegree(rootMidi, 2),
+            shiftScaleDegree(rootMidi, 4)
+          ],
+          variant: "triad"
+        };
       }
 
       function shiftScaleDegree(midi, degreeSteps) {
@@ -684,13 +772,29 @@
         source.start();
       }
 
-      function addEffect(x, y, r) {
+      function addEffect(x, y, r, variant = "triad") {
+        const styleMap = {
+          triad: { alpha: 70, expand: 2.2, weight: 1.8, hue: 210, sat: 8, bri: 96, rings: 1 },
+          seventh: { alpha: 80, expand: 2.8, weight: 2.4, hue: 200, sat: 12, bri: 98, rings: 2 },
+          sus2: { alpha: 76, expand: 2.3, weight: 2, hue: 185, sat: 10, bri: 98, rings: 1 },
+          sus4: { alpha: 76, expand: 2.3, weight: 2, hue: 235, sat: 10, bri: 98, rings: 1 },
+          add9: { alpha: 78, expand: 2.55, weight: 2.1, hue: 215, sat: 14, bri: 99, rings: 2 },
+          noRoot257: { alpha: 72, expand: 2.2, weight: 1.8, hue: 200, sat: 8, bri: 96, rings: 1 },
+          invA: { alpha: 68, expand: 2.05, weight: 1.7, hue: 220, sat: 6, bri: 94, rings: 1 },
+          eleventh: { alpha: 92, expand: 3.25, weight: 2.7, hue: 210, sat: 55, bri: 98, rings: 2 }
+        };
+        const style = styleMap[variant] || styleMap.triad;
         effects.push({
           x,
           y,
           r: r * 0.7,
-          expand: r * 2.2,
-          alpha: 70,
+          expand: r * style.expand,
+          alpha: style.alpha,
+          weight: style.weight,
+          hue: style.hue,
+          sat: style.sat,
+          bri: style.bri,
+          rings: style.rings,
           t: 0,
           maxT: 18
         });
@@ -714,8 +818,17 @@
               playMetallic(c.freq);
             } else {
               const rootMidi = lastScaleMidi ?? c.midi ?? quantizeToScaleMidi(c.freq, scaleMode);
-              playScaleChord(rootMidi);
+              const nextCount = circleCount + 1;
+              const chord = buildScaleChord(rootMidi, nextCount);
+              playScaleChord(chord.notes, chord.variant);
+              circleCount = nextCount;
+              updateCounters();
+              addEffect(c.x, c.y, c.r, chord.variant);
+              circles.splice(i, 1);
+              break;
             }
+          }
+          if (!c.isDog) {
             circleCount += 1;
           }
           updateCounters();
