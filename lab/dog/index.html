@@ -252,7 +252,8 @@
       let audioUnlocked = false;
       let dogImg = null;
       let dogAudioChoices = [];
-      let popAudio = null;
+      let popBuffer = null;
+      let audioBuffersReady = false;
       let circleCount = 0;
       let dogCount = 0;
       let dogAltCount = 0;
@@ -279,14 +280,9 @@
         colorMode(HSB, 360, 100, 100, 100);
         background(0, 0, 100, 0);
         dogAudioChoices = [
-          { audio: new Audio("dog_voice.mp3"), weight: 0.8, type: "dog" },
-          { audio: new Audio("guaa.mp3"), weight: 0.2, type: "dogAlt" }
+          { url: "dog_voice.mp3", weight: 0.8, type: "dog", buffer: null },
+          { url: "guaa.mp3", weight: 0.2, type: "dogAlt", buffer: null }
         ];
-        dogAudioChoices.forEach((entry) => {
-          entry.audio.volume = 0.7;
-        });
-        popAudio = new Audio("pon.mp3");
-        popAudio.volume = 0.6;
         initDropdown("scaleSelect", (value) => {
           scaleMode = value;
           if (scaleMode === "random") {
@@ -513,6 +509,7 @@
         masterGain.connect(audioCtx.destination);
         audioEnabled = true;
         updateSoundButton();
+        ensureAudioBuffers();
       }
 
       function playPop(freq) {
@@ -550,11 +547,9 @@
       }
 
       function playMetallic(freq) {
-        if (!audioEnabled || !audioUnlocked || !popAudio) return;
+        if (!audioEnabled || !audioUnlocked || !popBuffer || !audioCtx) return;
         try {
-          const a = popAudio.cloneNode();
-          a.volume = popAudio.volume;
-          a.play();
+          playBuffer(popBuffer, 0.6);
         } catch (e) {
           // no-op: some browsers may block playback
         }
@@ -629,7 +624,7 @@
         try {
           const picked = pickDogAudio();
           if (!picked) return;
-          picked.audio.play();
+          playBuffer(picked.buffer, 0.7);
           return picked.type;
         } catch (e) {
           // no-op: some browsers may block playback
@@ -642,13 +637,44 @@
         for (let i = 0; i < dogAudioChoices.length; i++) {
           acc += dogAudioChoices[i].weight;
           if (roll <= acc) {
-            const base = dogAudioChoices[i].audio;
-            const clone = base.cloneNode();
-            clone.volume = base.volume;
-            return { audio: clone, type: dogAudioChoices[i].type };
+            const entry = dogAudioChoices[i];
+            if (!entry.buffer) return null;
+            return { buffer: entry.buffer, type: entry.type };
           }
         }
         return null;
+      }
+
+      async function ensureAudioBuffers() {
+        if (!audioCtx || audioBuffersReady) return;
+        try {
+          popBuffer = await loadAudioBuffer("pon.mp3");
+          await Promise.all(
+            dogAudioChoices.map(async (entry) => {
+              entry.buffer = await loadAudioBuffer(entry.url);
+            })
+          );
+          audioBuffersReady = true;
+        } catch (e) {
+          // no-op: keep silent if loading fails
+        }
+      }
+
+      async function loadAudioBuffer(url) {
+        const res = await fetch(url);
+        const data = await res.arrayBuffer();
+        return await audioCtx.decodeAudioData(data);
+      }
+
+      function playBuffer(buffer, volume) {
+        if (!audioCtx || !buffer || !masterGain) return;
+        const source = audioCtx.createBufferSource();
+        const gain = audioCtx.createGain();
+        gain.gain.value = volume;
+        source.buffer = buffer;
+        source.connect(gain);
+        gain.connect(masterGain);
+        source.start();
       }
 
       function addEffect(x, y, r) {
@@ -731,6 +757,7 @@
           audioUnlocked = true;
           audioEnabled = true;
           updateSoundButton();
+          await ensureAudioBuffers();
           playPop();
         }
       }
