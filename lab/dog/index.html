@@ -622,59 +622,17 @@
           };
         }
         if (count && count % 10 === 0) {
-          const roll = random();
-          if (roll < 0.25) {
-            return {
-              notes: [
-                rootMidi,
-                shiftScaleDegree(rootMidi, 1),
-                shiftScaleDegree(rootMidi, 4)
-              ],
-              variant: "sus2"
-            };
-          }
-          if (roll < 0.5) {
-            return {
-              notes: [
-                rootMidi,
-                shiftScaleDegree(rootMidi, 3),
-                shiftScaleDegree(rootMidi, 4)
-              ],
-              variant: "sus4"
-            };
-          }
-          if (roll < 0.75) {
-            return {
-              notes: [
-                shiftScaleDegree(rootMidi, 1),
-                shiftScaleDegree(rootMidi, 4),
-                shiftScaleDegree(rootMidi, 6)
-              ],
-              variant: "noRoot257"
-            };
-          }
+          const useSus2 = random() < 0.5;
           return {
             notes: [
               rootMidi,
-              shiftScaleDegree(rootMidi, 2),
-              shiftScaleDegree(rootMidi, 4),
-              shiftScaleDegree(rootMidi, 8)
+              shiftScaleDegree(rootMidi, useSus2 ? 1 : 3),
+              shiftScaleDegree(rootMidi, 4)
             ],
-            variant: "add9"
+            variant: useSus2 ? "sus2" : "sus4"
           };
         }
         if (count && count % 7 === 0) {
-          const useInversion = random() < 0.5;
-          if (useInversion) {
-            return {
-              notes: [
-                shiftScaleDegree(rootMidi, 2),
-                shiftScaleDegree(rootMidi, 4),
-                shiftScaleDegree(rootMidi, 6)
-              ],
-              variant: "invA"
-            };
-          }
           return {
             notes: [
               rootMidi,
@@ -779,8 +737,6 @@
           sus2: { alpha: 76, expand: 2.3, weight: 2, hue: 185, sat: 10, bri: 98, rings: 2 },
           sus4: { alpha: 76, expand: 2.3, weight: 2, hue: 235, sat: 10, bri: 98, rings: 2 },
           add9: { alpha: 78, expand: 2.55, weight: 2.1, hue: 215, sat: 14, bri: 99, rings: 2 },
-          noRoot257: { alpha: 72, expand: 2.2, weight: 1.8, hue: 200, sat: 8, bri: 96, rings: 2 },
-          invA: { alpha: 68, expand: 2.05, weight: 1.7, hue: 220, sat: 6, bri: 94, rings: 2 },
           eleventh: { alpha: 92, expand: 3.25, weight: 2.7, hue: 210, sat: 55, bri: 98, rings: 2 }
         };
         const style = styleMap[variant] || styleMap.triad;
