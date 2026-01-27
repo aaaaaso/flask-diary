@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chi-Square Test</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f3f4f6;
+      --ink: #1f2328;
+      --accent: #3b3f45;
+      --accent-2: #8f98a3;
+      --card: #ffffff;
+      --muted: #6b7280;
+      --ring: rgba(31, 35, 40, 0.1);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(1200px 500px at 10% -10%, rgba(31,35,40,0.08), transparent 60%),
+        radial-gradient(900px 400px at 110% 10%, rgba(143,152,163,0.12), transparent 60%),
+        var(--bg);
+      color: var(--ink);
+      font-family: "Noto Sans JP", system-ui, -apple-system, sans-serif;
+      min-height: 100dvh;
+    }
+
+    header {
+      padding: 36px 22px 12px;
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      font-size: clamp(28px, 3vw, 40px);
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 12px 22px 60px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .panel {
+      background: var(--card);
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 18px 50px rgba(31, 28, 23, 0.08);
+      border: 1px solid var(--ring);
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    .group-title {
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .pill {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(31, 35, 40, 0.08);
+    }
+
+    label {
+      font-size: 13px;
+      color: var(--muted);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--ring);
+      background: white;
+      font-size: 16px;
+      font-family: "Noto Sans JP", system-ui, -apple-system, sans-serif;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    button {
+      border: none;
+      padding: 12px 18px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-family: "Noto Sans JP", system-ui, -apple-system, sans-serif;
+      letter-spacing: 0.02em;
+      background: linear-gradient(135deg, #3b3f45, #5b616a);
+      color: #f6f7f9;
+      cursor: pointer;
+      box-shadow: 0 10px 26px rgba(31, 35, 40, 0.2);
+      transition: transform 0.15s ease, box-shadow 0.2s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+
+    .toggle {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .results {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    .result-card {
+      padding: 14px 16px;
+      border-radius: 8px;
+      background: rgba(107, 114, 128, 0.12);
+      border: 1px solid rgba(107, 114, 128, 0.25);
+    }
+
+    .result-card h3 {
+      margin: 0 0 4px;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .result-card p {
+      margin: 0;
+      font-weight: 700;
+      font-size: 20px;
+    }
+
+    .error {
+      color: #b42318;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+
+    .warning {
+      color: #b54708;
+      font-size: 13px;
+      margin-top: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 10px;
+      text-align: center;
+      border-bottom: 1px solid var(--ring);
+    }
+
+    th {
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .charts {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      align-items: start;
+    }
+
+    .chart-box {
+      border: 1px solid var(--ring);
+      border-radius: 8px;
+      padding: 14px;
+      background: #fafafa;
+    }
+
+    .chart-title {
+      margin: 0 0 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .fade-in {
+      animation: fadeUp 0.6s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <header class="fade-in">
+    <h1>Chi-Square Test</h1>
+    <div class="subtitle">試行回数と成功回数を入力すると、独立性の検定ができるよ!</div>
+  </header>
+
+  <main>
+    <section class="panel fade-in">
+      <div class="grid">
+        <div>
+          <div class="group-title">Group A</div>
+          <div style="margin-top: 12px;">
+            <label for="aTotal">試行回数 (all)</label>
+            <input type="number" id="aTotal" min="0" step="1" placeholder="例: 120" />
+          </div>
+          <div style="margin-top: 12px;">
+            <label for="aSuccess">成功回数 (cv)</label>
+            <input type="number" id="aSuccess" min="0" step="1" placeholder="例: 36" />
+          </div>
+        </div>
+        <div>
+          <div class="group-title">Group B</div>
+          <div style="margin-top: 12px;">
+            <label for="bTotal">試行回数 (all)</label>
+            <input type="number" id="bTotal" min="0" step="1" placeholder="例: 140" />
+          </div>
+          <div style="margin-top: 12px;">
+            <label for="bSuccess">成功回数 (cv)</label>
+            <input type="number" id="bSuccess" min="0" step="1" placeholder="例: 52" />
+          </div>
+        </div>
+      </div>
+      <div class="actions" style="margin-top: 18px;">
+        <button id="calcBtn">計算する</button>
+        <div id="error" class="error"></div>
+        <div id="warning" class="warning"></div>
+      </div>
+    </section>
+
+    <section class="panel fade-in">
+      <div class="results">
+        <div class="result-card">
+          <h3>カイ二乗値</h3>
+          <p id="chi2">-</p>
+        </div>
+        <div class="result-card">
+          <h3>p 値</h3>
+          <p id="pValue">-</p>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>all</th>
+            <th>cv</th>
+            <th>rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>A</th>
+            <td id="aTotalCell">-</td>
+            <td id="aSuccCell">-</td>
+            <td id="aRateCell">-</td>
+          </tr>
+          <tr>
+            <th>B</th>
+            <td id="bTotalCell">-</td>
+            <td id="bSuccCell">-</td>
+            <td id="bRateCell">-</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="panel fade-in">
+      <div class="charts">
+        <div class="chart-box">
+          <div class="chart-title">Rate With 95% CI</div>
+          <div id="rateChart"></div>
+        </div>
+        <div class="chart-box">
+          <div class="chart-title">Chi-Square Distribution (df=1)</div>
+          <div id="chiChart"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    const getNumber = (id) => Number(document.getElementById(id).value);
+
+    const erf = (x) => {
+      // Abramowitz and Stegun approximation
+      const sign = x < 0 ? -1 : 1;
+      const abs = Math.abs(x);
+      const t = 1 / (1 + 0.3275911 * abs);
+      const a1 = 0.254829592;
+      const a2 = -0.284496736;
+      const a3 = 1.421413741;
+      const a4 = -1.453152027;
+      const a5 = 1.061405429;
+      const poly = ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t;
+      return sign * (1 - poly * Math.exp(-abs * abs));
+    };
+
+    const chiSquarePValueDf1 = (chi2) => {
+      if (chi2 < 0) return 1;
+      const cdf = erf(Math.sqrt(chi2 / 2));
+      return Math.max(0, 1 - cdf);
+    };
+
+    const chiSquarePdfDf1 = (x) => {
+      if (x <= 0) return 0;
+      return (1 / Math.sqrt(2 * Math.PI)) * Math.pow(x, -0.5) * Math.exp(-x / 2);
+    };
+
+    const renderRateChart = (aTotal, aSucc, bTotal, bSucc) => {
+      const width = 520;
+      const height = 260;
+      const pad = { top: 20, right: 24, bottom: 36, left: 42 };
+      const innerW = width - pad.left - pad.right;
+      const innerH = height - pad.top - pad.bottom;
+
+      const calc = (succ, total) => {
+        const p = total === 0 ? 0 : succ / total;
+        const se = total === 0 ? 0 : Math.sqrt((p * (1 - p)) / total);
+        const z = 1.96;
+        const lo = Math.max(0, p - z * se);
+        const hi = Math.min(1, p + z * se);
+        return { p, lo, hi };
+      };
+
+      const a = calc(aSucc, aTotal);
+      const b = calc(bSucc, bTotal);
+      const bars = [
+        { label: "A", ...a },
+        { label: "B", ...b },
+      ];
+
+      const maxY = Math.min(
+        1,
+        Math.max(a.hi, b.hi, 0.01) * 1.15
+      );
+
+      const xFor = (i) => pad.left + (innerW / 2) * i + innerW / 4;
+      const yFor = (v) => pad.top + innerH - (v / maxY) * innerH;
+      const barW = innerW * 0.25;
+      const barRadius = 3;
+
+      const svg = [
+        `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Rate chart">`,
+        `<rect x="0" y="0" width="${width}" height="${height}" fill="transparent" />`,
+        `<line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${pad.top + innerH}" stroke="rgba(31,35,40,0.2)" />`,
+        `<line x1="${pad.left}" y1="${pad.top + innerH}" x2="${pad.left + innerW}" y2="${pad.top + innerH}" stroke="rgba(31,35,40,0.2)" />`,
+        `<text x="${pad.left - 10}" y="${pad.top + 4}" text-anchor="end" font-size="11" fill="#6b7280">${(maxY * 100).toFixed(0)}%</text>`,
+        `<text x="${pad.left - 10}" y="${pad.top + innerH}" text-anchor="end" font-size="11" fill="#6b7280">0%</text>`,
+      ];
+
+      bars.forEach((bar, i) => {
+        const cx = xFor(i);
+        const barX = cx - barW / 2;
+        const barY = yFor(bar.p);
+        const barH = pad.top + innerH - barY;
+
+        const r = Math.min(barRadius, barW / 2, barH / 2);
+        const path = [
+          `M ${barX} ${barY + r}`,
+          `Q ${barX} ${barY} ${barX + r} ${barY}`,
+          `L ${barX + barW - r} ${barY}`,
+          `Q ${barX + barW} ${barY} ${barX + barW} ${barY + r}`,
+          `L ${barX + barW} ${barY + barH}`,
+          `L ${barX} ${barY + barH}`,
+          `Z`,
+        ].join(" ");
+        svg.push(
+          `<path d="${path}" fill="#999999" opacity="0.9" />`
+        );
+
+        const yLo = yFor(bar.lo);
+        const yHi = yFor(bar.hi);
+        svg.push(
+          `<line x1="${cx}" y1="${yHi}" x2="${cx}" y2="${yLo}" stroke="#6b6b6b" stroke-width="2" />`,
+          `<line x1="${cx - 10}" y1="${yHi}" x2="${cx + 10}" y2="${yHi}" stroke="#6b6b6b" stroke-width="2" />`,
+          `<line x1="${cx - 10}" y1="${yLo}" x2="${cx + 10}" y2="${yLo}" stroke="#6b6b6b" stroke-width="2" />`,
+          `<text x="${cx}" y="${pad.top + innerH + 20}" text-anchor="middle" font-size="12" fill="#6b7280">${bar.label}</text>`
+        );
+      });
+
+      svg.push(`</svg>`);
+      document.getElementById("rateChart").innerHTML = svg.join("");
+    };
+
+    const renderChiChart = (chi2, pValue) => {
+      const width = 520;
+      const height = 260;
+      const pad = { top: 20, right: 20, bottom: 32, left: 44 };
+      const innerW = width - pad.left - pad.right;
+      const innerH = height - pad.top - pad.bottom;
+      const baseMax = chi2 * 1.6 + 1;
+      const maxX =
+        pValue >= 0.2 ? Math.max(2.5, baseMax) :
+        pValue >= 0.05 ? Math.max(4, baseMax) :
+        Math.max(8, baseMax);
+      const steps = 120;
+
+      const xs = [];
+      const ys = [];
+      let maxY = 0;
+      for (let i = 0; i <= steps; i += 1) {
+        const x = (maxX * i) / steps;
+        const y = chiSquarePdfDf1(x);
+        xs.push(x);
+        ys.push(y);
+        if (y > maxY) maxY = y;
+      }
+
+      const xFor = (v) => pad.left + (v / maxX) * innerW;
+      const yFor = (v) => pad.top + innerH - (v / maxY) * innerH;
+
+      const path = xs
+        .map((x, i) => `${i === 0 ? "M" : "L"} ${xFor(x)} ${yFor(ys[i])}`)
+        .join(" ");
+
+      const tail = xs
+        .map((x, i) => ({ x, y: ys[i] }))
+        .filter((p) => p.x >= chi2);
+
+      let tailPath = "";
+      if (tail.length > 1) {
+        tailPath = `M ${xFor(chi2)} ${yFor(0)} ` +
+          tail.map((p, i) => `${i === 0 ? "L" : "L"} ${xFor(p.x)} ${yFor(p.y)}`).join(" ") +
+          ` L ${xFor(tail[tail.length - 1].x)} ${yFor(0)} Z`;
+      }
+
+      const svg = [
+        `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Chi-square distribution">`,
+        `<rect x="0" y="0" width="${width}" height="${height}" fill="transparent" />`,
+        `<line x1="${pad.left}" y1="${pad.top + innerH}" x2="${pad.left + innerW}" y2="${pad.top + innerH}" stroke="rgba(31,35,40,0.2)" />`,
+        `<line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${pad.top + innerH}" stroke="rgba(31,35,40,0.2)" />`,
+        `<path d="${path}" fill="none" stroke="#3b3f45" stroke-width="3" />`,
+      ];
+
+      if (tailPath) {
+        svg.push(`<path d="${tailPath}" fill="rgba(143,152,163,0.35)" stroke="none" />`);
+      }
+
+      svg.push(
+        `<line x1="${xFor(chi2)}" y1="${pad.top}" x2="${xFor(chi2)}" y2="${pad.top + innerH}" stroke="#8f98a3" stroke-width="2" stroke-dasharray="6 6" />`,
+        `<text x="${xFor(chi2)}" y="${pad.top + 12}" text-anchor="middle" font-size="11" fill="#6b7280">χ²=${chi2.toFixed(2)}</text>`,
+        `<text x="${pad.left}" y="${pad.top + innerH + 22}" text-anchor="start" font-size="11" fill="#6b7280">0</text>`,
+        `<text x="${pad.left + innerW}" y="${pad.top + innerH + 22}" text-anchor="end" font-size="11" fill="#6b7280">${maxX.toFixed(1)}</text>`,
+        `</svg>`
+      );
+
+      document.getElementById("chiChart").innerHTML = svg.join("");
+    };
+
+    const updateCells = (aTotal, aSucc, bTotal, bSucc) => {
+      const aRate = aTotal === 0 ? 0 : (aSucc / aTotal) * 100;
+      const bRate = bTotal === 0 ? 0 : (bSucc / bTotal) * 100;
+
+      document.getElementById("aTotalCell").textContent = aTotal;
+      document.getElementById("aSuccCell").textContent = aSucc;
+      document.getElementById("aRateCell").textContent = `${aRate.toFixed(2)}%`;
+      document.getElementById("bTotalCell").textContent = bTotal;
+      document.getElementById("bSuccCell").textContent = bSucc;
+      document.getElementById("bRateCell").textContent = `${bRate.toFixed(2)}%`;
+    };
+
+    const calcChiSquare = () => {
+      const aTotal = getNumber("aTotal");
+      const aSucc = getNumber("aSuccess");
+      const bTotal = getNumber("bTotal");
+      const bSucc = getNumber("bSuccess");
+      const errorEl = document.getElementById("error");
+      const warningEl = document.getElementById("warning");
+      errorEl.textContent = "";
+      warningEl.textContent = "";
+
+      if ([aTotal, aSucc, bTotal, bSucc].some((v) => Number.isNaN(v))) {
+        errorEl.textContent = "数値を入力してください。";
+        return;
+      }
+      if (aTotal <= 0 || bTotal <= 0) {
+        errorEl.textContent = "試行回数は 1 以上で入力してください。";
+        return;
+      }
+      if (aSucc < 0 || bSucc < 0 || aSucc > aTotal || bSucc > bTotal) {
+        errorEl.textContent = "成功回数は 0 以上かつ試行回数以下で入力してください。";
+        return;
+      }
+
+      const aFail = aTotal - aSucc;
+      const bFail = bTotal - bSucc;
+      const totalSucc = aSucc + bSucc;
+      const totalFail = aFail + bFail;
+      const grand = aTotal + bTotal;
+
+      const expectedASucc = (aTotal * totalSucc) / grand;
+      const expectedAFail = (aTotal * totalFail) / grand;
+      const expectedBSucc = (bTotal * totalSucc) / grand;
+      const expectedBFail = (bTotal * totalFail) / grand;
+
+      const chi2 =
+        Math.pow(aSucc - expectedASucc, 2) / expectedASucc +
+        Math.pow(aFail - expectedAFail, 2) / expectedAFail +
+        Math.pow(bSucc - expectedBSucc, 2) / expectedBSucc +
+        Math.pow(bFail - expectedBFail, 2) / expectedBFail;
+
+      const pValue = chiSquarePValueDf1(chi2);
+
+      document.getElementById("chi2").textContent = chi2.toFixed(4);
+      document.getElementById("pValue").textContent = pValue.toFixed(4);
+      updateCells(aTotal, aSucc, bTotal, bSucc);
+      renderRateChart(aTotal, aSucc, bTotal, bSucc);
+      renderChiChart(chi2, pValue);
+
+      const expected = [expectedASucc, expectedAFail, expectedBSucc, expectedBFail];
+      if (expected.some((v) => v <= 5)) {
+        warningEl.textContent =
+          "注意: 期待度数が 5 以下のセルがあります。結果の解釈に注意し、必要に応じて Fisher の正確確率検定を検討してください。";
+      }
+    };
+
+    document.getElementById("calcBtn").addEventListener("click", calcChiSquare);
+  </script>
+</body>
+</html>
