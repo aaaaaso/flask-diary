@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ball Merge Lines</title>
+  <meta name="description" content="p5.js + Matter.jsで落下するボールが線の上を転がり合体するデモ"> 
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #e9edf4;
+      --ink: #1a1a1a;
+      --accent: #c64b35;
+      --muted: rgba(26,26,26,0.6);
+      --panel: rgba(255,255,255,0.78);
+      --line: #64748b;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: "Zen Kaku Gothic New", system-ui, -apple-system, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 800px at 10% -20%, rgba(100,116,139,0.2), transparent 60%),
+        radial-gradient(900px 700px at 90% 0%, rgba(76,92,120,0.18), transparent 60%),
+        var(--bg);
+    }
+
+    #hud {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 2;
+      padding: 14px 16px;
+      background: var(--panel);
+      border-radius: 12px;
+      border: 1px solid rgba(26,26,26,0.1);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+      max-width: min(360px, 90vw);
+      backdrop-filter: blur(6px);
+    }
+
+    #hud .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    #hud button {
+      border: 1px solid rgba(26,26,26,0.18);
+      background: rgba(255,255,255,0.9);
+      color: var(--ink);
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 12px;
+      letter-spacing: 0.02em;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+      transition: transform 0.15s ease, box-shadow 0.2s ease;
+    }
+
+    #hud button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 26px rgba(0,0,0,0.12);
+    }
+
+    canvas {
+      display: block;
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <div class="controls">
+      <button id="clearLines">Clear Lines</button>
+      <button id="clearBalls">Clear Balls</button>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.2/p5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
+  <script>
+    const {
+      Engine,
+      World,
+      Bodies,
+      Body,
+      Composite,
+      Events,
+      Vector
+    } = Matter;
+
+    let engine;
+    let world;
+    let ground;
+    let walls = [];
+    let balls = [];
+    let drawnLines = [];
+    let drawing = false;
+    let currentLine = [];
+    let lastSpawn = 0;
+    const spawnInterval = 1000;
+    let audioCtx = null;
+
+    const ballColors = ["#0b3d91", "#c64b35", "#2f7d63", "#2b2b2b"];
+
+    const createBounds = () => {
+      if (ground) World.remove(world, ground);
+      walls.forEach((w) => World.remove(world, w));
+      walls = [];
+    };
+
+    const addBall = (x, y, r) => {
+      const ball = Bodies.circle(x, y, r, {
+        restitution: 0.45,
+        friction: 0.0,
+        frictionAir: 0.0,
+        density: 0.0012
+      });
+      ball.renderColor = random(ballColors);
+      ball.isBall = true;
+      balls.push(ball);
+      World.add(world, ball);
+    };
+
+    const mergeBalls = (a, b) => {
+      if (!a.isBall || !b.isBall) return;
+      if (a.merging || b.merging) return;
+      a.merging = true;
+      b.merging = true;
+
+      const r = Math.sqrt(a.circleRadius ** 2 + b.circleRadius ** 2);
+      const pos = Vector.mult(Vector.add(a.position, b.position), 0.5);
+      const vel = Vector.mult(Vector.add(a.velocity, b.velocity), 0.5);
+
+      World.remove(world, a);
+      World.remove(world, b);
+      balls = balls.filter((ball) => ball !== a && ball !== b);
+
+      const merged = Bodies.circle(pos.x, pos.y, r, {
+        restitution: 0.45,
+        friction: 0.0,
+        frictionAir: 0.0,
+        density: 0.0012
+      });
+      merged.renderColor = random(ballColors);
+      merged.isBall = true;
+      Body.setVelocity(merged, vel);
+      balls.push(merged);
+      World.add(world, merged);
+      playMergeSound();
+    };
+
+    const addLineSegments = (points) => {
+      const segments = [];
+      for (let i = 0; i < points.length - 1; i += 1) {
+        const a = points[i];
+        const b = points[i + 1];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const len = Math.hypot(dx, dy);
+        if (len < 4) continue;
+        const angle = Math.atan2(dy, dx);
+        const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        const seg = Bodies.rectangle(mid.x, mid.y, len + 2, 12, {
+          isStatic: true,
+          friction: 0.0,
+          restitution: 0.0
+        });
+        Body.setAngle(seg, angle);
+        seg.isLine = true;
+        segments.push(seg);
+      }
+      if (segments.length > 0) {
+        World.add(world, segments);
+      }
+      return segments;
+    };
+
+    const clearLines = () => {
+      drawnLines.forEach((line) => {
+        line.segments.forEach((seg) => World.remove(world, seg));
+      });
+      drawnLines = [];
+      currentLine = [];
+      drawing = false;
+    };
+
+    const clearBalls = () => {
+      balls.forEach((ball) => World.remove(world, ball));
+      balls = [];
+    };
+
+    function setup() {
+      const canvas = createCanvas(windowWidth, windowHeight);
+      canvas.parent(document.body);
+      engine = Engine.create();
+      world = engine.world;
+      world.gravity.y = 1;
+      createBounds();
+
+      Events.on(engine, "collisionStart", (event) => {
+        event.pairs.forEach((pair) => {
+          const a = pair.bodyA;
+          const b = pair.bodyB;
+          if (a.isBall && b.isBall) {
+            mergeBalls(a, b);
+          }
+        });
+      });
+
+    }
+
+    function draw() {
+      Engine.update(engine, 1000 / 60);
+      background(233, 237, 244);
+
+      if (millis() - lastSpawn >= spawnInterval) {
+        const r = random(16, 28);
+        addBall(width * 0.2, -30, r);
+        lastSpawn = millis();
+      }
+
+      noFill();
+      stroke("rgba(100, 116, 139, 0.7)");
+      strokeWeight(3);
+      strokeCap(ROUND);
+
+      drawnLines.forEach((line) => {
+        beginShape();
+        line.points.forEach((p) => vertex(p.x, p.y));
+        endShape();
+      });
+
+      if (drawing && currentLine.length > 1) {
+        beginShape();
+        currentLine.forEach((p) => vertex(p.x, p.y));
+        endShape();
+      }
+
+      balls.forEach((ball) => {
+        const { x, y } = ball.position;
+        const r = ball.circleRadius;
+        push();
+        translate(x, y);
+        rotate(ball.angle);
+        noStroke();
+        fill(255, 255, 255, 170);
+        circle(0, 0, r * 2);
+        pop();
+      });
+
+      const margin = 120;
+      balls = balls.filter((ball) => {
+        const { x, y } = ball.position;
+        if (x < -margin || x > width + margin || y < -margin || y > height + margin) {
+          World.remove(world, ball);
+          return false;
+        }
+        return true;
+      });
+    }
+
+    function mousePressed() {
+      if (mouseY < 0 || mouseY > height) return;
+      drawing = true;
+      currentLine = [{ x: mouseX, y: mouseY }];
+    }
+
+    function mouseDragged() {
+      if (!drawing) return;
+      const last = currentLine[currentLine.length - 1];
+      const d = dist(mouseX, mouseY, last.x, last.y);
+      if (d > 8) {
+        currentLine.push({ x: mouseX, y: mouseY });
+      }
+    }
+
+    function mouseReleased() {
+      if (!drawing) return;
+      drawing = false;
+      if (currentLine.length > 1) {
+        const segments = addLineSegments(currentLine);
+        drawnLines.push({ points: [...currentLine], segments });
+      }
+      currentLine = [];
+    }
+
+    function touchStarted() {
+      mousePressed();
+      return false;
+    }
+
+    function touchMoved() {
+      mouseDragged();
+      return false;
+    }
+
+    function touchEnded() {
+      mouseReleased();
+      return false;
+    }
+
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight);
+      createBounds();
+    }
+
+    const initAudio = () => {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+    };
+
+    const playMergeSound = () => {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const base = 660;
+      const jitter = random(-40, 40);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(base + jitter, now);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.14);
+    };
+
+    const clearLinesBtn = document.getElementById("clearLines");
+    const clearBallsBtn = document.getElementById("clearBalls");
+    clearLinesBtn.addEventListener("click", () => {
+      initAudio();
+      clearLines();
+    });
+    clearBallsBtn.addEventListener("click", () => {
+      initAudio();
+      clearBalls();
+    });
+
+    window.addEventListener("pointerdown", initAudio, { once: true });
+  </script>
+</body>
+</html>

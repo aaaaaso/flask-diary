@@ -1,4 +1,6 @@
 import os
+import re
+from typing import Optional, Tuple
 from flask import Blueprint, abort, render_template, send_from_directory, current_app
 
 lab_bp = Blueprint("lab", __name__, url_prefix="/lab")
@@ -18,15 +20,43 @@ def _is_experiment_dir(dir_name: str) -> bool:
 
     return os.path.isfile(os.path.join(exp_dir, "index.html"))
 
+def _extract_meta(path: str) -> Tuple[Optional[str], Optional[str]]:
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            html = f.read()
+    except OSError:
+        return None, None
+
+    title_match = re.search(r"<title>(.*?)</title>", html, re.IGNORECASE | re.DOTALL)
+    title = title_match.group(1).strip() if title_match else None
+
+    desc = None
+    for tag in re.findall(r"<meta\s+[^>]*>", html, re.IGNORECASE | re.DOTALL):
+        name_match = re.search(r"name\s*=\s*['\"]([^'\"]+)['\"]", tag, re.IGNORECASE)
+        content_match = re.search(r"content\s*=\s*['\"]([^'\"]*)['\"]", tag, re.IGNORECASE)
+        if not name_match or not content_match:
+            continue
+        if name_match.group(1).lower() == "description":
+            desc = content_match.group(1).strip()
+            break
+    return title, desc
+
 @lab_bp.route("/")
 def lab_index():
     root = _lab_root_dir()
-    names = []
+    experiments = []
     for name in sorted(os.listdir(root)):
         if _is_experiment_dir(name):
-            names.append(name)
+            exp_dir = os.path.join(root, name)
+            index_path = os.path.join(exp_dir, "index.html")
+            title, desc = _extract_meta(index_path)
+            experiments.append({
+                "name": name,
+                "title": title or name,
+                "desc": desc or "実験ページ。",
+            })
 
-    return render_template("lab_index.html", experiments=names)
+    return render_template("lab_index.html", experiments=experiments)
 
 @lab_bp.route("/<experiment>/")
 def lab_experiment_index(experiment: str):

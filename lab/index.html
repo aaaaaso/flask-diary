@@ -14,6 +14,7 @@
       --muted: #6b7280;
       --ring: rgba(31, 35, 40, 0.12);
       --card: #ffffff;
+      --accent: #3b3f45;
     }
 
     * { box-sizing: border-box; }
@@ -100,6 +101,17 @@
       line-height: 1.6;
     }
 
+    .chip {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(31, 35, 40, 0.08);
+      color: var(--muted);
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
     .note {
       font-size: 12px;
       color: var(--muted);
@@ -110,22 +122,29 @@
 <body>
   <header>
     <h1>Lab</h1>
+    <div class="subtitle">小さな実験ページのインデックス。増えていく前提で、静かに並べる。</div>
   </header>
 
   <main>
     <section class="panel">
-      {% if experiments %}
-        <div class="grid">
-          {% for exp in experiments %}
-            <a class="card" href="/lab/{{ exp.name }}/">
-              <div class="card-title">{{ exp.title }}</div>
-              <p class="card-desc">{{ exp.desc }}</p>
-            </a>
-          {% endfor %}
-        </div>
-      {% else %}
-        <p class="note">まだ実験がありません（lab/&lt;name&gt;/index.html を追加してください）。</p>
-      {% endif %}
+      <div class="grid">
+        <a class="card" href="./chitest/">
+          <div class="card-title">Chi-Square Test</div>
+          <p class="card-desc">2x2 のカイ二乗検定を入力だけで実行。</p>
+        </a>
+        <a class="card" href="./histogram/">
+          <div class="card-title">Histogram & Box plot <span class="chip">data</span></div>
+          <p class="card-desc">データコピペでヒストグラムと箱ひげ図を描画。</p>
+        </a>
+        <a class="card" href="./histgram/">
+          <div class="card-title">Histogram (legacy)</div>
+          <p class="card-desc">旧パス。必要なら histogram に統合予定。</p>
+        </a>
+      </div>
+    </section>
+
+    <section class="panel">
+      <p class="note">新しいページを追加したらここにリンクを足していく想定です。</p>
     </section>
   </main>
 </body>
