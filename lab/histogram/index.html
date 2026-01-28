@@ -631,10 +631,16 @@
           const q3 = quantile(sorted, 0.75);
           const iqr = q3 - q1;
           if (!Number.isFinite(iqr)) return null;
-          return q3 + 1.5 * iqr;
+          const cap = q3 + 1.5 * iqr;
+          const max = sorted[sorted.length - 1];
+          if (cap >= max) return null;
+          return cap;
         })();
+        const el = document.getElementById("filterMin");
         if (Number.isFinite(niceMax)) {
-          document.getElementById("filterMin").value = formatBinWidth(niceMax);
+          el.value = formatBinWidth(niceMax);
+        } else {
+          el.value = "";
         }
       }
     };
