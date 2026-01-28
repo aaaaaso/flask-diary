@@ -288,6 +288,7 @@
       const hasTab = raw.includes("\t");
       const hasNewline = raw.includes("\n");
       const hasComma = raw.includes(",");
+      const hasPercent = raw.includes("%");
 
       let parts = [];
       if (hasTab) {
@@ -298,17 +299,32 @@
         parts = raw.split(/,+/);
       }
 
+      const notes = [];
       if (noteEl && hasComma && (hasTab || hasNewline)) {
-        noteEl.textContent = hasTab
-          ? "タブ区切りとして検出しています。カンマは除去して扱います。"
-          : "改行区切りとして検出しています。カンマは除去して扱います。";
+        notes.push(
+          hasTab
+            ? "タブ区切りとして検出しています。カンマは除去して扱います。"
+            : "改行区切りとして検出しています。カンマは除去して扱います。"
+        );
+      }
+      if (noteEl && hasPercent) {
+        notes.push("百分率に直して扱います。");
+      }
+      if (noteEl && notes.length > 0) {
+        noteEl.textContent = notes.join(" ");
       }
 
       return parts
         .map((v) => v.trim())
         .filter((v) => v.length > 0)
-        .map((v) => (hasTab || hasNewline ? v.replace(/,/g, "") : v))
-        .map((v) => Number(v))
+        .map((v) => {
+          let cleaned = v;
+          if (hasTab || hasNewline) cleaned = cleaned.replace(/,/g, "");
+          if (hasPercent) cleaned = cleaned.replace(/%/g, "");
+          const num = Number(cleaned);
+          if (!Number.isFinite(num)) return NaN;
+          return hasPercent ? num / 100 : num;
+        })
         .filter((v) => Number.isFinite(v));
     };
 
