@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Histogram</title>
+  <title>Histogram & Box plot</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
@@ -131,31 +131,28 @@
       color: var(--muted);
     }
 
-    .results {
-      display: grid;
-      gap: 10px;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    .stats-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
     }
 
-    .result-card {
-      padding: 14px 16px;
-      border-radius: 8px;
-      background: rgba(107, 114, 128, 0.12);
-      border: 1px solid rgba(107, 114, 128, 0.25);
+    .stats-table th,
+    .stats-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--ring);
+      text-align: left;
     }
 
-    .result-card h3 {
-      margin: 0 0 4px;
-      font-size: 12px;
-      color: var(--muted);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    .result-card p {
-      margin: 0;
+    .stats-table th {
       font-weight: 700;
-      font-size: 20px;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 12px;
     }
 
     .error {
@@ -205,8 +202,8 @@
 </head>
 <body>
   <header class="fade-in">
-    <h1>Histogram</h1>
-    <div class="subtitle">データを貼り付けると、ヒストグラムを自動生成。</div>
+    <h1>Histogram & Box plot</h1>
+    <div class="subtitle">データコピペで、ヒストグラムと箱ひげ図を描写!</div>
   </header>
 
   <main>
@@ -217,16 +214,44 @@
           <textarea id="dataInput" placeholder="例: 1, 2, 3\n4\t5\n6"></textarea>
         </div>
         <div>
+          <div class="muted" style="margin-bottom: 8px;">基本統計量（生データ）</div>
+          <table class="stats-table">
+            <thead>
+              <tr>
+                <th>指標</th>
+                <th>値</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>COUNT</td><td id="count">-</td></tr>
+              <tr><td>平均値</td><td id="mean">-</td></tr>
+              <tr><td>最小値</td><td id="min">-</td></tr>
+              <tr><td>25% percentile</td><td id="p25">-</td></tr>
+              <tr><td>中央値</td><td id="median">-</td></tr>
+              <tr><td>75% percentile</td><td id="p75">-</td></tr>
+              <tr><td>90% percentile</td><td id="p90">-</td></tr>
+              <tr><td>95% percentile</td><td id="p95">-</td></tr>
+              <tr><td>最大値</td><td id="max">-</td></tr>
+              <tr><td>標準偏差</td><td id="stddev">-</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel fade-in">
+      <div class="grid">
+        <div>
           <div style="margin-bottom: 12px;">
             <label for="binWidth">bin の幅</label>
             <input type="number" id="binWidth" min="0" step="0.01" value="1" />
           </div>
           <div style="margin-bottom: 12px;">
-            <label for="filterMin">データフィルタ（下限）</label>
+            <label for="filterMin">データフィルタ（これ以上を除外）</label>
             <input type="number" id="filterMin" step="0.01" placeholder="未入力で無効" />
           </div>
           <div style="margin-bottom: 12px;">
-            <label for="filterMax">データフィルタ（上限）</label>
+            <label for="filterMax">データフィルタ（これ以下を除外）</label>
             <input type="number" id="filterMax" step="0.01" placeholder="未入力で無効" />
           </div>
           <label class="toggle">
@@ -234,46 +259,12 @@
             0 を切り出す
           </label>
         </div>
-      </div>
-      <div class="actions" style="margin-top: 18px;">
-        <button id="calcBtn">作成する</button>
-        <div id="error" class="error"></div>
-      </div>
-    </section>
-
-    <section class="panel fade-in">
-      <div class="results">
-        <div class="result-card">
-          <h3>データ数</h3>
-          <p id="count">-</p>
-        </div>
-        <div class="result-card">
-          <h3>平均値</h3>
-          <p id="mean">-</p>
-        </div>
-        <div class="result-card">
-          <h3>最小</h3>
-          <p id="min">-</p>
-        </div>
-        <div class="result-card">
-          <h3>25% percentile</h3>
-          <p id="p25">-</p>
-        </div>
-        <div class="result-card">
-          <h3>中央値</h3>
-          <p id="median">-</p>
-        </div>
-        <div class="result-card">
-          <h3>75% percentile</h3>
-          <p id="p75">-</p>
-        </div>
-        <div class="result-card">
-          <h3>最大</h3>
-          <p id="max">-</p>
-        </div>
-        <div class="result-card">
-          <h3>標準偏差</h3>
-          <p id="stddev">-</p>
+        <div>
+          <div class="actions" style="margin-top: 6px;">
+            <button id="calcBtn">作成する</button>
+            <div id="error" class="error"></div>
+          </div>
+          <div class="muted" style="margin-top: 10px;" id="excludedCount">除外数: -</div>
         </div>
       </div>
     </section>
@@ -283,6 +274,10 @@
         <div class="chart-box">
           <div class="chart-title">Histogram</div>
           <div id="histChart"></div>
+        </div>
+        <div class="chart-box">
+          <div class="chart-title">Box Plot</div>
+          <div id="boxPlot"></div>
         </div>
       </div>
     </section>
@@ -299,14 +294,22 @@
     };
 
     const applyFilter = (values, min, max) => {
-      return values.filter((v) => {
-        if (Number.isFinite(min) && v < min) return false;
-        if (Number.isFinite(max) && v > max) return false;
+      let excluded = 0;
+      const filtered = values.filter((v) => {
+        if (Number.isFinite(min) && v >= min) {
+          excluded += 1;
+          return false;
+        }
+        if (Number.isFinite(max) && v <= max) {
+          excluded += 1;
+          return false;
+        }
         return true;
       });
+      return { filtered, excluded };
     };
 
-    const buildBins = (values, width, splitZero) => {
+    const buildBins = (values, width, splitZero, allInt) => {
       if (values.length === 0) return { bins: [], zeroCount: 0 };
 
       let zeroCount = 0;
@@ -324,10 +327,11 @@
       const bins = [];
 
       if (splitZero) {
-        const minIdx = min < 0 ? Math.floor(min / width) : 0;
+        const minIdx = min < 0 ? Math.floor(min / width) : (allInt && width === 1 ? 1 : 0);
         const maxIdx = max > 0 ? Math.floor(max / width) : -1;
 
         for (let i = minIdx; i <= maxIdx; i += 1) {
+          if (allInt && width === 1 && i === 0) continue;
           const start = i * width;
           const end = (i + 1) * width;
           if (end === 0) {
@@ -362,7 +366,7 @@
       return { bins, zeroCount };
     };
 
-    const renderHistogram = (bins, zeroCount, width, splitZero) => {
+    const renderHistogram = (bins, zeroCount, width, splitZero, allInt) => {
       const container = document.getElementById("histChart");
       if (bins.length === 0 && zeroCount === 0) {
         container.innerHTML = "";
@@ -404,8 +408,7 @@
         const x = xFor(i);
         const y = yFor(b.count);
         const h = pad.top + innerH - y;
-        const isZero = b.isZero;
-        const color = isZero ? "#6b6b6b" : "#999999";
+        const color = "#999999";
         const radius = 3;
 
         const path = [
@@ -425,21 +428,12 @@
         let label = "";
         if (b.isZero) {
           label = "0";
-        } else if (splitZero && b.end === 0) {
-          if (isIntWidth) {
-            label = `${fmt(b.start)}--1`;
-          } else {
-            label = `${fmt(b.start)}-<0`;
-          }
+        } else if (allInt && width === 1) {
+          label = fmt(b.start);
         } else if (splitZero && b.start === 0) {
-          if (isIntWidth) {
-            const endLabel = (width - 1).toFixed(0);
-            label = `1-${endLabel}`;
-          } else {
-            label = `0-<${fmt(b.end)}`;
-          }
+          label = `(0, ${fmt(b.end)})`;
         } else {
-          label = `${fmt(b.start)}-${fmt(b.end)}`;
+          label = `[${fmt(b.start)}, ${fmt(b.end)})`;
         }
         const labelX = x + barW / 2;
         svg.push(
@@ -472,6 +466,72 @@
       return Number.isInteger(v) ? v.toFixed(0) : v.toFixed(2);
     };
 
+    const renderBoxPlot = (values) => {
+      const container = document.getElementById("boxPlot");
+      if (values.length === 0) {
+        container.innerHTML = "";
+        return;
+      }
+
+      const sorted = [...values].sort((a, b) => a - b);
+      const q1 = quantile(sorted, 0.25);
+      const median = quantile(sorted, 0.5);
+      const q3 = quantile(sorted, 0.75);
+      const iqr = q3 - q1;
+      const lowerFence = q1 - 1.5 * iqr;
+      const upperFence = q3 + 1.5 * iqr;
+      const inliers = sorted.filter((v) => v >= lowerFence && v <= upperFence);
+      const outliers = sorted.filter((v) => v < lowerFence || v > upperFence);
+      const whiskerMin = inliers[0] ?? sorted[0];
+      const whiskerMax = inliers[inliers.length - 1] ?? sorted[sorted.length - 1];
+      const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+
+      const width = 720;
+      const height = 140;
+      const pad = { top: 20, right: 28, bottom: 24, left: 28 };
+      const innerW = width - pad.left - pad.right;
+      const midY = pad.top + (height - pad.top - pad.bottom) / 2;
+      const span = (sorted[sorted.length - 1] - sorted[0]) || 1;
+      const xFor = (v) => pad.left + ((v - sorted[0]) / span) * innerW;
+
+      const minX = xFor(whiskerMin);
+      const maxX = xFor(whiskerMax);
+      const q1X = xFor(q1);
+      const q3X = xFor(q3);
+      const medX = xFor(median);
+      const meanX = xFor(mean);
+
+      const boxH = 36;
+      const whiskerH = 22;
+      const outlierY = midY;
+
+      const svg = [
+        `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Box plot">`,
+        `<rect x="0" y="0" width="${width}" height="${height}" fill="transparent" />`,
+        `<line x1="${minX}" y1="${midY}" x2="${maxX}" y2="${midY}" stroke="#6b6b6b" stroke-width="2" />`,
+        `<line x1="${minX}" y1="${midY - whiskerH / 2}" x2="${minX}" y2="${midY + whiskerH / 2}" stroke="#6b6b6b" stroke-width="2" />`,
+        `<line x1="${maxX}" y1="${midY - whiskerH / 2}" x2="${maxX}" y2="${midY + whiskerH / 2}" stroke="#6b6b6b" stroke-width="2" />`,
+        `<rect x="${q1X}" y="${midY - boxH / 2}" width="${Math.max(q3X - q1X, 1)}" height="${boxH}" fill="#e0e0e0" stroke="#6b6b6b" stroke-width="2" />`,
+        `<line x1="${medX}" y1="${midY - boxH / 2}" x2="${medX}" y2="${midY + boxH / 2}" stroke="#3b3f45" stroke-width="3" />`,
+        `<polygon points="${meanX - 4},${midY + 4} ${meanX + 4},${midY + 4} ${meanX},${midY - 4}" fill="#2f8f4e" />`,
+        `<text x="${minX}" y="${midY + boxH / 2 + 18}" text-anchor="start" font-size="11" fill="#6b7280">${formatStat(whiskerMin)}</text>`,
+        `<text x="${maxX}" y="${midY + boxH / 2 + 18}" text-anchor="end" font-size="11" fill="#6b7280">${formatStat(whiskerMax)}</text>`,
+        `</svg>`,
+      ];
+
+      if (outliers.length > 0) {
+        const points = outliers
+          .map((v) => {
+            const x = xFor(v);
+            return `<circle cx="${x}" cy="${outlierY}" r="3" fill="#6b6b6b" />`;
+          })
+          .join("");
+        svg.splice(2, 0, points);
+      }
+
+      container.innerHTML = svg.join("");
+    };
+
     const updateStats = (values) => {
       if (values.length === 0) {
         document.getElementById("count").textContent = "-";
@@ -480,6 +540,8 @@
         document.getElementById("p25").textContent = "-";
         document.getElementById("median").textContent = "-";
         document.getElementById("p75").textContent = "-";
+        document.getElementById("p90").textContent = "-";
+        document.getElementById("p95").textContent = "-";
         document.getElementById("max").textContent = "-";
         document.getElementById("stddev").textContent = "-";
         return;
@@ -494,6 +556,8 @@
       const p25 = quantile(sorted, 0.25);
       const median = quantile(sorted, 0.5);
       const p75 = quantile(sorted, 0.75);
+      const p90 = quantile(sorted, 0.9);
+      const p95 = quantile(sorted, 0.95);
 
       document.getElementById("count").textContent = values.length;
       document.getElementById("mean").textContent = formatStat(mean);
@@ -501,8 +565,22 @@
       document.getElementById("p25").textContent = formatStat(p25);
       document.getElementById("median").textContent = formatStat(median);
       document.getElementById("p75").textContent = formatStat(p75);
+      document.getElementById("p90").textContent = formatStat(p90);
+      document.getElementById("p95").textContent = formatStat(p95);
       document.getElementById("max").textContent = formatStat(max);
       document.getElementById("stddev").textContent = formatStat(stddev);
+    };
+
+    const setExcludedCount = (excluded) => {
+      const el = document.getElementById("excludedCount");
+      if (el) el.textContent = `除外数: ${excluded}`;
+    };
+
+    const updateRawStats = () => {
+      const raw = document.getElementById("dataInput").value;
+      const values = parseData(raw);
+      updateStats(values);
+      setExcludedCount("-");
     };
 
     const buildHistogram = () => {
@@ -524,13 +602,17 @@
       const minVal = filterMin === "" ? NaN : Number(filterMin);
       const maxVal = filterMax === "" ? NaN : Number(filterMax);
 
-      const filtered = applyFilter(values, minVal, maxVal);
-      updateStats(filtered);
-      const { bins, zeroCount } = buildBins(filtered, binWidth, splitZero);
-      renderHistogram(bins, zeroCount, binWidth, splitZero);
+      const { filtered, excluded } = applyFilter(values, minVal, maxVal);
+      const allInt = filtered.length > 0 && filtered.every((v) => Number.isInteger(v));
+      const { bins, zeroCount } = buildBins(filtered, binWidth, splitZero, allInt);
+      renderHistogram(bins, zeroCount, binWidth, splitZero, allInt);
+      renderBoxPlot(filtered);
+      setExcludedCount(excluded);
     };
 
     document.getElementById("calcBtn").addEventListener("click", buildHistogram);
+    document.getElementById("dataInput").addEventListener("input", updateRawStats);
+    updateRawStats();
   </script>
 </body>
 </html>
