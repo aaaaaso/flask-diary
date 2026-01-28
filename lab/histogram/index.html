@@ -212,6 +212,7 @@
         <div>
           <label for="dataInput">データ（カンマ or 改行 or タブ区切り）</label>
           <textarea id="dataInput" placeholder="例: 1,2,3"></textarea>
+          <div class="muted" style="margin-top: 6px;" id="delimiterNote"></div>
         </div>
         <div>
           <div class="muted" style="margin-bottom: 8px;">基本統計量</div>
@@ -282,10 +283,31 @@
 
   <script>
     const parseData = (raw) => {
-      return raw
-        .split(/[\n\t,]+/)
+      const noteEl = document.getElementById("delimiterNote");
+      if (noteEl) noteEl.textContent = "";
+      const hasTab = raw.includes("\t");
+      const hasNewline = raw.includes("\n");
+      const hasComma = raw.includes(",");
+
+      let parts = [];
+      if (hasTab) {
+        parts = raw.split(/\t+/);
+      } else if (hasNewline) {
+        parts = raw.split(/\n+/);
+      } else {
+        parts = raw.split(/,+/);
+      }
+
+      if (noteEl && hasComma && (hasTab || hasNewline)) {
+        noteEl.textContent = hasTab
+          ? "タブ区切りとして検出しています。カンマは除去して扱います。"
+          : "改行区切りとして検出しています。カンマは除去して扱います。";
+      }
+
+      return parts
         .map((v) => v.trim())
         .filter((v) => v.length > 0)
+        .map((v) => (hasTab || hasNewline ? v.replace(/,/g, "") : v))
         .map((v) => Number(v))
         .filter((v) => Number.isFinite(v));
     };
