@@ -519,9 +519,9 @@
         `<rect x="${q1X}" y="${midY - boxH / 2}" width="${Math.max(q3X - q1X, 1)}" height="${boxH}" fill="#e0e0e0" stroke="#6b6b6b" stroke-width="2" />`,
         `<line x1="${medX}" y1="${midY - boxH / 2}" x2="${medX}" y2="${midY + boxH / 2}" stroke="#3b3f45" stroke-width="3" />`,
         `<polygon points="${meanX - 4},${midY + 4} ${meanX + 4},${midY + 4} ${meanX},${midY - 4}" fill="#2f8f4e" />`,
-        `<text x="${q1X}" y="${midY + boxH / 2 + 18}" text-anchor="middle" font-size="11" fill="#6b7280">Q1 ${formatStat(q1)}</text>`,
-        `<text x="${medX}" y="${midY + boxH / 2 + 18}" text-anchor="middle" font-size="11" fill="#6b7280">median ${formatStat(median)}</text>`,
-        `<text x="${q3X}" y="${midY + boxH / 2 + 18}" text-anchor="middle" font-size="11" fill="#6b7280">Q3 ${formatStat(q3)}</text>`,
+        `<text x="${q1X}" y="${midY + boxH / 2 + 18}" text-anchor="middle" font-size="11" fill="#6b7280">${formatStat(q1)}</text>`,
+        `<text x="${medX}" y="${midY + boxH / 2 + 18}" text-anchor="middle" font-size="11" fill="#6b7280">${formatStat(median)}</text>`,
+        `<text x="${q3X}" y="${midY + boxH / 2 + 18}" text-anchor="middle" font-size="11" fill="#6b7280">${formatStat(q3)}</text>`,
         `</svg>`,
       ];
 
