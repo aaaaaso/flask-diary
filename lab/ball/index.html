@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Ball Merge Lines</title>
-  <meta name="description" content="p5.js + Matter.jsで落下するボールが線の上を転がり合体するデモ"> 
+  <title>Falling Ball</title>
+  <meta name="description" content="重力に従って落ちたり転がるボール。"> 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap" rel="stylesheet">
@@ -25,6 +25,7 @@
       padding: 0;
       height: 100%;
       overflow: hidden;
+      touch-action: none;
       font-family: "Zen Kaku Gothic New", system-ui, -apple-system, sans-serif;
       color: var(--ink);
       background:
@@ -77,6 +78,7 @@
       position: fixed;
       inset: 0;
       z-index: 1;
+      touch-action: none;
     }
   </style>
 </head>
@@ -331,17 +333,22 @@
       const now = audioCtx.currentTime;
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
-      const base = 660;
-      const jitter = random(-40, 40);
-      osc.type = "sine";
+      const filter = audioCtx.createBiquadFilter();
+      const base = 1046.5;
+      const jitter = random(-60, 60);
+      osc.type = "triangle";
       osc.frequency.setValueAtTime(base + jitter, now);
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(3600, now);
+      filter.Q.setValueAtTime(0.7, now);
       gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
-      osc.connect(gain);
+      gain.gain.exponentialRampToValueAtTime(0.09, now + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+      osc.connect(filter);
+      filter.connect(gain);
       gain.connect(audioCtx.destination);
       osc.start(now);
-      osc.stop(now + 0.14);
+      osc.stop(now + 0.2);
     };
 
     const clearLinesBtn = document.getElementById("clearLines");
