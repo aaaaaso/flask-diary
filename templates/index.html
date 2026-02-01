@@ -56,7 +56,7 @@
 
 <!-- 下部スクロール -->
 <button id="scroll-down-btn" class="scroll-down" aria-label="最下部へスクロール">
-  ↓
+  <span class="scroll-down-arrow" aria-hidden="true">↓</span>
 </button>
 
   <!-- 日記本体 -->
@@ -148,9 +148,14 @@
     let lastScrollY = window.scrollY;
     let lastTs = performance.now();
     let hideTimer = null;
+    let lastShownAt = 0;
+    let fastAccumulatedMs = 0;
+    let lastFastTs = 0;
 
-    const SPEED_THRESHOLD = 0.7; // px/ms (=700px/s) 以上で表示
-    const HIDE_DELAY = 140;      // スクロール停止後の非表示遅延
+    const SPEED_THRESHOLD = 1.0; // px/ms (=1000px/s) 以上で表示
+    const MIN_SHOW_MS = 1000;    // 表示したら最低1秒は維持
+    const HIDE_NEAR_BOTTOM_PX = 240;
+    const FAST_TRIGGER_MS = 300; // 速い下スクロールがこの時間続いたら表示
 
     function setScrollDownVisible(visible) {
       scrollDownBtn.classList.toggle('is-visible', visible);
@@ -163,14 +168,41 @@
       const dt = Math.max(1, now - lastTs);
       const speed = dy / dt;
 
-      if (dy > 0 && speed >= SPEED_THRESHOLD) {
-        setScrollDownVisible(true);
+      const doc = document.documentElement;
+      const docHeight = Math.max(doc.scrollHeight, document.body.scrollHeight);
+      const viewportBottom = window.scrollY + window.innerHeight;
+      const distanceToBottom = docHeight - viewportBottom;
+      const nearBottom = distanceToBottom <= HIDE_NEAR_BOTTOM_PX;
+
+      const isFastDown = dy > 0 && speed >= SPEED_THRESHOLD;
+      if (isFastDown) {
+        if (lastFastTs > 0) {
+          fastAccumulatedMs += now - lastFastTs;
+        }
+        lastFastTs = now;
       } else {
-        setScrollDownVisible(false);
+        fastAccumulatedMs = 0;
+        lastFastTs = 0;
       }
 
-      clearTimeout(hideTimer);
-      hideTimer = setTimeout(() => setScrollDownVisible(false), HIDE_DELAY);
+      if (!nearBottom && isFastDown && fastAccumulatedMs >= FAST_TRIGGER_MS) {
+        setScrollDownVisible(true);
+        lastShownAt = now;
+        clearTimeout(hideTimer);
+        hideTimer = setTimeout(() => {
+          setScrollDownVisible(false);
+        }, MIN_SHOW_MS);
+      } else {
+        const elapsed = now - lastShownAt;
+        if (nearBottom || elapsed >= MIN_SHOW_MS) {
+          setScrollDownVisible(false);
+        } else {
+          clearTimeout(hideTimer);
+          hideTimer = setTimeout(() => {
+            setScrollDownVisible(false);
+          }, MIN_SHOW_MS - elapsed);
+        }
+      }
 
       lastScrollY = currentY;
       lastTs = now;
@@ -179,7 +211,11 @@
     window.addEventListener('scroll', onScroll, { passive: true });
 
     scrollDownBtn.addEventListener('click', () => {
-      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      const target = Math.max(
+        document.body.scrollHeight,
+        document.documentElement.scrollHeight
+      );
+      window.scrollTo({ top: target, behavior: 'smooth' });
     });
   </script>
 </body>
