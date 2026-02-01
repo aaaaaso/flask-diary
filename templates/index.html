@@ -47,11 +47,16 @@
 
 <body>
 
-  <!-- Shuffleボタン -->
+<!-- Shuffleボタン -->
 <button id="shuffle-btn" title="日記をランダムに並べ替え">
   <span class="icon-wrap">
     <img src="{{ url_for('static', filename='shuffle_icon.png') }}" alt="Shuffle" />
   </span>
+</button>
+
+<!-- 下部スクロール -->
+<button id="scroll-down-btn" class="scroll-down" aria-label="最下部へスクロール">
+  ↓
 </button>
 
   <!-- 日記本体 -->
@@ -137,6 +142,45 @@
       }
       return array;
     }
+
+    // ---- 下矢印：速い下スクロール時のみ表示 ----
+    const scrollDownBtn = document.getElementById('scroll-down-btn');
+    let lastScrollY = window.scrollY;
+    let lastTs = performance.now();
+    let hideTimer = null;
+
+    const SPEED_THRESHOLD = 0.7; // px/ms (=700px/s) 以上で表示
+    const HIDE_DELAY = 140;      // スクロール停止後の非表示遅延
+
+    function setScrollDownVisible(visible) {
+      scrollDownBtn.classList.toggle('is-visible', visible);
+    }
+
+    function onScroll() {
+      const now = performance.now();
+      const currentY = window.scrollY;
+      const dy = currentY - lastScrollY;
+      const dt = Math.max(1, now - lastTs);
+      const speed = dy / dt;
+
+      if (dy > 0 && speed >= SPEED_THRESHOLD) {
+        setScrollDownVisible(true);
+      } else {
+        setScrollDownVisible(false);
+      }
+
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => setScrollDownVisible(false), HIDE_DELAY);
+
+      lastScrollY = currentY;
+      lastTs = now;
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    scrollDownBtn.addEventListener('click', () => {
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    });
   </script>
 </body>
 </html>
