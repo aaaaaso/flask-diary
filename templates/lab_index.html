@@ -146,7 +146,7 @@
       {% if experiments %}
         <div class="grid">
           {% for exp in experiments %}
-            <a class="card" href="/lab/{{ exp.name }}/">
+            <a class="card" href="/lab/{{ exp.name }}/" data-title="{{ exp.title }}" data-desc="{{ exp.desc }}">
               <div class="card-title">{{ exp.title }}</div>
               <p class="card-desc">{{ exp.desc }}</p>
             </a>
@@ -159,19 +159,22 @@
   </main>
 
   <script>
-    const searchInput = document.getElementById("searchInput");
-    const cards = Array.from(document.querySelectorAll(".grid .card"));
-
     const normalize = (text) => text.toLowerCase().replace(/\s+/g, " ").trim();
 
-    searchInput?.addEventListener("input", (event) => {
-      const query = normalize(event.target.value);
-      cards.forEach((card) => {
-        const title = card.querySelector(".card-title")?.textContent || "";
-        const desc = card.querySelector(".card-desc")?.textContent || "";
-        const haystack = normalize(`${title} ${desc}`);
-        const match = query === "" || haystack.includes(query);
-        card.classList.toggle("is-hidden", !match);
+    window.addEventListener("DOMContentLoaded", () => {
+      const searchInput = document.getElementById("searchInput");
+      const cards = Array.from(document.querySelectorAll(".grid .card"));
+      if (!searchInput || cards.length === 0) return;
+
+      searchInput.addEventListener("input", (event) => {
+        const query = normalize(event.target.value);
+        cards.forEach((card) => {
+          const title = card.dataset.title || "";
+          const desc = card.dataset.desc || "";
+          const haystack = normalize(`${title} ${desc}`);
+          const match = query === "" || haystack.includes(query);
+          card.classList.toggle("is-hidden", !match);
+        });
       });
     });
   </script>
