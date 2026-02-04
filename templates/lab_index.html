@@ -47,28 +47,6 @@
       font-size: 14px;
     }
 
-    .search {
-      margin-top: 16px;
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .search input {
-      flex: 1;
-      min-width: 220px;
-      padding: 10px 12px;
-      border-radius: 10px;
-      border: 1px solid var(--ring);
-      background: #fff;
-      font-size: 14px;
-    }
-
-    .search input:focus {
-      outline: 2px solid rgba(31, 35, 40, 0.2);
-      outline-offset: 2px;
-    }
-
     main {
       max-width: 980px;
       margin: 0 auto;
@@ -127,18 +105,11 @@
       color: var(--muted);
       margin: 0;
     }
-
-    .is-hidden {
-      display: none;
-    }
   </style>
 </head>
 <body>
   <header>
     <h1>Lab</h1>
-    <div class="search">
-      <input id="searchInput" type="search" placeholder="タイトルや説明で検索" aria-label="タイトルや説明で検索">
-    </div>
   </header>
 
   <main>
@@ -146,7 +117,7 @@
       {% if experiments %}
         <div class="grid">
           {% for exp in experiments %}
-            <a class="card" href="/lab/{{ exp.name }}/" data-title="{{ exp.title }}" data-desc="{{ exp.desc }}">
+            <a class="card" href="/lab/{{ exp.name }}/">
               <div class="card-title">{{ exp.title }}</div>
               <p class="card-desc">{{ exp.desc }}</p>
             </a>
@@ -158,25 +129,5 @@
     </section>
   </main>
 
-  <script>
-    const normalize = (text) => text.toLowerCase().replace(/\s+/g, " ").trim();
-
-    window.addEventListener("DOMContentLoaded", () => {
-      const searchInput = document.getElementById("searchInput");
-      const cards = Array.from(document.querySelectorAll(".grid .card"));
-      if (!searchInput || cards.length === 0) return;
-
-      searchInput.addEventListener("input", (event) => {
-        const query = normalize(event.target.value);
-        cards.forEach((card) => {
-          const title = card.dataset.title || "";
-          const desc = card.dataset.desc || "";
-          const haystack = normalize(`${title} ${desc}`);
-          const match = query === "" || haystack.includes(query);
-          card.classList.toggle("is-hidden", !match);
-        });
-      });
-    });
-  </script>
 </body>
 </html>
