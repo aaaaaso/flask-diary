@@ -56,7 +56,12 @@
 
 <!-- 下部スクロール -->
 <button id="scroll-down-btn" class="scroll-down" aria-label="最下部へスクロール">
-  <span class="scroll-down-arrow" aria-hidden="true">↓</span>
+  <img
+    class="scroll-down-arrow"
+    src="{{ url_for('static', filename='half_arrow.png') }}"
+    alt=""
+    aria-hidden="true"
+  />
 </button>
 
   <!-- 日記本体 -->
@@ -152,10 +157,10 @@
     let fastAccumulatedMs = 0;
     let lastFastTs = 0;
 
-    const SPEED_THRESHOLD = 1.0; // px/ms (=1000px/s) 以上で表示
+    const SPEED_THRESHOLD = 0.6; // px/ms (=600px/s) 以上で表示
     const MIN_SHOW_MS = 1000;    // 表示したら最低1秒は維持
     const HIDE_NEAR_BOTTOM_PX = 240;
-    const FAST_TRIGGER_MS = 300; // 速い下スクロールがこの時間続いたら表示
+    const FAST_TRIGGER_MS = 150; // 速い下スクロールがこの時間続いたら表示
 
     function setScrollDownVisible(visible) {
       scrollDownBtn.classList.toggle('is-visible', visible);
@@ -210,13 +215,21 @@
 
     window.addEventListener('scroll', onScroll, { passive: true });
 
-    scrollDownBtn.addEventListener('click', () => {
+    function scrollToBottom() {
       const target = Math.max(
         document.body.scrollHeight,
         document.documentElement.scrollHeight
       );
       window.scrollTo({ top: target, behavior: 'smooth' });
-    });
+    }
+
+    // スクロール中のタップでも優先して動作させる
+    scrollDownBtn.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      scrollToBottom();
+    }, { passive: false });
+
+    scrollDownBtn.addEventListener('click', scrollToBottom);
   </script>
 </body>
 </html>
