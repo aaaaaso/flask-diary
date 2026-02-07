@@ -12,7 +12,7 @@ client = Client(auth=NOTION_TOKEN)
 
 # In-memory cache for Notion fetches (per page_id)
 _CACHE = {}
-_CACHE_TTL_SECONDS = int(os.getenv('NOTION_CACHE_TTL_SECONDS', '300'))
+_CACHE_TTL_SECONDS = int(os.getenv('NOTION_CACHE_TTL_SECONDS', '86400'))
 
 def _get_cached(page_id: str):
     if _CACHE_TTL_SECONDS <= 0:
@@ -30,6 +30,9 @@ def _set_cache(page_id: str, diary):
     if _CACHE_TTL_SECONDS <= 0:
         return
     _CACHE[page_id] = (time.time() + _CACHE_TTL_SECONDS, diary)
+
+def clear_cache():
+    _CACHE.clear()
 
 def fetch_diary_entries(page_id=None):
     if page_id is None:

@@ -1,7 +1,8 @@
-from flask import Flask, render_template, abort
+from flask import Flask, render_template, abort, request, jsonify
 from settings import TOTAL_PAGES, PAGE_IDS     # settings.pyから読む
-from notion_fetcher import fetch_diary_entries
+from notion_fetcher import fetch_diary_entries, clear_cache
 from lab import lab_bp
+import os
 
 app = Flask(__name__)
 
@@ -36,6 +37,15 @@ def page_n(page_no: int):
 
     diary = fetch_diary_by_page(page_no)
     return render_template("index.html", diary=diary, current_page=page_no, total_pages=TOTAL_PAGES)
+
+@app.route("/admin/clear-cache")
+def admin_clear_cache():
+    key = request.args.get("key", "")
+    expected = os.getenv("ADMIN_CLEAR_CACHE_KEY", "")
+    if not expected or key != expected:
+        abort(403)
+    clear_cache()
+    return jsonify({"status": "ok"})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True)
