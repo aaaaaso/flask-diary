@@ -226,6 +226,13 @@
     // スクロール中のタップでも優先して動作させる
     scrollDownBtn.addEventListener('pointerdown', (event) => {
       event.preventDefault();
+      event.stopPropagation();
+      scrollToBottom();
+    }, { passive: false });
+
+    scrollDownBtn.addEventListener('touchstart', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
       scrollToBottom();
     }, { passive: false });
 

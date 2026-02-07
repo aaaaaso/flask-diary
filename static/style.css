@@ -229,6 +229,7 @@ h2 {
   pointer-events: none;
   transition: opacity 0.25s ease;
   z-index: 900;
+  touch-action: none;
 }
 
 .scroll-down.is-visible {
