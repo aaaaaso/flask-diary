@@ -3,15 +3,41 @@ import os
 from notion_client import Client
 from datetime import datetime
 from dotenv import load_dotenv
+import time
 
 load_dotenv()
 
 NOTION_TOKEN = os.getenv('NOTION_TOKEN')
 client = Client(auth=NOTION_TOKEN)
 
+# In-memory cache for Notion fetches (per page_id)
+_CACHE = {}
+_CACHE_TTL_SECONDS = int(os.getenv('NOTION_CACHE_TTL_SECONDS', '300'))
+
+def _get_cached(page_id: str):
+    if _CACHE_TTL_SECONDS <= 0:
+        return None
+    cached = _CACHE.get(page_id)
+    if not cached:
+        return None
+    expires_at, diary = cached
+    if time.time() >= expires_at:
+        _CACHE.pop(page_id, None)
+        return None
+    return diary
+
+def _set_cache(page_id: str, diary):
+    if _CACHE_TTL_SECONDS <= 0:
+        return
+    _CACHE[page_id] = (time.time() + _CACHE_TTL_SECONDS, diary)
+
 def fetch_diary_entries(page_id=None):
     if page_id is None:
         page_id = os.getenv('NOTION_PAGE_ID')
+
+    cached = _get_cached(page_id)
+    if cached is not None:
+        return cached
 
     diary = []
     current_date = None
@@ -54,4 +80,5 @@ def fetch_diary_entries(page_id=None):
         html = "\n".join([f"<p class='diary-block'>{line}</p>" for line in current_lines])
         diary.append({"date": current_date, "html": html})
 
+    _set_cache(page_id, diary)
     return diary
