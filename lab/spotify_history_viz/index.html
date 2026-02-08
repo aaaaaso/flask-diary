@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MY SPOTIFY DATA</title>
+  <meta name="description" content="私のSpotifyデータを可視化。" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="monthBackdrop" class="month-backdrop"></div>
+  <main class="page">
+    <section class="header">
+      <div>
+        <h1>MY SPOTIFY DATA</h1>
+      </div>
+      <div class="controls">
+        <button id="rangeToggle" class="range" type="button">
+          <div class="range-label">期間</div>
+          <div id="rangeValue" class="range-value">-</div>
+        </button>
+      </div>
+    </section>
+
+    <section id="monthPanel" class="card month-panel" aria-hidden="true">
+      <div class="month-head">
+        <div class="month-title">PERIOD</div>
+      </div>
+      <div id="monthGrid" class="month-grid"></div>
+    </section>
+
+    <section class="card chart-section">
+      <div class="chart-head">
+        <div class="chart-title">music vs podcast</div>
+      </div>
+      <div id="chart" class="chart"></div>
+      <div id="emptyHint" class="empty">データがありません</div>
+    </section>
+
+    <section class="card rank-section">
+      <div class="rank-head">
+        <div class="rank-title">TOP ARTISTS</div>
+        <div class="rank-sub">指定期間の上位10</div>
+      </div>
+      <div class="rank-controls">
+        <div class="type-toggle" role="group" aria-label="Content type">
+          <button id="typeMusic" class="type-btn active" type="button">music</button>
+          <button id="typePodcast" class="type-btn" type="button">podcast</button>
+        </div>
+        <div class="type-toggle" role="group" aria-label="Reason filter">
+          <button id="reasonFiltered" class="type-btn active" type="button">USER SELECTED</button>
+          <button id="reasonAll" class="type-btn" type="button">all</button>
+        </div>
+      </div>
+      <div class="rank-grid">
+        <div class="rank-block">
+          <div class="rank-label">時間の合計（分）</div>
+          <div id="rankMinutes" class="rank-chart"></div>
+          <div class="rank-pager">
+            <button class="pager-btn" data-target="minutes" data-dir="-1" type="button">‹</button>
+            <div id="pagerMinutes" class="pager-label">1/1</div>
+            <button class="pager-btn" data-target="minutes" data-dir="1" type="button">›</button>
+          </div>
+        </div>
+        <div class="rank-block">
+          <div class="rank-label">再生数</div>
+          <div id="rankPlays" class="rank-chart"></div>
+          <div class="rank-pager">
+            <button class="pager-btn" data-target="plays" data-dir="-1" type="button">‹</button>
+            <div id="pagerPlays" class="pager-label">1/1</div>
+            <button class="pager-btn" data-target="plays" data-dir="1" type="button">›</button>
+          </div>
+        </div>
+        <div class="rank-block">
+          <div id="rankUniqueLabel" class="rank-label">曲数</div>
+          <div id="rankUnique" class="rank-chart"></div>
+          <div class="rank-pager">
+            <button class="pager-btn" data-target="unique" data-dir="-1" type="button">‹</button>
+            <div id="pagerUnique" class="pager-label">1/1</div>
+            <button class="pager-btn" data-target="unique" data-dir="1" type="button">›</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card scatter-section">
+      <div class="chart-head">
+        <div class="chart-title">Artist Scatter</div>
+        <div id="scatterSub" class="rank-sub">曲数 or 再生数 上位20アーティスト</div>
+      </div>
+      <div id="scatter" class="chart scatter-wrap"></div>
+    </section>
+
+    <section class="card artist-section">
+      <div class="chart-head">
+        <div class="chart-title">Artist Search</div>
+        <div class="rank-sub">選択したアーティストの再生時間推移</div>
+      </div>
+      <div class="artist-controls">
+        <input id="artistSearch" class="artist-input" type="search" placeholder="アーティスト名を検索" />
+      </div>
+      <div id="artistResults" class="artist-results"></div>
+      <div id="artistLegend" class="artist-legend"></div>
+      <div id="artistChart" class="chart"></div>
+      <div class="artist-footer">
+        <label class="artist-item">
+          <input id="artistTopToggle" type="checkbox" />
+          <span>TOP ARTISTをまとめて選択する</span>
+        </label>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
