@@ -220,9 +220,15 @@
       <div class="grid">
         <div>
           <label for="dataInput">データ（タブ/カンマ/空白区切り）</label>
-          <textarea id="dataInput" placeholder="x	y	...&#10;22	14	&#10;30	16	&#10;28	23	"></textarea>
+          <textarea id="dataInput" placeholder="x	y&#10;22	14&#10;30	16&#10;28	23"></textarea>
           <div class="muted" style="margin-top: 6px;" id="delimiterNote"></div>
           <div class="muted" style="margin-top: 6px;" id="skipNotice"></div>
+          <div class="error" id="mainDataError"></div>
+          <div style="margin-top: 14px;">
+            <label for="extraInput">追加データ（任意）</label>
+            <textarea id="extraInput" placeholder="label	a	b&#10;foo	12	3&#10;bar	8	5"></textarea>
+            <div class="error" id="extraError"></div>
+          </div>
         </div>
         <div>
           <div class="muted" style="margin-bottom: 8px;">データ概要</div>
@@ -262,6 +268,10 @@
             <input type="checkbox" id="jitter" />
             ジッターを有効化
           </label>
+          <label class="toggle">
+            <input type="checkbox" id="showTrendline" />
+            トレンドラインを表示
+          </label>
           <div style="margin-top: 10px;">
             <label for="labelColumn">label列</label>
             <select id="labelColumn">
@@ -271,6 +281,7 @@
           <div style="margin-top: 10px;">
             <label for="filterExpr">filter条件</label>
             <input type="text" id="filterExpr" placeholder="例: a > 0 & b <= 100" />
+            <div class="muted" style="margin-top: 6px;" id="detectedColumns"></div>
           </div>
         </div>
         <div>
@@ -307,7 +318,8 @@
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
 
-    const parseCellNumber = (raw, removeComma, hasPercent) => {
+    const parseCellNumber = (raw, removeComma) => {
+      const hasPercent = raw.includes("%");
       let cleaned = raw.trim();
       if (removeComma) cleaned = cleaned.replace(/,/g, "");
       if (hasPercent) cleaned = cleaned.replace(/%/g, "");
@@ -316,8 +328,8 @@
       return hasPercent ? num / 100 : num;
     };
 
-    const parseFilterValue = (raw, removeComma, hasPercent) => {
-      const maybeNum = parseCellNumber(raw, removeComma, hasPercent);
+    const parseFilterValue = (raw, removeComma) => {
+      const maybeNum = parseCellNumber(raw, removeComma);
       if (Number.isFinite(maybeNum)) return maybeNum;
       return raw.trim();
     };
@@ -331,7 +343,6 @@
     const parseTable = (raw, hasHeader) => {
       const hasTab = raw.includes("\t");
       const hasNewline = raw.includes("\n");
-      const hasPercent = raw.includes("%");
       const removeComma = hasTab || hasNewline;
       const lines = raw
         .replace(/\r\n?/g, "\n")
@@ -343,7 +354,7 @@
       const rows = [];
       let skipped = 0;
       let maxCols = 2;
-      if (lines.length === 0) return { header, rows, skipped, maxCols, removeComma, hasPercent };
+      if (lines.length === 0) return { header, rows, skipped, maxCols, removeComma };
 
       let startIndex = 0;
       if (hasHeader) {
@@ -366,8 +377,8 @@
           skipped += 1;
           continue;
         }
-        const a = parseCellNumber(cells[0], removeComma, hasPercent);
-        const b = parseCellNumber(cells[1], removeComma, hasPercent);
+        const a = parseCellNumber(cells[0], removeComma);
+        const b = parseCellNumber(cells[1], removeComma);
         if (!Number.isFinite(a) || !Number.isFinite(b)) {
           skipped += 1;
           continue;
@@ -387,7 +398,51 @@
         }
       }
 
-      return { header, rows, skipped, maxCols, removeComma, hasPercent };
+      return { header, rows, skipped, maxCols, removeComma };
+    };
+
+    const parseExtraTable = (raw, hasHeader) => {
+      const hasTab = raw.includes("\t");
+      const hasNewline = raw.includes("\n");
+      const removeComma = hasTab || hasNewline;
+      const lines = raw
+        .replace(/\r\n?/g, "\n")
+        .split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0);
+
+      let header = [];
+      const rows = [];
+      const maxExtraCols = Math.max(0, MAX_COLUMNS - 2);
+      let maxCols = 0;
+      if (lines.length === 0) return { header, rows, maxCols, removeComma };
+
+      let startIndex = 0;
+      if (hasHeader) {
+        const headCells = splitRow(lines[0]).map((c) => c.trim()).slice(0, maxExtraCols);
+        maxCols = Math.max(maxCols, headCells.length);
+        header = Array.from({ length: maxCols }, (_, i) => {
+          const v = headCells[i];
+          return v && v.length > 0 ? v : `col${i + 3}`;
+        });
+        startIndex = 1;
+      }
+
+      for (let i = startIndex; i < lines.length; i += 1) {
+        const cells = splitRow(lines[i]).map((c) => c.trim()).slice(0, maxExtraCols);
+        maxCols = Math.max(maxCols, cells.length);
+        rows.push(cells);
+      }
+
+      if (!hasHeader) {
+        header = Array.from({ length: maxCols }, (_, i) => `col${i + 3}`);
+      } else if (header.length < maxCols) {
+        for (let i = header.length; i < maxCols; i += 1) {
+          header.push(`col${i + 3}`);
+        }
+      }
+
+      return { header, rows, maxCols, removeComma };
     };
 
     const normalizeFilterExpr = (rawExpr) => rawExpr
@@ -432,10 +487,10 @@
 
       // eslint-disable-next-line no-new-func
       const fn = new Function(...argNames, `return (${expr});`);
-      return (cells, removeComma, hasPercent) => {
+      return (values) => {
         const valueMap = {};
         for (let i = 0; i < colToArg.length; i += 1) {
-          const v = parseFilterValue(cells[i] ?? "", removeComma, hasPercent);
+          const v = values[i];
           for (const name of colToArg[i]) {
             valueMap[name] = v;
           }
@@ -494,6 +549,27 @@
       return niceFrac * pow10;
     };
 
+    const buildTrendlineEvaluator = (points) => {
+      if (!points || points.length < 2) return null;
+      const n = points.length;
+      let sumX = 0;
+      let sumY = 0;
+      let sumXX = 0;
+      let sumXY = 0;
+      for (const p of points) {
+        sumX += p.x;
+        sumY += p.y;
+        sumXX += p.x * p.x;
+        sumXY += p.x * p.y;
+      }
+      const denom = n * sumXX - sumX * sumX;
+      if (!Number.isFinite(denom) || Math.abs(denom) < 1e-12) return null;
+      const slope = (n * sumXY - sumX * sumY) / denom;
+      const intercept = (sumY - slope * sumX) / n;
+      if (!Number.isFinite(slope) || !Number.isFinite(intercept)) return null;
+      return (x) => slope * x + intercept;
+    };
+
     const updateLabelColumnOptions = (headers, maxCols) => {
       const selectEl = document.getElementById("labelColumn");
       if (!selectEl) return "";
@@ -510,7 +586,7 @@
       return selectEl.value;
     };
 
-    const renderScatter = (points, xLabel, yLabel, jitterOn, lineEval, labelHeader) => {
+    const renderScatter = (points, xLabel, yLabel, jitterOn, lineEval, labelHeader, showTrendline) => {
       const container = document.getElementById("scatterChart");
       if (points.length === 0) {
         container.innerHTML = '<div class="muted">描写できる点がありません。</div>';
@@ -567,14 +643,14 @@
         })
         .join("");
 
-      let linePath = "";
-      if (lineEval) {
+      const buildFunctionPath = (fn, stroke, strokeWidth, dasharray = "") => {
+        if (!fn) return "";
         const segments = [];
         const steps = 180;
         let current = [];
         for (let i = 0; i <= steps; i += 1) {
           const x = (maxX * i) / steps;
-          const y = lineEval(x);
+          const y = fn(x);
           if (!Number.isFinite(y)) {
             if (current.length > 1) segments.push(current);
             current = [];
@@ -590,10 +666,14 @@
           current.push(`${cx},${cy}`);
         }
         if (current.length > 1) segments.push(current);
-        linePath = segments
-          .map((pts) => `<polyline points="${pts.join(" ")}" fill="none" stroke="#8f98a3" stroke-width="2" stroke-dasharray="6 6" />`)
+        return segments
+          .map((pts) => `<polyline points="${pts.join(" ")}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}"${dasharray ? ` stroke-dasharray="${dasharray}"` : ""} />`)
           .join("");
-      }
+      };
+
+      const linePath = buildFunctionPath(lineEval, "#8f98a3", 2, "6 6");
+      const trendEval = showTrendline ? buildTrendlineEvaluator(points) : null;
+      const trendPath = buildFunctionPath(trendEval, "#9ca3af", 1.2);
 
       container.innerHTML = [
         `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Scatter plot">`,
@@ -602,6 +682,7 @@
         `<line x1="${pad.left}" y1="${pad.top + innerH}" x2="${pad.left + innerW}" y2="${pad.top + innerH}" stroke="rgba(31,35,40,0.26)" />`,
         `<line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${pad.top + innerH}" stroke="rgba(31,35,40,0.26)" />`,
         linePath,
+        trendPath,
         dots,
         `<text x="${pad.left + innerW / 2}" y="${height - 12}" text-anchor="middle" font-size="12" fill="#4b5563">${xLabel}</text>`,
         `<text x="16" y="${pad.top + innerH / 2}" text-anchor="middle" font-size="12" fill="#4b5563" transform="rotate(-90 16 ${pad.top + innerH / 2})">${yLabel}</text>`,
@@ -633,20 +714,27 @@
 
     const build = () => {
       const raw = document.getElementById("dataInput").value;
+      const extraRaw = document.getElementById("extraInput").value;
       const hasHeader = document.getElementById("hasHeader").checked;
       const swapAxes = document.getElementById("swapAxes").checked;
       const jitterOn = document.getElementById("jitter").checked;
+      const showTrendline = document.getElementById("showTrendline").checked;
       const filterExpr = document.getElementById("filterExpr").value;
       const lineFormula = document.getElementById("lineFormula").value;
       const xUpperRaw = document.getElementById("xUpper").value.trim();
       const yUpperRaw = document.getElementById("yUpper").value.trim();
       const errorEl = document.getElementById("error");
+      const mainDataErrorEl = document.getElementById("mainDataError");
+      const extraErrorEl = document.getElementById("extraError");
+      const detectedColumnsEl = document.getElementById("detectedColumns");
       const noteEl = document.getElementById("delimiterNote");
 
       errorEl.textContent = "";
+      if (mainDataErrorEl) mainDataErrorEl.textContent = "";
+      if (extraErrorEl) extraErrorEl.textContent = "";
       const hasTab = raw.includes("\t");
       const hasComma = raw.includes(",");
-      const hasPercent = raw.includes("%");
+      const hasPercent = /(^|[\s,\t])[-+]?\d[\d,]*(\.\d+)?\s*%/.test(raw);
       const notes = [];
       notes.push(
         hasTab
@@ -676,20 +764,55 @@
       }
 
       const parsed = parseTable(raw, hasHeader);
+      if (parsed.maxCols > 2) {
+        if (mainDataErrorEl) mainDataErrorEl.textContent = "メインデータは2列にしてください!";
+        document.getElementById("scatterChart").innerHTML = "";
+        return;
+      }
+      const extraParsed = parseExtraTable(extraRaw, hasHeader);
+      const hasExtra = extraRaw.trim().length > 0;
+      if (hasExtra && parsed.rows.length !== extraParsed.rows.length) {
+        if (extraErrorEl) extraErrorEl.textContent = "行数が異なります!";
+        document.getElementById("scatterChart").innerHTML = "";
+        return;
+      }
+
+      const mergedHeaders = [
+        parsed.header[0] || "x",
+        parsed.header[1] || "y",
+        ...extraParsed.header,
+      ].slice(0, MAX_COLUMNS);
+      if (detectedColumnsEl) {
+        const hasAnyInput = raw.trim().length > 0 || extraRaw.trim().length > 0;
+        detectedColumnsEl.textContent = hasAnyInput
+          ? `検出カラム: ${mergedHeaders.join(", ")}`
+          : "";
+      }
+      let rows = parsed.rows.map((r, idx) => {
+        const extraCells = hasExtra ? (extraParsed.rows[idx] || []) : [];
+        const cells = [r.cells[0] ?? "", r.cells[1] ?? "", ...extraCells].slice(0, MAX_COLUMNS);
+        const filterValues = [
+          parseFilterValue(cells[0] ?? "", parsed.removeComma),
+          parseFilterValue(cells[1] ?? "", parsed.removeComma),
+          ...extraCells.map((c) => parseFilterValue(c, extraParsed.removeComma)),
+        ].slice(0, MAX_COLUMNS);
+        return { x: r.x, y: r.y, cells, filterValues };
+      });
+      const mergedMaxCols = Math.min(MAX_COLUMNS, Math.max(2, mergedHeaders.length));
+
       let filterEval = null;
       try {
-        filterEval = buildFilterEvaluator(filterExpr, parsed.header, parsed.maxCols);
+        filterEval = buildFilterEvaluator(filterExpr, mergedHeaders, mergedMaxCols);
       } catch (e) {
         errorEl.textContent = e instanceof Error ? e.message : "filter条件の解釈に失敗しました。";
         return;
       }
       const skipNoticeEl = document.getElementById("skipNotice");
-      const selectedLabelColRaw = updateLabelColumnOptions(parsed.header, parsed.maxCols);
+      const selectedLabelColRaw = updateLabelColumnOptions(mergedHeaders, mergedMaxCols);
       const selectedLabelCol = selectedLabelColRaw === "" ? -1 : Number(selectedLabelColRaw);
-      const labelHeader = selectedLabelCol >= 2 ? (parsed.header[selectedLabelCol] || `col${selectedLabelCol + 1}`) : "";
-      let xLabel = parsed.header[0] || "x";
-      let yLabel = parsed.header[1] || "y";
-      let rows = parsed.rows.map((r) => ({ ...r }));
+      const labelHeader = selectedLabelCol >= 2 ? (mergedHeaders[selectedLabelCol] || `col${selectedLabelCol + 1}`) : "";
+      let xLabel = mergedHeaders[0] || "x";
+      let yLabel = mergedHeaders[1] || "y";
 
       if (swapAxes) {
         rows = rows.map((r) => ({ x: r.y, y: r.x }));
@@ -699,7 +822,7 @@
       }
 
       const filteredRows = filterEval
-        ? rows.filter((r) => filterEval(r.cells, parsed.removeComma, parsed.hasPercent))
+        ? rows.filter((r) => filterEval(r.filterValues))
         : rows;
 
       const plotted = filteredRows.filter((r) => {
@@ -721,7 +844,7 @@
           : "";
       }
 
-      renderScatter(plotted, xLabel, yLabel, jitterOn, lineEval, labelHeader);
+      renderScatter(plotted, xLabel, yLabel, jitterOn, lineEval, labelHeader, showTrendline);
     };
 
     const debounce = (fn, wait = 180) => {
@@ -735,9 +858,11 @@
     const debouncedBuild = debounce(build, 180);
 
     document.getElementById("dataInput").addEventListener("input", debouncedBuild);
+    document.getElementById("extraInput").addEventListener("input", debouncedBuild);
     document.getElementById("hasHeader").addEventListener("change", build);
     document.getElementById("swapAxes").addEventListener("change", build);
     document.getElementById("jitter").addEventListener("change", build);
+    document.getElementById("showTrendline").addEventListener("change", build);
     document.getElementById("labelColumn").addEventListener("change", build);
     document.getElementById("filterExpr").addEventListener("input", debouncedBuild);
     document.getElementById("lineFormula").addEventListener("input", debouncedBuild);
