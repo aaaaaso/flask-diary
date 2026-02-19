@@ -536,8 +536,8 @@
       const spanY = maxY - minY;
       const xFor = (x) => pad.left + ((x - minX) / spanX) * innerW;
       const yFor = (y) => pad.top + innerH - ((y - minY) / spanY) * innerH;
-      const jitterX = jitterOn ? Math.max(spanX * 0.01, 0.15) : 0;
-      const jitterY = jitterOn ? Math.max(spanY * 0.01, 0.15) : 0;
+      const jitterX = jitterOn ? Math.max(spanX * 0.01, 0.005) : 0;
+      const jitterY = jitterOn ? Math.max(spanY * 0.01, 0.005) : 0;
 
       const gridLines = [];
       for (let xTick = 0; xTick <= maxX + xStep / 2; xTick += xStep) {
