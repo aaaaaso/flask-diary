@@ -212,7 +212,7 @@
 <body>
   <header class="fade-in">
     <h1>Scatter Plot</h1>
-    <div class="subtitle">2列データをコピペして、散布図を描写!</div>
+    <div class="subtitle">データをコピペで散布図を描写!</div>
   </header>
 
   <main>
@@ -220,13 +220,18 @@
       <div class="grid">
         <div>
           <label for="dataInput">データ（タブ/カンマ/空白区切り）</label>
-          <textarea id="dataInput" placeholder="x	y&#10;22	14&#10;30	16&#10;28	23"></textarea>
+          <textarea id="dataInput" placeholder="2列のデータを貼り付け（label, x, y の3列でもok）&#10;&#10;例:&#10;x	y&#10;10	3&#10;20	5"></textarea>
+          <label class="toggle" style="margin-top: 8px;">
+            <input type="checkbox" id="hasHeader" checked />
+            1行目をheaderとして扱う
+          </label>
+          <div class="muted" style="margin-top: 6px;" id="mainLabelNotice"></div>
           <div class="muted" style="margin-top: 6px;" id="delimiterNote"></div>
           <div class="muted" style="margin-top: 6px;" id="skipNotice"></div>
           <div class="error" id="mainDataError"></div>
           <div style="margin-top: 14px;">
             <label for="extraInput">追加データ（任意）</label>
-            <textarea id="extraInput" placeholder="label	a	b&#10;foo	12	3&#10;bar	8	5"></textarea>
+            <textarea id="extraInput"></textarea>
             <div class="error" id="extraError"></div>
           </div>
         </div>
@@ -256,10 +261,6 @@
     <section class="panel fade-in">
       <div class="grid">
         <div>
-          <label class="toggle">
-            <input type="checkbox" id="hasHeader" checked />
-            1行目をheaderとして扱う
-          </label>
           <label class="toggle">
             <input type="checkbox" id="swapAxes" />
             x軸 / y軸を入れ替える
@@ -350,55 +351,73 @@
         .map((l) => l.trim())
         .filter((l) => l.length > 0);
 
-      let header = ["x", "y"];
       const rows = [];
       let skipped = 0;
-      let maxCols = 2;
-      if (lines.length === 0) return { header, rows, skipped, maxCols, removeComma };
+      let maxCols = 0;
+      if (lines.length === 0) {
+        return {
+          rows,
+          skipped,
+          maxCols,
+          removeComma,
+          mainCols: 2,
+          xHeader: "x",
+          yHeader: "y",
+          mainLabelHeader: "Col1",
+        };
+      }
 
       let startIndex = 0;
+      let headCells = [];
       if (hasHeader) {
-        const headCells = splitRow(lines[0]).map((c) => c.trim()).slice(0, MAX_COLUMNS);
+        headCells = splitRow(lines[0]).map((c) => c.trim()).slice(0, MAX_COLUMNS);
         maxCols = Math.max(maxCols, headCells.length);
-        header = Array.from({ length: maxCols }, (_, i) => {
-          const v = headCells[i];
-          if (v && v.length > 0) return v;
-          if (i === 0) return "x";
-          if (i === 1) return "y";
-          return `col${i + 1}`;
-        });
         startIndex = 1;
       }
 
+      const sourceRows = [];
       for (let i = startIndex; i < lines.length; i += 1) {
         const cells = splitRow(lines[i]).map((c) => c.trim()).slice(0, MAX_COLUMNS);
         maxCols = Math.max(maxCols, cells.length);
-        if (cells.length < 2) {
+        sourceRows.push(cells);
+      }
+
+      const mainCols = maxCols >= 3 ? 3 : 2;
+      const xCol = mainCols === 3 ? 1 : 0;
+      const yCol = mainCols === 3 ? 2 : 1;
+      const labelCol = 0;
+
+      for (const cells of sourceRows) {
+        if (cells.length < mainCols) {
           skipped += 1;
           continue;
         }
-        const a = parseCellNumber(cells[0], removeComma);
-        const b = parseCellNumber(cells[1], removeComma);
+        const a = parseCellNumber(cells[xCol], removeComma);
+        const b = parseCellNumber(cells[yCol], removeComma);
         if (!Number.isFinite(a) || !Number.isFinite(b)) {
           skipped += 1;
           continue;
         }
-        rows.push({ x: a, y: b, cells });
-      }
-
-      if (!hasHeader) {
-        header = Array.from({ length: maxCols }, (_, i) => {
-          if (i === 0) return "x";
-          if (i === 1) return "y";
-          return `col${i + 1}`;
+        rows.push({
+          x: a,
+          y: b,
+          xRaw: cells[xCol] ?? "",
+          yRaw: cells[yCol] ?? "",
+          mainLabelRaw: mainCols === 3 ? (cells[labelCol] ?? "") : "",
         });
-      } else if (header.length < maxCols) {
-        for (let i = header.length; i < maxCols; i += 1) {
-          header.push(`col${i + 1}`);
-        }
       }
 
-      return { header, rows, skipped, maxCols, removeComma };
+      const xHeader = hasHeader
+        ? (headCells[xCol] && headCells[xCol].length > 0 ? headCells[xCol] : "x")
+        : "x";
+      const yHeader = hasHeader
+        ? (headCells[yCol] && headCells[yCol].length > 0 ? headCells[yCol] : "y")
+        : "y";
+      const mainLabelHeader = hasHeader
+        ? (headCells[labelCol] && headCells[labelCol].length > 0 ? headCells[labelCol] : "Col1")
+        : "Col1";
+
+      return { rows, skipped, maxCols, removeComma, mainCols, xHeader, yHeader, mainLabelHeader };
     };
 
     const parseExtraTable = (raw, hasHeader) => {
@@ -570,7 +589,7 @@
       return (x) => slope * x + intercept;
     };
 
-    const updateLabelColumnOptions = (headers, maxCols) => {
+    const updateLabelColumnOptions = (headers, maxCols, defaultValue = "") => {
       const selectEl = document.getElementById("labelColumn");
       if (!selectEl) return "";
       const prev = selectEl.value;
@@ -582,6 +601,8 @@
       selectEl.innerHTML = options.join("");
       if (prev !== "" && Number.isInteger(Number(prev)) && Number(prev) < maxCols) {
         selectEl.value = prev;
+      } else if (defaultValue !== "" && Number(defaultValue) < maxCols) {
+        selectEl.value = defaultValue;
       }
       return selectEl.value;
     };
@@ -725,27 +746,32 @@
       const yUpperRaw = document.getElementById("yUpper").value.trim();
       const errorEl = document.getElementById("error");
       const mainDataErrorEl = document.getElementById("mainDataError");
+      const mainLabelNoticeEl = document.getElementById("mainLabelNotice");
       const extraErrorEl = document.getElementById("extraError");
       const detectedColumnsEl = document.getElementById("detectedColumns");
       const noteEl = document.getElementById("delimiterNote");
 
       errorEl.textContent = "";
       if (mainDataErrorEl) mainDataErrorEl.textContent = "";
+      if (mainLabelNoticeEl) mainLabelNoticeEl.textContent = "";
       if (extraErrorEl) extraErrorEl.textContent = "";
       const hasTab = raw.includes("\t");
       const hasComma = raw.includes(",");
       const hasPercent = /(^|[\s,\t])[-+]?\d[\d,]*(\.\d+)?\s*%/.test(raw);
+      const hasMainInput = raw.trim().length > 0;
       const notes = [];
-      notes.push(
-        hasTab
-          ? "タブ区切りとして検出しています。"
-          : hasComma
-            ? "カンマ区切りとして検出しています。"
-            : "空白区切りとして検出しています。"
-      );
-      if (hasPercent) notes.push("百分率に直して扱います。");
-      if (hasComma && (hasTab || raw.includes("\n"))) {
-        notes.push("カンマは除去して扱います。");
+      if (hasMainInput) {
+        notes.push(
+          hasTab
+            ? "タブ区切りとして検出しています。"
+            : hasComma
+              ? "カンマ区切りとして検出しています。"
+              : "空白区切りとして検出しています。"
+        );
+        if (hasPercent) notes.push("百分率に直して扱います。");
+        if (hasComma && (hasTab || raw.includes("\n"))) {
+          notes.push("カンマは除去して扱います。");
+        }
       }
       noteEl.textContent = notes.join(" ");
 
@@ -764,10 +790,13 @@
       }
 
       const parsed = parseTable(raw, hasHeader);
-      if (parsed.maxCols > 2) {
-        if (mainDataErrorEl) mainDataErrorEl.textContent = "メインデータは2列にしてください!";
+      if (parsed.maxCols > 3) {
+        if (mainDataErrorEl) mainDataErrorEl.textContent = "メインデータは2列または3列にしてください!";
         document.getElementById("scatterChart").innerHTML = "";
         return;
+      }
+      if (mainLabelNoticeEl && parsed.mainCols === 3) {
+        mainLabelNoticeEl.textContent = `${parsed.mainLabelHeader}はラベルとして扱います。`;
       }
       const extraParsed = parseExtraTable(extraRaw, hasHeader);
       const hasExtra = extraRaw.trim().length > 0;
@@ -778,8 +807,9 @@
       }
 
       const mergedHeaders = [
-        parsed.header[0] || "x",
-        parsed.header[1] || "y",
+        parsed.xHeader || "x",
+        parsed.yHeader || "y",
+        ...(parsed.mainCols === 3 ? [parsed.mainLabelHeader || "Col1"] : []),
         ...extraParsed.header,
       ].slice(0, MAX_COLUMNS);
       if (detectedColumnsEl) {
@@ -790,10 +820,16 @@
       }
       let rows = parsed.rows.map((r, idx) => {
         const extraCells = hasExtra ? (extraParsed.rows[idx] || []) : [];
-        const cells = [r.cells[0] ?? "", r.cells[1] ?? "", ...extraCells].slice(0, MAX_COLUMNS);
+        const cells = [
+          r.xRaw ?? "",
+          r.yRaw ?? "",
+          ...(parsed.mainCols === 3 ? [r.mainLabelRaw ?? ""] : []),
+          ...extraCells,
+        ].slice(0, MAX_COLUMNS);
         const filterValues = [
           parseFilterValue(cells[0] ?? "", parsed.removeComma),
           parseFilterValue(cells[1] ?? "", parsed.removeComma),
+          ...(parsed.mainCols === 3 ? [parseFilterValue(r.mainLabelRaw ?? "", parsed.removeComma)] : []),
           ...extraCells.map((c) => parseFilterValue(c, extraParsed.removeComma)),
         ].slice(0, MAX_COLUMNS);
         return { x: r.x, y: r.y, cells, filterValues };
@@ -808,7 +844,8 @@
         return;
       }
       const skipNoticeEl = document.getElementById("skipNotice");
-      const selectedLabelColRaw = updateLabelColumnOptions(mergedHeaders, mergedMaxCols);
+      const defaultLabelCol = parsed.mainCols === 3 ? "2" : "";
+      const selectedLabelColRaw = updateLabelColumnOptions(mergedHeaders, mergedMaxCols, defaultLabelCol);
       const selectedLabelCol = selectedLabelColRaw === "" ? -1 : Number(selectedLabelColRaw);
       const labelHeader = selectedLabelCol >= 2 ? (mergedHeaders[selectedLabelCol] || `col${selectedLabelCol + 1}`) : "";
       let xLabel = mergedHeaders[0] || "x";
