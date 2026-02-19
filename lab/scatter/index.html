@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scatter plot</title>
+  <meta name="description" content="データを雑にコピペして散布図を書く">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f3f4f6;
+      --ink: #1f2328;
+      --accent: #3b3f45;
+      --accent-2: #8f98a3;
+      --card: #ffffff;
+      --muted: #6b7280;
+      --ring: rgba(31, 35, 40, 0.1);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(1200px 500px at 10% -10%, rgba(31,35,40,0.08), transparent 60%),
+        radial-gradient(900px 400px at 110% 10%, rgba(143,152,163,0.12), transparent 60%),
+        var(--bg);
+      color: var(--ink);
+      font-family: "Noto Sans JP", system-ui, -apple-system, sans-serif;
+      min-height: 100dvh;
+    }
+
+    header {
+      padding: 36px 22px 12px;
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      font-size: clamp(28px, 3vw, 40px);
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 12px 22px 60px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .panel {
+      background: var(--card);
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 18px 50px rgba(31, 28, 23, 0.08);
+      border: 1px solid var(--ring);
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    label {
+      font-size: 13px;
+      color: var(--muted);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    input[type="number"],
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--ring);
+      background: white;
+      font-size: 16px;
+      font-family: "Noto Sans JP", system-ui, -apple-system, sans-serif;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 180px;
+      padding: 12px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--ring);
+      background: white;
+      font-size: 14px;
+      font-family: "Noto Sans JP", system-ui, -apple-system, sans-serif;
+      resize: vertical;
+    }
+
+    .toggle {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 13px;
+      color: var(--muted);
+      margin-right: 12px;
+    }
+
+    .stats-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .stats-table th,
+    .stats-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--ring);
+      text-align: left;
+    }
+
+    .stats-table th {
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .error {
+      color: #b42318;
+      font-size: 13px;
+      margin-top: 8px;
+      min-height: 20px;
+    }
+
+    .chart-box {
+      border: 1px solid var(--ring);
+      border-radius: 8px;
+      padding: 14px;
+      background: #fafafa;
+    }
+
+    .chart-title {
+      margin: 0 0 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    #scatterChart svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .fade-in {
+      animation: fadeUp 0.6s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <header class="fade-in">
+    <h1>Scatter Plot</h1>
+    <div class="subtitle">2列データをコピペして、散布図を描写!</div>
+  </header>
+
+  <main>
+    <section class="panel fade-in">
+      <div class="grid">
+        <div>
+          <label for="dataInput">データ（タブ/カンマ/空白区切りの2列）</label>
+          <textarea id="dataInput" placeholder="x	y&#10;22	14&#10;30	16&#10;28	23"></textarea>
+          <div class="muted" style="margin-top: 6px;" id="delimiterNote"></div>
+          <div class="muted" style="margin-top: 6px;" id="skipNotice"></div>
+        </div>
+        <div>
+          <div class="muted" style="margin-bottom: 8px;">データ概要</div>
+          <table class="stats-table">
+            <thead>
+              <tr><th>指標</th><th>値</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>行数</td><td id="parsedRows">-</td></tr>
+              <tr><td>プロット中</td><td id="plottedRows">-</td></tr>
+              <tr><td>描写範囲外</td><td id="eitherOutside">-</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel fade-in">
+      <div class="grid">
+        <div>
+          <label class="toggle">
+            <input type="checkbox" id="hasHeader" checked />
+            1行目をheaderとして扱う
+          </label>
+          <label class="toggle">
+            <input type="checkbox" id="swapAxes" />
+            x軸 / y軸を入れ替える
+          </label>
+          <label class="toggle">
+            <input type="checkbox" id="jitter" />
+            ジッターを有効化
+          </label>
+        </div>
+        <div>
+          <div style="margin-bottom: 12px;">
+            <label for="lineFormula">参照線（例: y=x/2+5）</label>
+            <input type="text" id="lineFormula" placeholder="y=x/2+5" />
+          </div>
+          <div style="margin-bottom: 12px;">
+            <label for="xUpper">x upper（任意）</label>
+            <input type="number" id="xUpper" step="any" placeholder="例: 30" />
+          </div>
+          <div>
+            <label for="yUpper">y upper（任意）</label>
+            <input type="number" id="yUpper" step="any" placeholder="例: 20" />
+          </div>
+        </div>
+      </div>
+      <div class="error" id="error"></div>
+    </section>
+
+    <section class="panel fade-in">
+      <div class="chart-box">
+        <div class="chart-title">Scatter</div>
+        <div id="scatterChart"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const formatNum = (v) => {
+      if (!Number.isFinite(v)) return "-";
+      return Number.isInteger(v) ? v.toFixed(0) : v.toFixed(2);
+    };
+
+    const parseCellNumber = (raw) => {
+      const cleaned = raw.trim().replace(/,/g, "");
+      const num = Number(cleaned);
+      return Number.isFinite(num) ? num : NaN;
+    };
+
+    const splitRow = (line) => {
+      if (line.includes("\t")) return line.split("\t");
+      if (line.includes(",")) return line.split(",");
+      return line.trim().split(/\s+/);
+    };
+
+    const parseTable = (raw, hasHeader) => {
+      const lines = raw
+        .replace(/\r\n?/g, "\n")
+        .split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0);
+
+      let header = ["x", "y"];
+      const rows = [];
+      let skipped = 0;
+      if (lines.length === 0) return { header, rows, skipped };
+
+      let startIndex = 0;
+      if (hasHeader) {
+        const headCells = splitRow(lines[0]).map((c) => c.trim());
+        header = [
+          headCells[0] && headCells[0].length > 0 ? headCells[0] : "x",
+          headCells[1] && headCells[1].length > 0 ? headCells[1] : "y",
+        ];
+        startIndex = 1;
+      }
+
+      for (let i = startIndex; i < lines.length; i += 1) {
+        const cells = splitRow(lines[i]).map((c) => c.trim());
+        if (cells.length < 2) {
+          skipped += 1;
+          continue;
+        }
+        const a = parseCellNumber(cells[0]);
+        const b = parseCellNumber(cells[1]);
+        if (!Number.isFinite(a) || !Number.isFinite(b)) {
+          skipped += 1;
+          continue;
+        }
+        rows.push({ x: a, y: b });
+      }
+
+      return { header, rows, skipped };
+    };
+
+    const setText = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = String(value);
+    };
+
+    const jitterOffset = (index, axisScale) => {
+      const base = Math.sin((index + 1) * 12.9898) * 43758.5453;
+      const frac = base - Math.floor(base);
+      return (frac - 0.5) * axisScale;
+    };
+
+    const buildLineEvaluator = (rawFormula) => {
+      if (!rawFormula || rawFormula.trim() === "") return null;
+      let expr = rawFormula.trim();
+      expr = expr.replace(/^y\s*=\s*/i, "");
+      if (expr.length === 0) return null;
+
+      const isSafe = /^[0-9xX+\-*/().,\s^a-zA-Z_]*$/.test(expr);
+      if (!isSafe) throw new Error("関数は英数と + - * / () を使ってください。");
+
+      const normalized = expr
+        .replace(/\^/g, "**")
+        .replace(/\b([a-zA-Z_]+)\s*\(/g, (m, fn) => {
+          if (fn.toLowerCase() === "math") return m;
+          return `Math.${fn}(`;
+        })
+        .replace(/\bx\b/gi, "x");
+
+      // eslint-disable-next-line no-new-func
+      const fn = new Function("x", `return (${normalized});`);
+      return (x) => {
+        const y = fn(x);
+        return Number.isFinite(y) ? y : NaN;
+      };
+    };
+
+    const niceStep = (maxValue, targetTicks = 6) => {
+      if (!Number.isFinite(maxValue) || maxValue <= 0) return 1;
+      const raw = maxValue / Math.max(targetTicks, 2);
+      const pow10 = Math.pow(10, Math.floor(Math.log10(raw)));
+      const frac = raw / pow10;
+      let niceFrac = 10;
+      if (frac <= 1) niceFrac = 1;
+      else if (frac <= 2) niceFrac = 2;
+      else if (frac <= 5) niceFrac = 5;
+      else niceFrac = 10;
+      return niceFrac * pow10;
+    };
+
+    const renderScatter = (points, xLabel, yLabel, jitterOn, lineEval) => {
+      const container = document.getElementById("scatterChart");
+      if (points.length === 0) {
+        container.innerHTML = '<div class="muted">描写できる点がありません。</div>';
+        return;
+      }
+
+      const width = 760;
+      const height = 420;
+      const pad = { top: 24, right: 24, bottom: 56, left: 60 };
+      const innerW = width - pad.left - pad.right;
+      const innerH = height - pad.top - pad.bottom;
+
+      const minX = 0;
+      const minY = 0;
+      const maxXData = Math.max(...points.map((p) => p.x));
+      const maxYData = Math.max(...points.map((p) => p.y));
+      const xStep = niceStep(maxXData);
+      const yStep = niceStep(maxYData);
+      const maxX = Math.max(xStep, Math.ceil(Math.max(maxXData, 0) / xStep) * xStep);
+      const maxY = Math.max(yStep, Math.ceil(Math.max(maxYData, 0) / yStep) * yStep);
+
+      const spanX = maxX - minX;
+      const spanY = maxY - minY;
+      const xFor = (x) => pad.left + ((x - minX) / spanX) * innerW;
+      const yFor = (y) => pad.top + innerH - ((y - minY) / spanY) * innerH;
+      const jitterX = jitterOn ? Math.max(spanX * 0.01, 0.15) : 0;
+      const jitterY = jitterOn ? Math.max(spanY * 0.01, 0.15) : 0;
+
+      const gridLines = [];
+      for (let xTick = 0; xTick <= maxX + xStep / 2; xTick += xStep) {
+        const px = xFor(xTick);
+        gridLines.push(
+          `<line x1="${px}" y1="${pad.top}" x2="${px}" y2="${pad.top + innerH}" stroke="rgba(31,35,40,0.08)" />`,
+          `<text x="${px}" y="${pad.top + innerH + 18}" text-anchor="middle" font-size="11" fill="#6b7280">${formatNum(xTick)}</text>`
+        );
+      }
+      for (let yTick = 0; yTick <= maxY + yStep / 2; yTick += yStep) {
+        const py = yFor(yTick);
+        gridLines.push(
+          `<line x1="${pad.left}" y1="${py}" x2="${pad.left + innerW}" y2="${py}" stroke="rgba(31,35,40,0.08)" />`,
+          `<text x="${pad.left - 8}" y="${py + 4}" text-anchor="end" font-size="11" fill="#6b7280">${formatNum(yTick)}</text>`
+        );
+      }
+
+      const dots = points
+        .map((p, idx) => {
+          const jx = jitterOffset(idx, jitterX);
+          const jy = jitterOffset(idx + 999, jitterY);
+          const cx = xFor(p.x + jx);
+          const cy = yFor(p.y + jy);
+          return `<circle cx="${cx}" cy="${cy}" r="4" fill="#3b3f45" opacity="0.78"><title>${xLabel}: ${formatNum(p.x)}, ${yLabel}: ${formatNum(p.y)}</title></circle>`;
+        })
+        .join("");
+
+      let linePath = "";
+      if (lineEval) {
+        const segments = [];
+        const steps = 180;
+        let current = [];
+        for (let i = 0; i <= steps; i += 1) {
+          const x = (maxX * i) / steps;
+          const y = lineEval(x);
+          if (!Number.isFinite(y)) {
+            if (current.length > 1) segments.push(current);
+            current = [];
+            continue;
+          }
+          const cx = xFor(x);
+          const cy = yFor(y);
+          if (cy < pad.top - 1 || cy > pad.top + innerH + 1) {
+            if (current.length > 1) segments.push(current);
+            current = [];
+            continue;
+          }
+          current.push(`${cx},${cy}`);
+        }
+        if (current.length > 1) segments.push(current);
+        linePath = segments
+          .map((pts) => `<polyline points="${pts.join(" ")}" fill="none" stroke="#8f98a3" stroke-width="2" stroke-dasharray="6 6" />`)
+          .join("");
+      }
+
+      container.innerHTML = [
+        `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Scatter plot">`,
+        `<rect x="0" y="0" width="${width}" height="${height}" fill="transparent" />`,
+        ...gridLines,
+        `<line x1="${pad.left}" y1="${pad.top + innerH}" x2="${pad.left + innerW}" y2="${pad.top + innerH}" stroke="rgba(31,35,40,0.26)" />`,
+        `<line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${pad.top + innerH}" stroke="rgba(31,35,40,0.26)" />`,
+        linePath,
+        dots,
+        `<text x="${pad.left + innerW / 2}" y="${height - 12}" text-anchor="middle" font-size="12" fill="#4b5563">${xLabel}</text>`,
+        `<text x="16" y="${pad.top + innerH / 2}" text-anchor="middle" font-size="12" fill="#4b5563" transform="rotate(-90 16 ${pad.top + innerH / 2})">${yLabel}</text>`,
+        `</svg>`,
+      ].join("");
+    };
+
+    const build = () => {
+      const raw = document.getElementById("dataInput").value;
+      const hasHeader = document.getElementById("hasHeader").checked;
+      const swapAxes = document.getElementById("swapAxes").checked;
+      const jitterOn = document.getElementById("jitter").checked;
+      const lineFormula = document.getElementById("lineFormula").value;
+      const xUpperRaw = document.getElementById("xUpper").value.trim();
+      const yUpperRaw = document.getElementById("yUpper").value.trim();
+      const errorEl = document.getElementById("error");
+      const noteEl = document.getElementById("delimiterNote");
+
+      errorEl.textContent = "";
+      noteEl.textContent = raw.includes("\t")
+        ? "タブ区切りとして検出しています。"
+        : raw.includes(",")
+          ? "カンマ区切りとして検出しています。"
+          : "空白区切りとして検出しています。";
+
+      const xUpper = xUpperRaw === "" ? NaN : Number(xUpperRaw);
+      const yUpper = yUpperRaw === "" ? NaN : Number(yUpperRaw);
+      if ((xUpperRaw !== "" && !Number.isFinite(xUpper)) || (yUpperRaw !== "" && !Number.isFinite(yUpper))) {
+        errorEl.textContent = "x upper / y upper には数値を入力してください。";
+        return;
+      }
+      let lineEval = null;
+      try {
+        lineEval = buildLineEvaluator(lineFormula);
+      } catch (e) {
+        errorEl.textContent = e instanceof Error ? e.message : "関数の解釈に失敗しました。";
+        return;
+      }
+
+      const parsed = parseTable(raw, hasHeader);
+      const skipNoticeEl = document.getElementById("skipNotice");
+      let xLabel = parsed.header[0] || "x";
+      let yLabel = parsed.header[1] || "y";
+      let rows = parsed.rows.map((r) => ({ ...r }));
+
+      if (swapAxes) {
+        rows = rows.map((r) => ({ x: r.y, y: r.x }));
+        const tmp = xLabel;
+        xLabel = yLabel;
+        yLabel = tmp;
+      }
+
+      const plotted = rows.filter((r) => {
+        if (Number.isFinite(xUpper) && r.x > xUpper) return false;
+        if (Number.isFinite(yUpper) && r.y > yUpper) return false;
+        return true;
+      });
+      const eitherOutside = rows.length - plotted.length;
+
+      setText("parsedRows", rows.length);
+      setText("plottedRows", plotted.length);
+      setText("eitherOutside", (Number.isFinite(xUpper) || Number.isFinite(yUpper)) ? eitherOutside : "-");
+      if (skipNoticeEl) {
+        skipNoticeEl.textContent = parsed.skipped > 0
+          ? `数値として読めなかったデータは読み込みをスキップしました（${parsed.skipped}件）`
+          : "";
+      }
+
+      renderScatter(plotted, xLabel, yLabel, jitterOn, lineEval);
+    };
+
+    const debounce = (fn, wait = 180) => {
+      let t = null;
+      return (...args) => {
+        window.clearTimeout(t);
+        t = window.setTimeout(() => fn(...args), wait);
+      };
+    };
+
+    const debouncedBuild = debounce(build, 180);
+
+    document.getElementById("dataInput").addEventListener("input", debouncedBuild);
+    document.getElementById("hasHeader").addEventListener("change", build);
+    document.getElementById("swapAxes").addEventListener("change", build);
+    document.getElementById("jitter").addEventListener("change", build);
+    document.getElementById("lineFormula").addEventListener("input", debouncedBuild);
+    document.getElementById("xUpper").addEventListener("input", debouncedBuild);
+    document.getElementById("yUpper").addEventListener("input", debouncedBuild);
+
+    build();
+  </script>
+</body>
+</html>
