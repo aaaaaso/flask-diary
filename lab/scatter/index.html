@@ -90,6 +90,16 @@
       font-family: "Noto Sans JP", system-ui, -apple-system, sans-serif;
     }
 
+    select {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--ring);
+      background: white;
+      font-size: 16px;
+      font-family: "Noto Sans JP", system-ui, -apple-system, sans-serif;
+    }
+
     textarea {
       width: 100%;
       min-height: 180px;
@@ -158,10 +168,35 @@
       text-transform: uppercase;
     }
 
+    #scatterChart {
+      position: relative;
+    }
+
     #scatterChart svg {
       width: 100%;
       height: auto;
       display: block;
+    }
+
+    .scatter-tooltip {
+      position: absolute;
+      z-index: 2;
+      max-width: 320px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      background: rgba(31, 35, 40, 0.92);
+      color: #f9fafb;
+      font-size: 12px;
+      line-height: 1.3;
+      pointer-events: none;
+      opacity: 0;
+      transform: translate(-50%, -110%);
+      transition: opacity 0.12s ease;
+      white-space: nowrap;
+    }
+
+    .scatter-tooltip.show {
+      opacity: 1;
     }
 
     .fade-in {
@@ -184,8 +219,8 @@
     <section class="panel fade-in">
       <div class="grid">
         <div>
-          <label for="dataInput">データ（タブ/カンマ/空白区切りの2列）</label>
-          <textarea id="dataInput" placeholder="x	y&#10;22	14&#10;30	16&#10;28	23"></textarea>
+          <label for="dataInput">データ（タブ/カンマ/空白区切り、最大10列）</label>
+          <textarea id="dataInput" placeholder="x	y	...&#10;22	14	&#10;30	16	&#10;28	23	"></textarea>
           <div class="muted" style="margin-top: 6px;" id="delimiterNote"></div>
           <div class="muted" style="margin-top: 6px;" id="skipNotice"></div>
         </div>
@@ -197,8 +232,8 @@
             </thead>
             <tbody>
               <tr><td>行数</td><td id="parsedRows">-</td></tr>
-              <tr><td>プロット中</td><td id="plottedRows">-</td></tr>
-              <tr><td>描写範囲外</td><td id="eitherOutside">-</td></tr>
+              <tr><td>filtered</td><td id="filteredRows">-</td></tr>
+              <tr><td>plotted</td><td id="plottedRows">-</td></tr>
             </tbody>
           </table>
         </div>
@@ -220,11 +255,21 @@
             <input type="checkbox" id="jitter" />
             ジッターを有効化
           </label>
+          <div style="margin-top: 10px;">
+            <label for="labelColumn">label列（任意）</label>
+            <select id="labelColumn">
+              <option value="">なし</option>
+            </select>
+          </div>
+          <div style="margin-top: 10px;">
+            <label for="filterExpr">filter条件（任意）</label>
+            <input type="text" id="filterExpr" placeholder="例: a > 0 & b <= 100" />
+          </div>
         </div>
         <div>
           <div style="margin-bottom: 12px;">
-            <label for="lineFormula">参照線（例: y=x/2+5）</label>
-            <input type="text" id="lineFormula" placeholder="y=x/2+5" />
+            <label for="lineFormula">参照線（任意）</label>
+            <input type="text" id="lineFormula" placeholder="例: y=x/2+5" />
           </div>
           <div style="margin-bottom: 12px;">
             <label for="xUpper">x upper（任意）</label>
@@ -248,15 +293,33 @@
   </main>
 
   <script>
+    const MAX_COLUMNS = 10;
+
     const formatNum = (v) => {
       if (!Number.isFinite(v)) return "-";
       return Number.isInteger(v) ? v.toFixed(0) : v.toFixed(2);
     };
 
-    const parseCellNumber = (raw) => {
-      const cleaned = raw.trim().replace(/,/g, "");
+    const escapeXml = (raw) => String(raw)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+
+    const parseCellNumber = (raw, removeComma, hasPercent) => {
+      let cleaned = raw.trim();
+      if (removeComma) cleaned = cleaned.replace(/,/g, "");
+      if (hasPercent) cleaned = cleaned.replace(/%/g, "");
       const num = Number(cleaned);
-      return Number.isFinite(num) ? num : NaN;
+      if (!Number.isFinite(num)) return NaN;
+      return hasPercent ? num / 100 : num;
+    };
+
+    const parseFilterValue = (raw, removeComma, hasPercent) => {
+      const maybeNum = parseCellNumber(raw, removeComma, hasPercent);
+      if (Number.isFinite(maybeNum)) return maybeNum;
+      return raw.trim();
     };
 
     const splitRow = (line) => {
@@ -266,6 +329,10 @@
     };
 
     const parseTable = (raw, hasHeader) => {
+      const hasTab = raw.includes("\t");
+      const hasNewline = raw.includes("\n");
+      const hasPercent = raw.includes("%");
+      const removeComma = hasTab || hasNewline;
       const lines = raw
         .replace(/\r\n?/g, "\n")
         .split("\n")
@@ -275,34 +342,107 @@
       let header = ["x", "y"];
       const rows = [];
       let skipped = 0;
-      if (lines.length === 0) return { header, rows, skipped };
+      let maxCols = 2;
+      if (lines.length === 0) return { header, rows, skipped, maxCols, removeComma, hasPercent };
 
       let startIndex = 0;
       if (hasHeader) {
-        const headCells = splitRow(lines[0]).map((c) => c.trim());
-        header = [
-          headCells[0] && headCells[0].length > 0 ? headCells[0] : "x",
-          headCells[1] && headCells[1].length > 0 ? headCells[1] : "y",
-        ];
+        const headCells = splitRow(lines[0]).map((c) => c.trim()).slice(0, MAX_COLUMNS);
+        maxCols = Math.max(maxCols, headCells.length);
+        header = Array.from({ length: maxCols }, (_, i) => {
+          const v = headCells[i];
+          if (v && v.length > 0) return v;
+          if (i === 0) return "x";
+          if (i === 1) return "y";
+          return `col${i + 1}`;
+        });
         startIndex = 1;
       }
 
       for (let i = startIndex; i < lines.length; i += 1) {
-        const cells = splitRow(lines[i]).map((c) => c.trim());
+        const cells = splitRow(lines[i]).map((c) => c.trim()).slice(0, MAX_COLUMNS);
+        maxCols = Math.max(maxCols, cells.length);
         if (cells.length < 2) {
           skipped += 1;
           continue;
         }
-        const a = parseCellNumber(cells[0]);
-        const b = parseCellNumber(cells[1]);
+        const a = parseCellNumber(cells[0], removeComma, hasPercent);
+        const b = parseCellNumber(cells[1], removeComma, hasPercent);
         if (!Number.isFinite(a) || !Number.isFinite(b)) {
           skipped += 1;
           continue;
         }
-        rows.push({ x: a, y: b });
+        rows.push({ x: a, y: b, cells });
       }
 
-      return { header, rows, skipped };
+      if (!hasHeader) {
+        header = Array.from({ length: maxCols }, (_, i) => {
+          if (i === 0) return "x";
+          if (i === 1) return "y";
+          return `col${i + 1}`;
+        });
+      } else if (header.length < maxCols) {
+        for (let i = header.length; i < maxCols; i += 1) {
+          header.push(`col${i + 1}`);
+        }
+      }
+
+      return { header, rows, skipped, maxCols, removeComma, hasPercent };
+    };
+
+    const normalizeFilterExpr = (rawExpr) => rawExpr
+      .replace(/&&/g, "__AND__")
+      .replace(/\|\|/g, "__OR__")
+      .replace(/&/g, "&&")
+      .replace(/\|/g, "||")
+      .replace(/__AND__/g, "&&")
+      .replace(/__OR__/g, "||");
+
+    const buildFilterEvaluator = (rawExpr, headers, maxCols) => {
+      if (!rawExpr || rawExpr.trim() === "") return null;
+      const expr = normalizeFilterExpr(rawExpr.trim());
+      const allowedChars = /^[\w\s<>=!&|().,+\-*/%"'[\]]+$/;
+      if (!allowedChars.test(expr)) {
+        throw new Error("filter条件に使えない文字が含まれています。");
+      }
+      if (/\b(this|Function|constructor|globalThis|window|document|eval)\b/.test(expr)) {
+        throw new Error("filter条件に使えないキーワードが含まれています。");
+      }
+
+      const argNames = [];
+      const colToArg = [];
+      for (let i = 0; i < Math.min(maxCols, MAX_COLUMNS); i += 1) {
+        const colArg = `col${i + 1}`;
+        argNames.push(colArg);
+        colToArg[i] = [colArg];
+        const header = headers[i] || "";
+        if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(header) && header !== colArg) {
+          argNames.push(header);
+          colToArg[i].push(header);
+        }
+      }
+
+      const tokens = expr.match(/[A-Za-z_][A-Za-z0-9_]*/g) || [];
+      const allowedNames = new Set(argNames.concat(["true", "false", "null"]));
+      for (const t of tokens) {
+        if (!allowedNames.has(t)) {
+          throw new Error(`filter条件の列名 "${t}" を解釈できません。`);
+        }
+      }
+
+      // eslint-disable-next-line no-new-func
+      const fn = new Function(...argNames, `return (${expr});`);
+      return (cells, removeComma, hasPercent) => {
+        const valueMap = {};
+        for (let i = 0; i < colToArg.length; i += 1) {
+          const v = parseFilterValue(cells[i] ?? "", removeComma, hasPercent);
+          for (const name of colToArg[i]) {
+            valueMap[name] = v;
+          }
+        }
+        const args = argNames.map((n) => valueMap[n]);
+        return Boolean(fn(...args));
+      };
     };
 
     const setText = (id, value) => {
@@ -354,7 +494,23 @@
       return niceFrac * pow10;
     };
 
-    const renderScatter = (points, xLabel, yLabel, jitterOn, lineEval) => {
+    const updateLabelColumnOptions = (headers, maxCols) => {
+      const selectEl = document.getElementById("labelColumn");
+      if (!selectEl) return "";
+      const prev = selectEl.value;
+      const options = ['<option value="">なし</option>'];
+      for (let i = 2; i < Math.min(maxCols, MAX_COLUMNS); i += 1) {
+        const colName = headers[i] && headers[i].trim() !== "" ? headers[i] : `col${i + 1}`;
+        options.push(`<option value="${i}">${colName}</option>`);
+      }
+      selectEl.innerHTML = options.join("");
+      if (prev !== "" && Number.isInteger(Number(prev)) && Number(prev) < maxCols) {
+        selectEl.value = prev;
+      }
+      return selectEl.value;
+    };
+
+    const renderScatter = (points, xLabel, yLabel, jitterOn, lineEval, labelHeader) => {
       const container = document.getElementById("scatterChart");
       if (points.length === 0) {
         container.innerHTML = '<div class="muted">描写できる点がありません。</div>';
@@ -405,7 +561,9 @@
           const jy = jitterOffset(idx + 999, jitterY);
           const cx = xFor(p.x + jx);
           const cy = yFor(p.y + jy);
-          return `<circle cx="${cx}" cy="${cy}" r="4" fill="#3b3f45" opacity="0.78"><title>${xLabel}: ${formatNum(p.x)}, ${yLabel}: ${formatNum(p.y)}</title></circle>`;
+          const labelText = labelHeader && p.label ? `${p.label} ` : "";
+          const title = `${labelText}(${formatNum(p.x)}, ${formatNum(p.y)})`;
+          return `<circle class="scatter-point" cx="${cx}" cy="${cy}" r="4" fill="#3b3f45" opacity="0.78" data-tip="${escapeXml(title)}"><title>${escapeXml(title)}</title></circle>`;
         })
         .join("");
 
@@ -449,6 +607,28 @@
         `<text x="16" y="${pad.top + innerH / 2}" text-anchor="middle" font-size="12" fill="#4b5563" transform="rotate(-90 16 ${pad.top + innerH / 2})">${yLabel}</text>`,
         `</svg>`,
       ].join("");
+
+      const tooltip = document.createElement("div");
+      tooltip.className = "scatter-tooltip";
+      container.appendChild(tooltip);
+
+      const pointEls = container.querySelectorAll(".scatter-point");
+      pointEls.forEach((el) => {
+        el.addEventListener("mouseenter", () => {
+          tooltip.textContent = el.getAttribute("data-tip") || "";
+          tooltip.classList.add("show");
+        });
+        el.addEventListener("mouseleave", () => {
+          tooltip.classList.remove("show");
+        });
+        el.addEventListener("mousemove", (ev) => {
+          const rect = container.getBoundingClientRect();
+          const x = ev.clientX - rect.left;
+          const y = ev.clientY - rect.top;
+          tooltip.style.left = `${x}px`;
+          tooltip.style.top = `${y}px`;
+        });
+      });
     };
 
     const build = () => {
@@ -456,6 +636,7 @@
       const hasHeader = document.getElementById("hasHeader").checked;
       const swapAxes = document.getElementById("swapAxes").checked;
       const jitterOn = document.getElementById("jitter").checked;
+      const filterExpr = document.getElementById("filterExpr").value;
       const lineFormula = document.getElementById("lineFormula").value;
       const xUpperRaw = document.getElementById("xUpper").value.trim();
       const yUpperRaw = document.getElementById("yUpper").value.trim();
@@ -463,11 +644,22 @@
       const noteEl = document.getElementById("delimiterNote");
 
       errorEl.textContent = "";
-      noteEl.textContent = raw.includes("\t")
-        ? "タブ区切りとして検出しています。"
-        : raw.includes(",")
-          ? "カンマ区切りとして検出しています。"
-          : "空白区切りとして検出しています。";
+      const hasTab = raw.includes("\t");
+      const hasComma = raw.includes(",");
+      const hasPercent = raw.includes("%");
+      const notes = [];
+      notes.push(
+        hasTab
+          ? "タブ区切りとして検出しています。"
+          : hasComma
+            ? "カンマ区切りとして検出しています。"
+            : "空白区切りとして検出しています。"
+      );
+      if (hasPercent) notes.push("百分率に直して扱います。");
+      if (hasComma && (hasTab || raw.includes("\n"))) {
+        notes.push("カンマは除去して扱います。");
+      }
+      noteEl.textContent = notes.join(" ");
 
       const xUpper = xUpperRaw === "" ? NaN : Number(xUpperRaw);
       const yUpper = yUpperRaw === "" ? NaN : Number(yUpperRaw);
@@ -484,7 +676,17 @@
       }
 
       const parsed = parseTable(raw, hasHeader);
+      let filterEval = null;
+      try {
+        filterEval = buildFilterEvaluator(filterExpr, parsed.header, parsed.maxCols);
+      } catch (e) {
+        errorEl.textContent = e instanceof Error ? e.message : "filter条件の解釈に失敗しました。";
+        return;
+      }
       const skipNoticeEl = document.getElementById("skipNotice");
+      const selectedLabelColRaw = updateLabelColumnOptions(parsed.header, parsed.maxCols);
+      const selectedLabelCol = selectedLabelColRaw === "" ? -1 : Number(selectedLabelColRaw);
+      const labelHeader = selectedLabelCol >= 2 ? (parsed.header[selectedLabelCol] || `col${selectedLabelCol + 1}`) : "";
       let xLabel = parsed.header[0] || "x";
       let yLabel = parsed.header[1] || "y";
       let rows = parsed.rows.map((r) => ({ ...r }));
@@ -496,23 +698,30 @@
         yLabel = tmp;
       }
 
-      const plotted = rows.filter((r) => {
+      const filteredRows = filterEval
+        ? rows.filter((r) => filterEval(r.cells, parsed.removeComma, parsed.hasPercent))
+        : rows;
+
+      const plotted = filteredRows.filter((r) => {
         if (Number.isFinite(xUpper) && r.x > xUpper) return false;
         if (Number.isFinite(yUpper) && r.y > yUpper) return false;
         return true;
+      }).map((r) => {
+        if (selectedLabelCol < 2 || !Number.isInteger(selectedLabelCol)) return { ...r, label: "" };
+        const rawLabel = r.cells[selectedLabelCol] ?? "";
+        return { ...r, label: rawLabel };
       });
-      const eitherOutside = rows.length - plotted.length;
 
       setText("parsedRows", rows.length);
+      setText("filteredRows", filteredRows.length);
       setText("plottedRows", plotted.length);
-      setText("eitherOutside", (Number.isFinite(xUpper) || Number.isFinite(yUpper)) ? eitherOutside : "-");
       if (skipNoticeEl) {
         skipNoticeEl.textContent = parsed.skipped > 0
           ? `数値として読めなかったデータは読み込みをスキップしました（${parsed.skipped}件）`
           : "";
       }
 
-      renderScatter(plotted, xLabel, yLabel, jitterOn, lineEval);
+      renderScatter(plotted, xLabel, yLabel, jitterOn, lineEval, labelHeader);
     };
 
     const debounce = (fn, wait = 180) => {
@@ -529,6 +738,8 @@
     document.getElementById("hasHeader").addEventListener("change", build);
     document.getElementById("swapAxes").addEventListener("change", build);
     document.getElementById("jitter").addEventListener("change", build);
+    document.getElementById("labelColumn").addEventListener("change", build);
+    document.getElementById("filterExpr").addEventListener("input", debouncedBuild);
     document.getElementById("lineFormula").addEventListener("input", debouncedBuild);
     document.getElementById("xUpper").addEventListener("input", debouncedBuild);
     document.getElementById("yUpper").addEventListener("input", debouncedBuild);
