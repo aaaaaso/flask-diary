@@ -241,6 +241,13 @@
     </section>
 
     <section class="panel fade-in">
+      <div class="chart-box">
+        <div class="chart-title">Scatter</div>
+        <div id="scatterChart"></div>
+      </div>
+    </section>
+
+    <section class="panel fade-in">
       <div class="grid">
         <div>
           <label class="toggle">
@@ -256,39 +263,32 @@
             ジッターを有効化
           </label>
           <div style="margin-top: 10px;">
-            <label for="labelColumn">label列（任意）</label>
+            <label for="labelColumn">label列</label>
             <select id="labelColumn">
               <option value="">なし</option>
             </select>
           </div>
           <div style="margin-top: 10px;">
-            <label for="filterExpr">filter条件（任意）</label>
+            <label for="filterExpr">filter条件</label>
             <input type="text" id="filterExpr" placeholder="例: a > 0 & b <= 100" />
           </div>
         </div>
         <div>
           <div style="margin-bottom: 12px;">
-            <label for="lineFormula">参照線（任意）</label>
+            <label for="lineFormula">参照線</label>
             <input type="text" id="lineFormula" placeholder="例: y=x/2+5" />
           </div>
           <div style="margin-bottom: 12px;">
-            <label for="xUpper">x upper（任意）</label>
+            <label for="xUpper">x upper</label>
             <input type="number" id="xUpper" step="any" placeholder="例: 30" />
           </div>
           <div>
-            <label for="yUpper">y upper（任意）</label>
+            <label for="yUpper">y upper</label>
             <input type="number" id="yUpper" step="any" placeholder="例: 20" />
           </div>
         </div>
       </div>
       <div class="error" id="error"></div>
-    </section>
-
-    <section class="panel fade-in">
-      <div class="chart-box">
-        <div class="chart-title">Scatter</div>
-        <div id="scatterChart"></div>
-      </div>
     </section>
   </main>
 
