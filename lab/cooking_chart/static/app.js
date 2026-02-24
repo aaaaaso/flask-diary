@@ -1211,7 +1211,7 @@ async function saveRecipe(opts = {}) {
     saveName = desiredRaw;
   }
 
-  const saveRes = await fetch("/api/recipes", {
+  const saveRes = await fetch("api/recipes", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name: saveName, content: snapshot() }),
@@ -1223,7 +1223,7 @@ async function saveRecipe(opts = {}) {
   }
 
   if (currentRecipeName && currentRecipeName !== saveName) {
-    await fetch(`/api/recipes/${encodeURIComponent(currentRecipeName)}`, { method: "DELETE" });
+    await fetch(`api/recipes/${encodeURIComponent(currentRecipeName)}`, { method: "DELETE" });
   }
 
   currentRecipeName = saveName;
@@ -1912,7 +1912,7 @@ function addStepLineAt(y) {
 
 async function refreshRecipeList(selectedName = currentRecipeName) {
   clearArmedRecipeDelete();
-  const res = await fetch("/api/recipes");
+  const res = await fetch("api/recipes");
   const items = await res.json();
   recipeNames = items.map((item) => item.name);
   recipeItemsEl.innerHTML = "";
@@ -2087,13 +2087,13 @@ async function refreshRecipeList(selectedName = currentRecipeName) {
 
 async function deleteRecipeByName(name) {
   if (!name) return;
-  const res = await fetch(`/api/recipes/${encodeURIComponent(name)}`, { method: "DELETE" });
+  const res = await fetch(`api/recipes/${encodeURIComponent(name)}`, { method: "DELETE" });
   if (!res.ok) {
     alert("削除に失敗しました");
     return;
   }
   if (name === currentRecipeName) {
-    const resList = await fetch("/api/recipes");
+    const resList = await fetch("api/recipes");
     const items = await resList.json();
     const names = items.map((item) => item.name);
     if (names.length > 0) {
@@ -2285,7 +2285,7 @@ function convertLegacyContent(data) {
 
 async function loadRecipe(name) {
   if (!name) return;
-  const res = await fetch(`/api/recipes/${encodeURIComponent(name)}`);
+  const res = await fetch(`api/recipes/${encodeURIComponent(name)}`);
   if (!res.ok) {
     alert("読込に失敗しました");
     return;
@@ -2439,7 +2439,7 @@ recipeItemsEl.addEventListener("drop", async (event) => {
   }
   const names = displayKeys.filter((name) => name !== "__draft__");
 
-  await fetch("/api/recipes/order", {
+  await fetch("api/recipes/order", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ names }),
