@@ -2448,11 +2448,14 @@ document.addEventListener("keydown", (e) => {
   if (e.isComposing) return;
   const tag = (document.activeElement && document.activeElement.tagName) || "";
   const isTyping = tag === "INPUT" || tag === "TEXTAREA";
+  const active = document.activeElement;
+  const inBoardContext = !active || active === document.body || Boolean(active.closest?.("#board-wrap"));
+  const inJsonContext = Boolean(active && (active === jsonOutput || active.closest?.("#json-panel")));
 
   const isSelectAll = (e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "a";
   if (isSelectAll) {
+    if (inJsonContext || !inBoardContext) return;
     e.preventDefault();
-    const active = document.activeElement;
     if (active && (active.matches?.(".title,.memo-editor,.text-input,.time-input,.tag-inline-input") || active === jsonOutput)) {
       active.blur();
     }
