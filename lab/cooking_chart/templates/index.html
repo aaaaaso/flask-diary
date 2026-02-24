@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cooking Chart</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <h2>Recipes</h2>
+        <div class="sidebar-actions">
+          <button id="new-recipe" class="icon-only-btn" title="新規作成" aria-label="新規作成">
+            <img src="/static/new_icon.png" alt="" />
+          </button>
+        </div>
+        <div class="recipe-list-wrap">
+          <div id="recipe-drop-indicator" class="drop-indicator" aria-hidden="true"></div>
+          <ul id="recipe-items" class="recipe-items"></ul>
+        </div>
+      </aside>
+
+      <div class="workspace">
+        <header class="topbar">
+          <h1>Cooking Chart</h1>
+          <div class="controls">
+            <button id="add-text" class="icon-btn" title="テキスト追加">
+              <img src="/static/text_icon.png" alt="" />
+              <span>テキスト追加</span>
+            </button>
+            <button id="add-node" class="icon-btn" title="ノード追加">
+              <img src="/static/add_node_icon.png" alt="" />
+              <span>ノード追加</span>
+            </button>
+            <button id="add-step-line" class="icon-btn" title="工程区切り線">
+              <img src="/static/line_icon.png" alt="" />
+              <span>工程区切り線</span>
+            </button>
+            <button id="save" class="icon-btn" title="保存">
+              <img src="/static/save_icon.png" alt="" />
+              <span>保存</span>
+            </button>
+          </div>
+        </header>
+
+        <main class="board-wrap" id="board-wrap">
+          <svg id="edges"></svg>
+          <div id="board"></div>
+        </main>
+
+        <div class="json-toggle-wrap">
+          <button id="toggle-json" class="json-toggle-btn">JSON表示/非表示</button>
+        </div>
+
+        <section class="json-panel collapsed" id="json-panel">
+          <label for="json-output">保存テキスト(JSON)</label>
+          <textarea id="json-output"></textarea>
+          <p id="json-status" class="json-status"></p>
+        </section>
+      </div>
+    </div>
+
+    <template id="card-template">
+      <article class="card">
+        <button class="connector connector-bottom" data-side="bottom" title="接続開始">+</button>
+        <div class="time-badge hidden"></div>
+        <div class="node-side-actions">
+          <button class="delete" type="button" title="削除">
+            <img src="/static/close_icon.png" alt="" />
+          </button>
+          <button class="time-switch" type="button" title="時間設定">
+            <img src="/static/time_icon.png" alt="" />
+          </button>
+          <button class="color-switch" type="button" title="色変更">
+            <img src="/static/color_change_icon.png" alt="" />
+          </button>
+        </div>
+        <input class="time-input hidden" type="text" placeholder="30min" />
+        <input class="title" type="text" placeholder="何をどうする" />
+        <div class="tag-row">
+          <div class="tag-list">
+            <button class="add-tag" type="button" title="タグ追加">+ add tag</button>
+          </div>
+        </div>
+        <div class="memo-row">
+          <div class="memo-list"></div>
+          <textarea class="memo-editor" placeholder="memo" rows="2"></textarea>
+        </div>
+      </article>
+    </template>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
