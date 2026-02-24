@@ -58,6 +58,7 @@ const toggleJsonBtn = document.getElementById("toggle-json");
 const jsonPanel = document.getElementById("json-panel");
 const jsonOutput = document.getElementById("json-output");
 const jsonStatus = document.getElementById("json-status");
+const recipeTitleEl = document.getElementById("recipe-title");
 const recipeItemsEl = document.getElementById("recipe-items");
 const recipeDropIndicator = document.getElementById("recipe-drop-indicator");
 const addStepLineBtn = document.getElementById("add-step-line");
@@ -82,6 +83,11 @@ let selectionClipboard = null;
 let clipboardPasteCount = 0;
 let viewScale = 1;
 let gestureStartScale = 1;
+
+function refreshRecipeTitle() {
+  if (!recipeTitleEl) return;
+  recipeTitleEl.textContent = (currentRecipeLabel || "").trim() || "タイトルなし";
+}
 
 function clearArmedRecipeDelete() {
   armedRecipeDeleteKey = null;
@@ -1222,6 +1228,7 @@ async function saveRecipe(opts = {}) {
 
   currentRecipeName = saveName;
   currentRecipeLabel = saveName;
+  refreshRecipeTitle();
   draftListIndex = null;
   hasDraftRecipe = false;
   markSavedNow();
@@ -2074,6 +2081,7 @@ async function refreshRecipeList(selectedName = currentRecipeName) {
     li.appendChild(row);
     recipeItemsEl.appendChild(li);
   });
+  refreshRecipeTitle();
   refreshRecipeDirtyIndicator();
 }
 
@@ -2288,6 +2296,7 @@ async function loadRecipe(name) {
   applyNormalizedContent(normalized);
   currentRecipeName = payload.name;
   currentRecipeLabel = payload.name;
+  refreshRecipeTitle();
   editingRecipeKey = null;
   hasDraftRecipe = false;
   markSavedNow();
@@ -2308,6 +2317,7 @@ function clearEditorToEmpty() {
   historyStack.length = 0;
   currentRecipeName = "";
   currentRecipeLabel = "タイトルなし";
+  refreshRecipeTitle();
   editingRecipeKey = null;
   draftListIndex = null;
   hasDraftRecipe = false;
@@ -2588,6 +2598,7 @@ if (boardWrap) {
 }
 
 applyViewScale(1);
+refreshRecipeTitle();
 render();
 markSavedNow();
 refreshRecipeList();
