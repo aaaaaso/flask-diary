@@ -57,7 +57,7 @@ init_db()
 
 @bp.get("/")
 def index():
-    return render_template("index.html")
+    return render_template("cooking_chart/index.html")
 
 
 @bp.get("/api/recipes")
