@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import sqlite3
 from pathlib import Path
 
@@ -11,6 +12,30 @@ LAB_DESCRIPTION = "料理工程を可視化して保存できるチャートツ�
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "recipes.db"
 EDITOR_TOKEN = (os.getenv("COOKING_CHART_EDITOR_TOKEN") or "").strip()
+DATABASE_URL = (
+    os.getenv("COOKING_CHART_DATABASE_URL")
+    or os.getenv("DATABASE_URL")
+    or ""
+).strip()
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = "postgresql://" + DATABASE_URL[len("postgres://") :]
+USE_POSTGRES = DATABASE_URL.startswith(("postgresql://", "postgres://"))
+default_table = "cooking_chart_recipes" if USE_POSTGRES else "recipes"
+TABLE_NAME = (os.getenv("COOKING_CHART_TABLE") or default_table).strip()
+if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", TABLE_NAME):
+    raise RuntimeError("COOKING_CHART_TABLE must be a valid SQL identifier")
+
+psycopg = None
+dict_row = None
+if USE_POSTGRES:
+    try:
+        import psycopg
+        from psycopg.rows import dict_row
+    except Exception as exc:
+        raise RuntimeError(
+            "PostgreSQL is enabled but psycopg is not available. "
+            "Install psycopg[binary] and redeploy."
+        ) from exc
 
 bp = Blueprint(
     "cooking_chart",
@@ -22,33 +47,68 @@ bp = Blueprint(
 
 
 def db_conn():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    if USE_POSTGRES:
+        conn = psycopg.connect(DATABASE_URL, row_factory=dict_row)
+    else:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
     return conn
 
 
 def init_db():
     conn = db_conn()
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS recipes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL UNIQUE,
-            content TEXT NOT NULL,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            sort_order INTEGER
+    if USE_POSTGRES:
+        conn.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
+                id BIGSERIAL PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE,
+                content JSONB NOT NULL,
+                updated_at TIMESTAMPTZ DEFAULT NOW(),
+                sort_order INTEGER
+            )
+            """
         )
-        """
-    )
-    cols = [row["name"] for row in conn.execute("PRAGMA table_info(recipes)").fetchall()]
-    if "sort_order" not in cols:
-        conn.execute("ALTER TABLE recipes ADD COLUMN sort_order INTEGER")
+        next_order = conn.execute(
+            f"SELECT COALESCE(MAX(sort_order), 0) + 1 AS n FROM {TABLE_NAME}"
+        ).fetchone()["n"]
+        rows = conn.execute(
+            f"SELECT id FROM {TABLE_NAME} WHERE sort_order IS NULL ORDER BY id ASC"
+        ).fetchall()
+        for row in rows:
+            conn.execute(
+                f"UPDATE {TABLE_NAME} SET sort_order = %s WHERE id = %s",
+                (next_order, row["id"]),
+            )
+            next_order += 1
+    else:
+        conn.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                content TEXT NOT NULL,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                sort_order INTEGER
+            )
+            """
+        )
+        cols = [row["name"] for row in conn.execute(f"PRAGMA table_info({TABLE_NAME})").fetchall()]
+        if "sort_order" not in cols:
+            conn.execute(f"ALTER TABLE {TABLE_NAME} ADD COLUMN sort_order INTEGER")
 
-    next_order = conn.execute("SELECT COALESCE(MAX(sort_order), 0) + 1 AS n FROM recipes").fetchone()["n"]
-    rows = conn.execute("SELECT id FROM recipes WHERE sort_order IS NULL ORDER BY id ASC").fetchall()
-    for row in rows:
-        conn.execute("UPDATE recipes SET sort_order = ? WHERE id = ?", (next_order, row["id"]))
-        next_order += 1
+        next_order = conn.execute(
+            f"SELECT COALESCE(MAX(sort_order), 0) + 1 AS n FROM {TABLE_NAME}"
+        ).fetchone()["n"]
+        rows = conn.execute(
+            f"SELECT id FROM {TABLE_NAME} WHERE sort_order IS NULL ORDER BY id ASC"
+        ).fetchall()
+        for row in rows:
+            conn.execute(
+                f"UPDATE {TABLE_NAME} SET sort_order = ? WHERE id = ?",
+                (next_order, row["id"]),
+            )
+            next_order += 1
 
     conn.commit()
     conn.close()
@@ -80,9 +140,9 @@ def _require_editor_key():
 def list_recipes():
     conn = db_conn()
     rows = conn.execute(
-        """
+        f"""
         SELECT name
-        FROM recipes
+        FROM {TABLE_NAME}
         ORDER BY sort_order ASC, updated_at DESC, name ASC
         """
     ).fetchall()
@@ -93,12 +153,22 @@ def list_recipes():
 @bp.get("/api/recipes/<string:name>")
 def get_recipe(name: str):
     conn = db_conn()
-    row = conn.execute("SELECT name, content, updated_at FROM recipes WHERE name=?", (name,)).fetchone()
+    if USE_POSTGRES:
+        row = conn.execute(
+            f"SELECT name, content, updated_at FROM {TABLE_NAME} WHERE name=%s",
+            (name,),
+        ).fetchone()
+    else:
+        row = conn.execute(
+            f"SELECT name, content, updated_at FROM {TABLE_NAME} WHERE name=?",
+            (name,),
+        ).fetchone()
     conn.close()
     if not row:
         return jsonify({"error": "not found"}), 404
     data = dict(row)
-    data["content"] = json.loads(data["content"])
+    if isinstance(data.get("content"), str):
+        data["content"] = json.loads(data["content"])
     return jsonify(data)
 
 
@@ -116,21 +186,38 @@ def save_recipe():
 
     text = json.dumps(content, ensure_ascii=False)
     conn = db_conn()
-    conn.execute(
-        """
-        INSERT INTO recipes(name, content, updated_at, sort_order)
-        VALUES(
-            ?,
-            ?,
-            CURRENT_TIMESTAMP,
-            COALESCE((SELECT MAX(sort_order) + 1 FROM recipes), 1)
+    if USE_POSTGRES:
+        conn.execute(
+            f"""
+            INSERT INTO {TABLE_NAME}(name, content, updated_at, sort_order)
+            VALUES(
+                %s,
+                %s::jsonb,
+                NOW(),
+                COALESCE((SELECT MAX(sort_order) + 1 FROM {TABLE_NAME}), 1)
+            )
+            ON CONFLICT(name) DO UPDATE SET
+                content=excluded.content,
+                updated_at=NOW()
+            """,
+            (name, text),
         )
-        ON CONFLICT(name) DO UPDATE SET
-            content=excluded.content,
-            updated_at=CURRENT_TIMESTAMP
-        """,
-        (name, text),
-    )
+    else:
+        conn.execute(
+            f"""
+            INSERT INTO {TABLE_NAME}(name, content, updated_at, sort_order)
+            VALUES(
+                ?,
+                ?,
+                CURRENT_TIMESTAMP,
+                COALESCE((SELECT MAX(sort_order) + 1 FROM {TABLE_NAME}), 1)
+            )
+            ON CONFLICT(name) DO UPDATE SET
+                content=excluded.content,
+                updated_at=CURRENT_TIMESTAMP
+            """,
+            (name, text),
+        )
     conn.commit()
     conn.close()
 
@@ -141,7 +228,10 @@ def save_recipe():
 def delete_recipe(name: str):
     _require_editor_key()
     conn = db_conn()
-    cur = conn.execute("DELETE FROM recipes WHERE name = ?", (name,))
+    if USE_POSTGRES:
+        cur = conn.execute(f"DELETE FROM {TABLE_NAME} WHERE name = %s", (name,))
+    else:
+        cur = conn.execute(f"DELETE FROM {TABLE_NAME} WHERE name = ?", (name,))
     conn.commit()
     conn.close()
     if cur.rowcount == 0:
@@ -159,25 +249,51 @@ def update_recipe_order():
 
     normalized = [n.strip() for n in names]
     conn = db_conn()
-    existing = {
-        row["name"]
-        for row in conn.execute(
-            "SELECT name FROM recipes WHERE name IN (%s)" % ",".join("?" * len(normalized)),
+    if normalized:
+        placeholders = ",".join(["%s"] * len(normalized)) if USE_POSTGRES else ",".join(["?"] * len(normalized))
+        existing_rows = conn.execute(
+            f"SELECT name FROM {TABLE_NAME} WHERE name IN ({placeholders})",
             normalized,
         ).fetchall()
-    } if normalized else set()
+        existing = {row["name"] for row in existing_rows}
+    else:
+        existing = set()
+
     for idx, name in enumerate(normalized, start=1):
         if name in existing:
-            conn.execute("UPDATE recipes SET sort_order = ? WHERE name = ?", (idx, name))
+            if USE_POSTGRES:
+                conn.execute(
+                    f"UPDATE {TABLE_NAME} SET sort_order = %s WHERE name = %s",
+                    (idx, name),
+                )
+            else:
+                conn.execute(
+                    f"UPDATE {TABLE_NAME} SET sort_order = ? WHERE name = ?",
+                    (idx, name),
+                )
 
-    tail = conn.execute(
-        "SELECT name FROM recipes WHERE name NOT IN (%s) ORDER BY sort_order ASC, id ASC"
-        % ",".join("?" * len(normalized)),
-        normalized,
-    ).fetchall() if normalized else conn.execute("SELECT name FROM recipes ORDER BY sort_order ASC, id ASC").fetchall()
+    if normalized:
+        placeholders = ",".join(["%s"] * len(normalized)) if USE_POSTGRES else ",".join(["?"] * len(normalized))
+        tail = conn.execute(
+            f"SELECT name FROM {TABLE_NAME} WHERE name NOT IN ({placeholders}) ORDER BY sort_order ASC, id ASC",
+            normalized,
+        ).fetchall()
+    else:
+        tail = conn.execute(
+            f"SELECT name FROM {TABLE_NAME} ORDER BY sort_order ASC, id ASC"
+        ).fetchall()
     tail_start = len(normalized) + 1
     for i, row in enumerate(tail, start=tail_start):
-        conn.execute("UPDATE recipes SET sort_order = ? WHERE name = ?", (i, row["name"]))
+        if USE_POSTGRES:
+            conn.execute(
+                f"UPDATE {TABLE_NAME} SET sort_order = %s WHERE name = %s",
+                (i, row["name"]),
+            )
+        else:
+            conn.execute(
+                f"UPDATE {TABLE_NAME} SET sort_order = ? WHERE name = ?",
+                (i, row["name"]),
+            )
 
     conn.commit()
     conn.close()
