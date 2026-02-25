@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Cooking Chart</title>
+    <title>{{ "Recipe Edit" if editable else "Cooking Chart" }}</title>
     <link rel="stylesheet" href="static/style.css" />
   </head>
   <body data-mode="{{ 'edit' if editable else 'view' }}">
