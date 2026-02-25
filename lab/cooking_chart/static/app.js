@@ -1,5 +1,5 @@
 const BOARD_W = 3200;
-const BOARD_H = 2000;
+const BOARD_H = 4000;
 const NODE_W = 220;
 const NODE_H = 100;
 const NODE_MIN_H = 56;

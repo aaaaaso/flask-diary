@@ -289,7 +289,7 @@ button.active {
   top: 0;
   left: 0;
   width: 3200px;
-  height: 2000px;
+  height: 4000px;
   background-image: radial-gradient(var(--line) 1px, transparent 1px);
   background-size: 20px 20px;
   z-index: 0;
@@ -299,7 +299,7 @@ button.active {
 #board {
   position: relative;
   width: 3200px;
-  height: 2000px;
+  height: 4000px;
   background: transparent;
   z-index: 2;
 }
@@ -408,7 +408,7 @@ button.active {
   top: 0;
   left: 0;
   width: 3200px;
-  height: 2000px;
+  height: 4000px;
   pointer-events: auto;
   z-index: 1;
 }
@@ -888,4 +888,29 @@ button.active {
     align-items: flex-start;
     flex-direction: column;
   }
+}
+
+/* View mode: fully non-interactive board visuals */
+body[data-mode="view"] .card,
+body[data-mode="view"] .text-item,
+body[data-mode="view"] .step-line {
+  cursor: default;
+}
+
+body[data-mode="view"] .step-line,
+body[data-mode="view"] .edge-path,
+body[data-mode="view"] .edge-hit,
+body[data-mode="view"] .connector,
+body[data-mode="view"] .node-side-actions,
+body[data-mode="view"] .text-drag-hit {
+  pointer-events: none !important;
+}
+
+body[data-mode="view"] .title,
+body[data-mode="view"] .tag-chip,
+body[data-mode="view"] .memo-item,
+body[data-mode="view"] .time-badge,
+body[data-mode="view"] .text-input {
+  pointer-events: none;
+  cursor: default;
 }
