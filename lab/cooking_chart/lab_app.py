@@ -1,14 +1,16 @@
 import json
+import os
 import sqlite3
 from pathlib import Path
 
-from flask import Blueprint, jsonify, render_template, request
+from flask import Blueprint, abort, jsonify, render_template, request
 
 LAB_TITLE = "Cooking Chart"
 LAB_DESCRIPTION = "料理工程を可視化して保存できるチャートツール。"
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "recipes.db"
+EDITOR_TOKEN = (os.getenv("COOKING_CHART_EDITOR_TOKEN") or "").strip()
 
 bp = Blueprint(
     "cooking_chart",
@@ -57,7 +59,21 @@ init_db()
 
 @bp.get("/")
 def index():
-    return render_template("cooking_chart/index.html")
+    return render_template("cooking_chart/index.html", editable=False)
+
+
+@bp.get("/edit")
+def edit():
+    key = (request.args.get("key") or "").strip()
+    if not EDITOR_TOKEN or key != EDITOR_TOKEN:
+        abort(403)
+    return render_template("cooking_chart/index.html", editable=True)
+
+
+def _require_editor_key():
+    key = (request.args.get("key") or "").strip()
+    if not EDITOR_TOKEN or key != EDITOR_TOKEN:
+        abort(403)
 
 
 @bp.get("/api/recipes")
@@ -88,6 +104,7 @@ def get_recipe(name: str):
 
 @bp.post("/api/recipes")
 def save_recipe():
+    _require_editor_key()
     payload = request.get_json(silent=True) or {}
     name = (payload.get("name") or "").strip()
     content = payload.get("content")
@@ -122,6 +139,7 @@ def save_recipe():
 
 @bp.delete("/api/recipes/<string:name>")
 def delete_recipe(name: str):
+    _require_editor_key()
     conn = db_conn()
     cur = conn.execute("DELETE FROM recipes WHERE name = ?", (name,))
     conn.commit()
@@ -133,6 +151,7 @@ def delete_recipe(name: str):
 
 @bp.patch("/api/recipes/order")
 def update_recipe_order():
+    _require_editor_key()
     payload = request.get_json(silent=True) or {}
     names = payload.get("names")
     if not isinstance(names, list) or not all(isinstance(n, str) and n.strip() for n in names):

@@ -6,14 +6,16 @@
     <title>Cooking Chart</title>
     <link rel="stylesheet" href="static/style.css" />
   </head>
-  <body>
+  <body data-mode="{{ 'edit' if editable else 'view' }}">
     <div class="app-shell">
       <aside class="sidebar">
         <h2>Recipes</h2>
         <div class="sidebar-actions">
+          {% if editable %}
           <button id="new-recipe" class="icon-only-btn" title="新規作成" aria-label="新規作成">
             <img src="static/new_icon.png" alt="" />
           </button>
+          {% endif %}
         </div>
         <div class="recipe-list-wrap">
           <div id="recipe-drop-indicator" class="drop-indicator" aria-hidden="true"></div>
@@ -24,6 +26,7 @@
       <div class="workspace">
         <header class="topbar">
           <h1 id="recipe-title">タイトルなし</h1>
+          {% if editable %}
           <div class="controls">
             <button id="add-text" class="icon-btn" title="テキスト追加">
               <img src="static/text_icon.png" alt="" />
@@ -42,6 +45,7 @@
               <span>保存</span>
             </button>
           </div>
+          {% endif %}
         </header>
 
         <main class="board-wrap" id="board-wrap">
@@ -49,6 +53,7 @@
           <div id="board"></div>
         </main>
 
+        {% if editable %}
         <div class="json-toggle-wrap">
           <button id="toggle-json" class="json-toggle-btn">JSON表示/非表示</button>
         </div>
@@ -58,6 +63,7 @@
           <textarea id="json-output"></textarea>
           <p id="json-status" class="json-status"></p>
         </section>
+        {% endif %}
       </div>
     </div>
 

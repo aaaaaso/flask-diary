@@ -62,6 +62,9 @@ const recipeTitleEl = document.getElementById("recipe-title");
 const recipeItemsEl = document.getElementById("recipe-items");
 const recipeDropIndicator = document.getElementById("recipe-drop-indicator");
 const addStepLineBtn = document.getElementById("add-step-line");
+const isEditable = document.body?.dataset?.mode === "edit";
+const pageParams = new URLSearchParams(window.location.search);
+const editorKey = (pageParams.get("key") || "").trim();
 
 let currentRecipeName = "";
 let currentRecipeLabel = "タイトルなし";
@@ -83,6 +86,12 @@ let selectionClipboard = null;
 let clipboardPasteCount = 0;
 let viewScale = 1;
 let gestureStartScale = 1;
+
+function withEditorKey(path) {
+  if (!isEditable || !editorKey) return path;
+  const sep = path.includes("?") ? "&" : "?";
+  return `${path}${sep}key=${encodeURIComponent(editorKey)}`;
+}
 
 function refreshRecipeTitle() {
   if (!recipeTitleEl) return;
@@ -719,8 +728,10 @@ function renderEdges() {
     hit.setAttribute("fill", "none");
     hit.setAttribute("class", "edge-hit");
     hit.dataset.edgeKey = key;
-    hit.addEventListener("pointerdown", selectEdge);
-    hit.addEventListener("click", selectEdge);
+    if (isEditable) {
+      hit.addEventListener("pointerdown", selectEdge);
+      hit.addEventListener("click", selectEdge);
+    }
 
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("d", d);
@@ -729,8 +740,10 @@ function renderEdges() {
     path.setAttribute("fill", "none");
     path.setAttribute("class", "edge-path");
     path.dataset.edgeKey = key;
-    path.addEventListener("pointerdown", selectEdge);
-    path.addEventListener("click", selectEdge);
+    if (isEditable) {
+      path.addEventListener("pointerdown", selectEdge);
+      path.addEventListener("click", selectEdge);
+    }
 
     edgesSvg.appendChild(hit);
     edgesSvg.appendChild(path);
@@ -779,22 +792,24 @@ function renderStepLines() {
     labelEl.textContent = shownLabel;
     el.appendChild(labelEl);
 
-    el.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const toggle = e.metaKey || e.ctrlKey || e.shiftKey;
-      if (toggle) {
-        if (isStepLineSelected(line.id)) {
-          setSelection(
-            state.selectedNodeIds,
-            state.selectedStepLineIds.filter((id) => id !== line.id)
-          );
+    if (isEditable) {
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const toggle = e.metaKey || e.ctrlKey || e.shiftKey;
+        if (toggle) {
+          if (isStepLineSelected(line.id)) {
+            setSelection(
+              state.selectedNodeIds,
+              state.selectedStepLineIds.filter((id) => id !== line.id)
+            );
+          } else {
+            setSelection(state.selectedNodeIds, [...state.selectedStepLineIds, line.id]);
+          }
         } else {
-          setSelection(state.selectedNodeIds, [...state.selectedStepLineIds, line.id]);
+          setSelection([], [line.id]);
         }
-      } else {
-        setSelection([], [line.id]);
-      }
-    });
+      });
+    }
 
     let drag = null;
     let dragBefore = null;
@@ -803,85 +818,87 @@ function renderStepLines() {
     const startNodeY = new Map();
     const startLineY = new Map();
 
-    el.addEventListener("pointerdown", (e) => {
-      if (e.detail > 1) return;
-      e.preventDefault();
-      e.stopPropagation();
-      if (isStepLineSelected(line.id)) {
-        draggedNodeIds = [...state.selectedNodeIds];
-        draggedLineIds = [...state.selectedStepLineIds];
-      } else {
-        draggedNodeIds = [];
-        draggedLineIds = [line.id];
-      }
-      dragBefore = cloneEditorState();
-      drag = { sy: e.clientY, moved: false };
+    if (isEditable) {
+      el.addEventListener("pointerdown", (e) => {
+        if (e.detail > 1) return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (isStepLineSelected(line.id)) {
+          draggedNodeIds = [...state.selectedNodeIds];
+          draggedLineIds = [...state.selectedStepLineIds];
+        } else {
+          draggedNodeIds = [];
+          draggedLineIds = [line.id];
+        }
+        dragBefore = cloneEditorState();
+        drag = { sy: e.clientY, moved: false };
 
-      draggedNodeIds.forEach((id) => {
-        const n = nodeById(id);
-        if (n) startNodeY.set(id, n.y);
-      });
-      draggedLineIds.forEach((id) => {
-        const l = state.stepLines.find((s) => s.id === id);
-        if (l) startLineY.set(id, l.y);
-      });
+        draggedNodeIds.forEach((id) => {
+          const n = nodeById(id);
+          if (n) startNodeY.set(id, n.y);
+        });
+        draggedLineIds.forEach((id) => {
+          const l = state.stepLines.find((s) => s.id === id);
+          if (l) startLineY.set(id, l.y);
+        });
 
-      el.setPointerCapture(e.pointerId);
-    });
-
-    el.addEventListener("pointermove", (e) => {
-      if (!drag) return;
-      const dy = e.clientY - drag.sy;
-      const boardDy = dy / viewScale;
-      if (boardDy !== 0) drag.moved = true;
-
-      draggedNodeIds.forEach((id) => {
-        const n = nodeById(id);
-        if (!n) return;
-        n.y = (startNodeY.get(id) || 0) + boardDy;
-        clampNode(n);
+        el.setPointerCapture(e.pointerId);
       });
 
-      draggedLineIds.forEach((id) => {
-        const l = state.stepLines.find((s) => s.id === id);
-        if (!l) return;
-        l.y = Math.max(0, Math.min(BOARD_H, (startLineY.get(id) || 0) + boardDy));
-      });
-      syncDraggedVisuals(draggedNodeIds, draggedLineIds);
-    });
+      el.addEventListener("pointermove", (e) => {
+        if (!drag) return;
+        const dy = e.clientY - drag.sy;
+        const boardDy = dy / viewScale;
+        if (boardDy !== 0) drag.moved = true;
 
-    const finishDrag = (e) => {
-      if (!drag) return;
-      try {
-        el.releasePointerCapture(e.pointerId);
-      } catch {
-        // ignore
-      }
+        draggedNodeIds.forEach((id) => {
+          const n = nodeById(id);
+          if (!n) return;
+          n.y = (startNodeY.get(id) || 0) + boardDy;
+          clampNode(n);
+        });
 
-      draggedNodeIds.forEach((id) => {
-        const n = nodeById(id);
-        if (!n) return;
-        const s = snapPoint(n.x, n.y);
-        n.x = s.x;
-        n.y = s.y;
-        clampNode(n);
+        draggedLineIds.forEach((id) => {
+          const l = state.stepLines.find((s) => s.id === id);
+          if (!l) return;
+          l.y = Math.max(0, Math.min(BOARD_H, (startLineY.get(id) || 0) + boardDy));
+        });
+        syncDraggedVisuals(draggedNodeIds, draggedLineIds);
       });
 
-      draggedLineIds.forEach((id) => {
-        const l = state.stepLines.find((s) => s.id === id);
-        if (!l) return;
-        l.y = Math.max(0, Math.min(BOARD_H, snap(l.y)));
-      });
+      const finishDrag = (e) => {
+        if (!drag) return;
+        try {
+          el.releasePointerCapture(e.pointerId);
+        } catch {
+          // ignore
+        }
 
-      setSelection(draggedNodeIds, draggedLineIds);
-      if (drag.moved && dragBefore) pushHistory(dragBefore);
-      drag = null;
-      dragBefore = null;
-      render();
-    };
+        draggedNodeIds.forEach((id) => {
+          const n = nodeById(id);
+          if (!n) return;
+          const s = snapPoint(n.x, n.y);
+          n.x = s.x;
+          n.y = s.y;
+          clampNode(n);
+        });
 
-    el.addEventListener("pointerup", finishDrag);
-    el.addEventListener("pointercancel", finishDrag);
+        draggedLineIds.forEach((id) => {
+          const l = state.stepLines.find((s) => s.id === id);
+          if (!l) return;
+          l.y = Math.max(0, Math.min(BOARD_H, snap(l.y)));
+        });
+
+        setSelection(draggedNodeIds, draggedLineIds);
+        if (drag.moved && dragBefore) pushHistory(dragBefore);
+        drag = null;
+        dragBefore = null;
+        render();
+      };
+
+      el.addEventListener("pointerup", finishDrag);
+      el.addEventListener("pointercancel", finishDrag);
+    }
 
     board.appendChild(el);
   });
@@ -1193,6 +1210,7 @@ function syncDraggedTextVisuals(textIds) {
 }
 
 async function saveRecipe(opts = {}) {
+  if (!isEditable) return false;
   const silent = Boolean(opts.silent);
   const desiredRaw = (currentRecipeLabel || "").trim() || "タイトルなし";
   let saveName = currentRecipeName || desiredRaw;
@@ -1211,7 +1229,7 @@ async function saveRecipe(opts = {}) {
     saveName = desiredRaw;
   }
 
-  const saveRes = await fetch("api/recipes", {
+  const saveRes = await fetch(withEditorKey("api/recipes"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name: saveName, content: snapshot() }),
@@ -1223,7 +1241,7 @@ async function saveRecipe(opts = {}) {
   }
 
   if (currentRecipeName && currentRecipeName !== saveName) {
-    await fetch(`api/recipes/${encodeURIComponent(currentRecipeName)}`, { method: "DELETE" });
+    await fetch(withEditorKey(`api/recipes/${encodeURIComponent(currentRecipeName)}`), { method: "DELETE" });
   }
 
   currentRecipeName = saveName;
@@ -1349,6 +1367,20 @@ function buildNodeElement(node) {
   renderMemoList();
   renderMetaStateUI();
   scheduleNodeHeightSync();
+
+  if (!isEditable) {
+    titleEl.readOnly = true;
+    titleEl.tabIndex = -1;
+    memoEditorEl.readOnly = true;
+    memoEditorEl.tabIndex = -1;
+    memoEditorEl.classList.add("hidden");
+    addTagBtn.classList.add("hidden");
+    bottomConnector.classList.add("hidden");
+    el.querySelector(".node-side-actions")?.classList.add("hidden");
+    timeInputEl.classList.add("hidden");
+    board.appendChild(el);
+    return;
+  }
 
   bottomConnector.addEventListener("pointerdown", (e) => startLinkDrag(e, node.id, "bottom", bottomConnector));
 
@@ -1704,6 +1736,14 @@ function buildTextElement(textItem) {
   };
   renderTextTone();
 
+  if (!isEditable) {
+    input.readOnly = true;
+    input.tabIndex = -1;
+    board.appendChild(el);
+    resize();
+    return;
+  }
+
   input.addEventListener("focus", () => {
     state.selectedNodeIds = [];
     state.selectedStepLineIds = [];
@@ -1855,6 +1895,7 @@ function nextRootPosition() {
 }
 
 function addNode() {
+  if (!isEditable) return;
   pushHistory();
   const pos = nextRootPosition();
   const node = { id: state.nextId, x: snap(pos.x), y: snap(pos.y), h: NODE_H, title: "", mode: "material", color: "gray", time: "", tags: [], memos: [] };
@@ -1866,6 +1907,7 @@ function addNode() {
 }
 
 function addText() {
+  if (!isEditable) return;
   pushHistory();
   const pos = nextRootPosition();
   const textItem = {
@@ -1888,6 +1930,7 @@ function addText() {
 }
 
 function addStepLineAt(y) {
+  if (!isEditable) return;
   let yy = Math.max(0, Math.min(BOARD_H, snap(y)));
   if (state.stepLines.some((line) => line.y === yy)) {
     for (let i = 1; i < 400; i += 1) {
@@ -1928,7 +1971,7 @@ async function refreshRecipeList(selectedName = currentRecipeName) {
   listKeys.forEach((key) => {
     const name = key === "__draft__" ? currentRecipeLabel : key;
     const li = document.createElement("li");
-    li.draggable = true;
+    li.draggable = isEditable;
     li.dataset.key = key;
     li.dataset.name = name;
     const row = document.createElement("div");
@@ -1958,35 +2001,39 @@ async function refreshRecipeList(selectedName = currentRecipeName) {
       await activateRecipe();
     });
 
-    li.addEventListener("dblclick", () => {
-      const currentKey = currentRecipeName || "__draft__";
-      if (key !== currentKey) return;
-      editingRecipeKey = key;
-      refreshRecipeList(currentKey);
-    });
+    if (isEditable) {
+      li.addEventListener("dblclick", () => {
+        const currentKey = currentRecipeName || "__draft__";
+        if (key !== currentKey) return;
+        editingRecipeKey = key;
+        refreshRecipeList(currentKey);
+      });
+    }
 
-    li.addEventListener("dragstart", (event) => {
-      if (suppressRecipeDrag) {
-        event.preventDefault();
-        return;
-      }
-      if (event.target.closest(".recipe-remove-btn, .recipe-item-edit")) {
-        event.preventDefault();
-        return;
-      }
-      draggingRecipeName = key;
-      li.classList.add("is-dragging");
-      if (event.dataTransfer) {
-        event.dataTransfer.effectAllowed = "move";
-        event.dataTransfer.setData("text/plain", key);
-      }
-    });
+    if (isEditable) {
+      li.addEventListener("dragstart", (event) => {
+        if (suppressRecipeDrag) {
+          event.preventDefault();
+          return;
+        }
+        if (event.target.closest(".recipe-remove-btn, .recipe-item-edit")) {
+          event.preventDefault();
+          return;
+        }
+        draggingRecipeName = key;
+        li.classList.add("is-dragging");
+        if (event.dataTransfer) {
+          event.dataTransfer.effectAllowed = "move";
+          event.dataTransfer.setData("text/plain", key);
+        }
+      });
 
-    li.addEventListener("dragend", () => {
-      draggingRecipeName = null;
-      li.classList.remove("is-dragging");
-      if (recipeDropIndicator) recipeDropIndicator.classList.remove("is-visible");
-    });
+      li.addEventListener("dragend", () => {
+        draggingRecipeName = null;
+        li.classList.remove("is-dragging");
+        if (recipeDropIndicator) recipeDropIndicator.classList.remove("is-visible");
+      });
+    }
 
     if (editingRecipeKey === key) {
       const input = document.createElement("input");
@@ -2030,54 +2077,56 @@ async function refreshRecipeList(selectedName = currentRecipeName) {
       row.appendChild(btn);
     }
 
-    const removeBtn = document.createElement("button");
-    removeBtn.className = "recipe-remove-btn";
-    removeBtn.type = "button";
-    removeBtn.textContent = "-";
-    removeBtn.title = "削除";
-    removeBtn.dataset.name = key === "__draft__" ? "" : key;
-    removeBtn.dataset.key = key;
-    removeBtn.draggable = false;
-    const runDelete = async () => {
-      clearArmedRecipeDelete();
-      if (key === "__draft__") {
-        await deleteDraftRecipe();
-      } else {
-        await deleteRecipeByName(key);
-      }
-    };
-    removeBtn.addEventListener("pointerdown", (event) => {
-      suppressRecipeDrag = true;
-      event.stopPropagation();
-    });
-    removeBtn.addEventListener("pointerup", (event) => {
-      suppressRecipeDrag = false;
-      event.stopPropagation();
-    });
-    removeBtn.addEventListener("pointercancel", () => {
-      suppressRecipeDrag = false;
-    });
-    removeBtn.addEventListener("dragstart", (event) => {
-      event.preventDefault();
-    });
-    removeBtn.addEventListener("click", async (event) => {
-      suppressRecipeDrag = false;
-      event.stopPropagation();
-      if (armedRecipeDeleteKey !== key) {
+    if (isEditable) {
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "recipe-remove-btn";
+      removeBtn.type = "button";
+      removeBtn.textContent = "-";
+      removeBtn.title = "削除";
+      removeBtn.dataset.name = key === "__draft__" ? "" : key;
+      removeBtn.dataset.key = key;
+      removeBtn.draggable = false;
+      const runDelete = async () => {
         clearArmedRecipeDelete();
-        armedRecipeDeleteKey = key;
-        removeBtn.classList.add("is-armed");
-        removeBtn.textContent = "!";
-        removeBtn.title = "もう一度押すと削除";
-        armedRecipeDeleteTimer = setTimeout(() => {
+        if (key === "__draft__") {
+          await deleteDraftRecipe();
+        } else {
+          await deleteRecipeByName(key);
+        }
+      };
+      removeBtn.addEventListener("pointerdown", (event) => {
+        suppressRecipeDrag = true;
+        event.stopPropagation();
+      });
+      removeBtn.addEventListener("pointerup", (event) => {
+        suppressRecipeDrag = false;
+        event.stopPropagation();
+      });
+      removeBtn.addEventListener("pointercancel", () => {
+        suppressRecipeDrag = false;
+      });
+      removeBtn.addEventListener("dragstart", (event) => {
+        event.preventDefault();
+      });
+      removeBtn.addEventListener("click", async (event) => {
+        suppressRecipeDrag = false;
+        event.stopPropagation();
+        if (armedRecipeDeleteKey !== key) {
           clearArmedRecipeDelete();
-        }, 1800);
-        return;
-      }
-      await runDelete();
-    });
+          armedRecipeDeleteKey = key;
+          removeBtn.classList.add("is-armed");
+          removeBtn.textContent = "!";
+          removeBtn.title = "もう一度押すと削除";
+          armedRecipeDeleteTimer = setTimeout(() => {
+            clearArmedRecipeDelete();
+          }, 1800);
+          return;
+        }
+        await runDelete();
+      });
 
-    row.appendChild(removeBtn);
+      row.appendChild(removeBtn);
+    }
     li.appendChild(row);
     recipeItemsEl.appendChild(li);
   });
@@ -2086,8 +2135,9 @@ async function refreshRecipeList(selectedName = currentRecipeName) {
 }
 
 async function deleteRecipeByName(name) {
+  if (!isEditable) return;
   if (!name) return;
-  const res = await fetch(`api/recipes/${encodeURIComponent(name)}`, { method: "DELETE" });
+  const res = await fetch(withEditorKey(`api/recipes/${encodeURIComponent(name)}`), { method: "DELETE" });
   if (!res.ok) {
     alert("削除に失敗しました");
     return;
@@ -2173,6 +2223,7 @@ function applyJsonEditorText() {
 }
 
 async function confirmSaveIfEditing() {
+  if (!isEditable) return true;
   if (!hasUnsavedChanges()) return true;
   const shouldSave = confirm("編集中のレシピがあります。保存しますか？");
   if (!shouldSave) return true;
@@ -2352,25 +2403,34 @@ function resetToNewRecipe() {
   hasDraftRecipe = true;
 }
 
-document.getElementById("add-node").addEventListener("click", addNode);
-document.getElementById("add-text").addEventListener("click", addText);
-addStepLineBtn.addEventListener("click", () => {
-  const centerY = (boardWrap ? boardWrap.scrollTop : 0) + (boardWrap ? boardWrap.clientHeight / 2 : BOARD_H / 2);
-  addStepLineAt(centerY);
-});
-document.getElementById("save").addEventListener("click", () => saveRecipe());
+const addNodeBtn = document.getElementById("add-node");
+const addTextBtn = document.getElementById("add-text");
+const saveBtn = document.getElementById("save");
+const newRecipeBtn = document.getElementById("new-recipe");
 
-document.getElementById("new-recipe").addEventListener("click", async () => {
-  const proceed = await confirmSaveIfEditing();
-  if (!proceed) return;
-  resetToNewRecipe();
-  const ok = await saveRecipe({ silent: true });
-  if (!ok) {
-    await refreshRecipeList("__draft__");
-  }
-});
+if (isEditable && addNodeBtn) addNodeBtn.addEventListener("click", addNode);
+if (isEditable && addTextBtn) addTextBtn.addEventListener("click", addText);
+if (isEditable && addStepLineBtn) {
+  addStepLineBtn.addEventListener("click", () => {
+    const centerY = (boardWrap ? boardWrap.scrollTop : 0) + (boardWrap ? boardWrap.clientHeight / 2 : BOARD_H / 2);
+    addStepLineAt(centerY);
+  });
+}
+if (isEditable && saveBtn) saveBtn.addEventListener("click", () => saveRecipe());
 
-recipeItemsEl.addEventListener("dragover", (event) => {
+if (isEditable && newRecipeBtn) {
+  newRecipeBtn.addEventListener("click", async () => {
+    const proceed = await confirmSaveIfEditing();
+    if (!proceed) return;
+    resetToNewRecipe();
+    const ok = await saveRecipe({ silent: true });
+    if (!ok) {
+      await refreshRecipeList("__draft__");
+    }
+  });
+}
+
+if (isEditable && recipeItemsEl) recipeItemsEl.addEventListener("dragover", (event) => {
   if (!draggingRecipeName || !recipeDropIndicator) return;
   event.preventDefault();
   const itemsEls = Array.from(recipeItemsEl.querySelectorAll("li")).filter((el) => el.dataset.key);
@@ -2391,7 +2451,7 @@ recipeItemsEl.addEventListener("dragover", (event) => {
   recipeDropIndicator.classList.add("is-visible");
 });
 
-recipeItemsEl.addEventListener("dragleave", (event) => {
+if (isEditable && recipeItemsEl) recipeItemsEl.addEventListener("dragleave", (event) => {
   if (!recipeDropIndicator) return;
   const nextTarget = event.relatedTarget;
   if (!nextTarget || !recipeItemsEl.contains(nextTarget)) {
@@ -2399,7 +2459,7 @@ recipeItemsEl.addEventListener("dragleave", (event) => {
   }
 });
 
-recipeItemsEl.addEventListener("drop", async (event) => {
+if (isEditable && recipeItemsEl) recipeItemsEl.addEventListener("drop", async (event) => {
   if (!draggingRecipeName) return;
   event.preventDefault();
   if (!recipeDropIndicator) return;
@@ -2439,7 +2499,7 @@ recipeItemsEl.addEventListener("drop", async (event) => {
   }
   const names = displayKeys.filter((name) => name !== "__draft__");
 
-  await fetch("api/recipes/order", {
+  await fetch(withEditorKey("api/recipes/order"), {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ names }),
@@ -2449,6 +2509,7 @@ recipeItemsEl.addEventListener("drop", async (event) => {
 });
 
 window.addEventListener("beforeunload", (e) => {
+  if (!isEditable) return;
   if (!hasUnsavedChanges()) return;
   e.preventDefault();
   e.returnValue = "";
@@ -2462,7 +2523,7 @@ document.addEventListener("keydown", (e) => {
   const inBoardContext = !active || active === document.body || Boolean(active.closest?.("#board-wrap"));
   const inJsonContext = Boolean(active && (active === jsonOutput || active.closest?.("#json-panel")));
 
-  const isSelectAll = (e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "a";
+  const isSelectAll = isEditable && (e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "a";
   if (isSelectAll) {
     if (inJsonContext || !inBoardContext) return;
     e.preventDefault();
@@ -2477,19 +2538,19 @@ document.addEventListener("keydown", (e) => {
     return;
   }
 
-  const isCopy = !isTyping && (e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "c";
+  const isCopy = isEditable && !isTyping && (e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "c";
   if (isCopy) {
     if (copySelectionToClipboard()) e.preventDefault();
     return;
   }
 
-  const isPaste = !isTyping && (e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "v";
+  const isPaste = isEditable && !isTyping && (e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "v";
   if (isPaste) {
     if (pasteSelectionFromClipboard()) e.preventDefault();
     return;
   }
 
-  const isBold = !isTyping && (e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "b";
+  const isBold = isEditable && !isTyping && (e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "b";
   if (isBold && state.selectedTextIds.length) {
     e.preventDefault();
     const before = cloneEditorState();
@@ -2503,7 +2564,7 @@ document.addEventListener("keydown", (e) => {
     return;
   }
 
-  const isDelete = !isTyping && (e.key === "Delete" || e.key === "Backspace");
+  const isDelete = isEditable && !isTyping && (e.key === "Delete" || e.key === "Backspace");
   if (isDelete && (state.selectedNodeIds.length || state.selectedStepLineIds.length || state.selectedTextIds.length || state.selectedEdgeKeys.length)) {
     pushHistory();
     const nodeSet = new Set(state.selectedNodeIds);
@@ -2526,14 +2587,14 @@ document.addEventListener("keydown", (e) => {
     return;
   }
 
-  const isUndo = (e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "z";
+  const isUndo = isEditable && (e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "z";
   if (isUndo) {
     e.preventDefault();
     undo();
   }
 });
 
-board.addEventListener("pointerdown", startMarqueeSelection);
+if (isEditable) board.addEventListener("pointerdown", startMarqueeSelection);
 
 if (boardWrap) {
   boardWrap.addEventListener(
