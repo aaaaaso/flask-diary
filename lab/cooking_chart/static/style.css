@@ -906,10 +906,6 @@ button.active {
     border-radius: 999px;
   }
 
-  .icon-btn.export-inline-btn span {
-    display: none;
-  }
-
   .export-wrap {
     display: none;
   }

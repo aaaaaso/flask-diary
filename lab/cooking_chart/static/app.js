@@ -2666,14 +2666,40 @@ async function exportBoardAsImage() {
       useCORS: true,
       logging: false,
     });
-    const a = document.createElement("a");
     const safeName = String((currentRecipeLabel || "cooking-chart").trim() || "cooking-chart")
       .replace(/[\\/:*?"<>|]+/g, "_");
-    a.href = canvas.toDataURL("image/png");
-    a.download = `${safeName}.png`;
+    const filename = `${safeName}.png`;
+    const isMobile = window.matchMedia("(max-width: 960px)").matches;
+
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!blob) throw new Error("toBlob failed");
+
+    if (isMobile && navigator.share) {
+      const file = new File([blob], filename, { type: "image/png" });
+      const canShareFile = typeof navigator.canShare === "function"
+        ? navigator.canShare({ files: [file] })
+        : true;
+      if (canShareFile) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: filename,
+          });
+          return;
+        } catch {
+          // Fallback to download when share is canceled/failed.
+        }
+      }
+    }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   } catch (err) {
     alert("画像生成に失敗しました");
   } finally {
