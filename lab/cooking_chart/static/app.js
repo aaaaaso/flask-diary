@@ -63,9 +63,6 @@ const recipeTitleEl = document.getElementById("recipe-title");
 const recipeItemsEl = document.getElementById("recipe-items");
 const recipeDropIndicator = document.getElementById("recipe-drop-indicator");
 const addStepLineBtn = document.getElementById("add-step-line");
-const zoomInBtn = document.getElementById("zoom-in");
-const zoomOutBtn = document.getElementById("zoom-out");
-const zoomLevelEl = document.getElementById("zoom-level");
 const isEditable = document.body?.dataset?.mode === "edit";
 const pageParams = new URLSearchParams(window.location.search);
 const editorKey = (pageParams.get("key") || "").trim();
@@ -2384,9 +2381,6 @@ function applyViewScale(nextScale) {
   viewScale = Math.max(MIN_VIEW_SCALE, Math.min(MAX_VIEW_SCALE, nextScale));
   board.style.zoom = String(viewScale);
   edgesSvg.style.zoom = String(viewScale);
-  if (zoomLevelEl) {
-    zoomLevelEl.textContent = `${Math.round(viewScale * 100)}%`;
-  }
 }
 
 function zoomAtClient(clientX, clientY, nextScale) {
@@ -2629,15 +2623,6 @@ if (boardWrap && isEditable) {
     e.preventDefault();
     gestureStartScale = viewScale;
   });
-}
-
-if (boardWrap && zoomInBtn && zoomOutBtn) {
-  const zoomFromCenter = (nextScale) => {
-    const rect = boardWrap.getBoundingClientRect();
-    zoomAtClient(rect.left + rect.width / 2, rect.top + rect.height / 2, nextScale);
-  };
-  zoomInBtn.addEventListener("click", () => zoomFromCenter(viewScale * 1.2));
-  zoomOutBtn.addEventListener("click", () => zoomFromCenter(viewScale / 1.2));
 }
 
 if (toggleJsonBtn && jsonPanel) {

@@ -285,38 +285,6 @@ button.active {
   background: var(--surface);
 }
 
-.zoom-controls {
-  position: sticky;
-  top: 8px;
-  margin-left: auto;
-  margin-right: 8px;
-  z-index: 6;
-  width: fit-content;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(2px);
-}
-
-.zoom-controls button {
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border-radius: 999px;
-  line-height: 1;
-}
-
-#zoom-level {
-  min-width: 44px;
-  text-align: center;
-  font-size: 11px;
-  color: #4b5563;
-}
-
 .board-wrap::before {
   content: "";
   position: absolute;
