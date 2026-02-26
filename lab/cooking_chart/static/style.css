@@ -874,16 +874,16 @@ button.active {
 }
 
 @media (max-width: 960px) {
-  .app-shell {
+  body[data-mode="edit"] .app-shell {
     grid-template-columns: 1fr;
   }
 
-  .sidebar {
+  body[data-mode="edit"] .sidebar {
     border-right: none;
     border-bottom: 1px solid var(--border);
   }
 
-  .topbar {
+  body[data-mode="edit"] .topbar {
     gap: 8px;
     align-items: flex-start;
     flex-direction: column;

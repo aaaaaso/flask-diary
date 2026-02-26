@@ -2170,7 +2170,7 @@ async function deleteDraftRecipe() {
 }
 
 function refreshRecipeDirtyIndicator() {
-  const dirty = hasUnsavedChanges();
+  const dirty = isEditable && hasUnsavedChanges();
   recipeItemsEl.querySelectorAll(".recipe-item-btn").forEach((btn) => {
     const key = btn.dataset.key || "";
     const currentKey = currentRecipeName || "__draft__";
