@@ -7,7 +7,7 @@ const AUTO_CHILD_DY = 50;
 const GRID_SIZE = 20;
 const MIN_VIEW_SCALE = 0.5;
 const MAX_VIEW_SCALE = 2.5;
-const VIEW_MODE_INITIAL_SCALE = 0.5;
+const VIEW_MODE_INITIAL_SCALE = 1;
 
 const state = {
   nodes: [],
