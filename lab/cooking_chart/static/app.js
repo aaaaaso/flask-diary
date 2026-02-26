@@ -2382,6 +2382,14 @@ function applyViewScale(nextScale) {
   edgesSvg.style.zoom = String(viewScale);
 }
 
+function fitViewModeScale() {
+  if (isEditable || !boardWrap) return;
+  const usableWidth = Math.max(240, boardWrap.clientWidth - 12);
+  const target = usableWidth / BOARD_W;
+  const next = Math.max(0.2, Math.min(1, target));
+  applyViewScale(next);
+}
+
 function zoomAtClient(clientX, clientY, nextScale) {
   if (!boardWrap) return;
   const prev = viewScale;
@@ -2659,6 +2667,10 @@ if (boardWrap) {
 }
 
 applyViewScale(1);
+fitViewModeScale();
+if (!isEditable) {
+  window.addEventListener("resize", fitViewModeScale);
+}
 refreshRecipeTitle();
 render();
 markSavedNow();

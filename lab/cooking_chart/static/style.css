@@ -25,6 +25,8 @@ body {
   font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", sans-serif;
   color: var(--text);
   background: var(--bg);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 .app-shell {
@@ -874,6 +876,15 @@ button.active {
 }
 
 @media (max-width: 960px) {
+  body[data-mode="view"] .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  body[data-mode="view"] .sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
   body[data-mode="edit"] .app-shell {
     grid-template-columns: 1fr;
   }
