@@ -2611,47 +2611,74 @@ function drawGridToCanvas(ctx, bounds) {
   }
 }
 
-function exportBoardAsImage() {
+async function exportBoardAsImage() {
   const bounds = contentBoundsWithPadding(30);
   if (!bounds) {
     alert("保存対象がありません");
     return;
   }
 
-  const canvas = document.createElement("canvas");
-  const dpr = Math.max(1, window.devicePixelRatio || 1);
-  canvas.width = Math.max(1, Math.floor(bounds.w * dpr));
-  canvas.height = Math.max(1, Math.floor(bounds.h * dpr));
-  const ctx = canvas.getContext("2d");
-  if (!ctx) {
-    alert("画像生成に失敗しました");
+  if (typeof window.html2canvas !== "function") {
+    alert("画像保存ライブラリの読み込みに失敗しました");
     return;
   }
 
-  ctx.scale(dpr, dpr);
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, bounds.w, bounds.h);
-  ctx.save();
-  ctx.translate(-bounds.x, -bounds.y);
+  const stage = document.createElement("div");
+  stage.style.position = "fixed";
+  stage.style.left = "-100000px";
+  stage.style.top = "0";
+  stage.style.width = `${bounds.w}px`;
+  stage.style.height = `${bounds.h}px`;
+  stage.style.background = "#ffffff";
+  stage.style.overflow = "hidden";
+  stage.style.zIndex = "-1";
+  stage.style.backgroundImage = "radial-gradient(#d7eaed 1px, transparent 1px)";
+  stage.style.backgroundSize = `${GRID_SIZE}px ${GRID_SIZE}px`;
+  stage.style.backgroundPosition = `${-bounds.x}px ${-bounds.y}px`;
 
-  drawGridToCanvas(ctx, bounds);
-  [...state.stepLines]
-    .sort((a, b) => a.y - b.y)
-    .forEach((line, idx) => drawStepLineToCanvas(ctx, line, idx));
-  drawEdgesToCanvas(ctx);
-  state.texts.forEach((t) => drawTextToCanvas(ctx, t));
-  state.nodes.forEach((n) => drawNodeToCanvas(ctx, n));
+  const edgesClone = edgesSvg.cloneNode(true);
+  edgesClone.style.position = "absolute";
+  edgesClone.style.left = `${-bounds.x}px`;
+  edgesClone.style.top = `${-bounds.y}px`;
+  edgesClone.style.width = `${BOARD_W}px`;
+  edgesClone.style.height = `${BOARD_H}px`;
+  edgesClone.style.zoom = "1";
 
-  ctx.restore();
+  const boardClone = board.cloneNode(true);
+  boardClone.style.position = "absolute";
+  boardClone.style.left = `${-bounds.x}px`;
+  boardClone.style.top = `${-bounds.y}px`;
+  boardClone.style.width = `${BOARD_W}px`;
+  boardClone.style.height = `${BOARD_H}px`;
+  boardClone.style.zoom = "1";
+  boardClone.querySelectorAll("input,textarea").forEach((el) => {
+    el.blur();
+  });
 
-  const a = document.createElement("a");
-  const safeName = String((currentRecipeLabel || "cooking-chart").trim() || "cooking-chart")
-    .replace(/[\\/:*?"<>|]+/g, "_");
-  a.href = canvas.toDataURL("image/png");
-  a.download = `${safeName}.png`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+  stage.appendChild(edgesClone);
+  stage.appendChild(boardClone);
+  document.body.appendChild(stage);
+
+  try {
+    const canvas = await window.html2canvas(stage, {
+      backgroundColor: "#ffffff",
+      scale: Math.max(2, window.devicePixelRatio || 1),
+      useCORS: true,
+      logging: false,
+    });
+    const a = document.createElement("a");
+    const safeName = String((currentRecipeLabel || "cooking-chart").trim() || "cooking-chart")
+      .replace(/[\\/:*?"<>|]+/g, "_");
+    a.href = canvas.toDataURL("image/png");
+    a.download = `${safeName}.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } catch (err) {
+    alert("画像生成に失敗しました");
+  } finally {
+    stage.remove();
+  }
 }
 
 function zoomAtClient(clientX, clientY, nextScale) {
