@@ -2596,7 +2596,7 @@ document.addEventListener("keydown", (e) => {
 
 if (isEditable) board.addEventListener("pointerdown", startMarqueeSelection);
 
-if (boardWrap) {
+if (boardWrap && isEditable) {
   boardWrap.addEventListener(
     "wheel",
     (e) => {

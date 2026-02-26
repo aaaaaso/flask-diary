@@ -2,7 +2,10 @@
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="viewport"
+      content="{{ 'width=device-width, initial-scale=1' if editable else 'width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=5, user-scalable=yes' }}"
+    />
     <title>{{ "Recipe Edit" if editable else "Cooking Chart" }}</title>
     <link rel="stylesheet" href="static/style.css" />
   </head>
