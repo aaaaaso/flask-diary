@@ -223,7 +223,7 @@ h1 {
   letter-spacing: 0.01em;
 }
 
-.export-inline-btn {
+.icon-btn.export-inline-btn {
   display: none;
 }
 
@@ -892,13 +892,13 @@ button.active {
 }
 
 @media (max-width: 960px) {
-  body[data-mode="view"] .topbar {
+  .topbar {
     gap: 8px;
     align-items: center;
     flex-direction: row;
   }
 
-  body[data-mode="view"] .export-inline-btn {
+  .icon-btn.export-inline-btn {
     display: inline-flex;
     min-width: 42px;
     justify-content: center;
@@ -906,11 +906,11 @@ button.active {
     border-radius: 999px;
   }
 
-  body[data-mode="view"] .export-inline-btn span {
+  .icon-btn.export-inline-btn span {
     display: none;
   }
 
-  body[data-mode="view"] .export-wrap {
+  .export-wrap {
     display: none;
   }
 
