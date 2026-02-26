@@ -63,6 +63,7 @@ const recipeTitleEl = document.getElementById("recipe-title");
 const recipeItemsEl = document.getElementById("recipe-items");
 const recipeDropIndicator = document.getElementById("recipe-drop-indicator");
 const addStepLineBtn = document.getElementById("add-step-line");
+const exportImageBtn = document.getElementById("export-image");
 const isEditable = document.body?.dataset?.mode === "edit";
 const pageParams = new URLSearchParams(window.location.search);
 const editorKey = (pageParams.get("key") || "").trim();
@@ -2383,6 +2384,276 @@ function applyViewScale(nextScale) {
   edgesSvg.style.zoom = String(viewScale);
 }
 
+function expandBounds(bounds, x, y, w, h) {
+  bounds.minX = Math.min(bounds.minX, x);
+  bounds.minY = Math.min(bounds.minY, y);
+  bounds.maxX = Math.max(bounds.maxX, x + w);
+  bounds.maxY = Math.max(bounds.maxY, y + h);
+}
+
+function contentBoundsWithPadding(pad = 30) {
+  const b = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+
+  state.nodes.forEach((n) => {
+    expandBounds(b, n.x, n.y, NODE_W, nodeHeight(n));
+  });
+  state.texts.forEach((t) => {
+    const w = Number.isFinite(Number(t.w)) ? Number(t.w) : NODE_W;
+    const h = textHeight(t);
+    expandBounds(b, t.x, t.y, w, h);
+  });
+  state.edges.forEach((edge) => {
+    const from = nodeById(edge.from);
+    const to = nodeById(edge.to);
+    if (!from || !to) return;
+    const sides = resolveEdgeSides(edge, from, to);
+    const a = anchorFor(from, sides.fromSide);
+    const z = anchorFor(to, sides.toSide);
+    const { c1, c2 } = bezierControls(a, sides.fromSide, z, sides.toSide);
+    const minX = Math.min(a.x, z.x, c1.x, c2.x) - 2;
+    const minY = Math.min(a.y, z.y, c1.y, c2.y) - 2;
+    const maxX = Math.max(a.x, z.x, c1.x, c2.x) + 2;
+    const maxY = Math.max(a.y, z.y, c1.y, c2.y) + 2;
+    expandBounds(b, minX, minY, maxX - minX, maxY - minY);
+  });
+
+  // Step lines should only extend vertical bounds; do not force full-board width.
+  if (Number.isFinite(b.minX) && Number.isFinite(b.maxX) && b.maxX > b.minX) {
+    const lineW = b.maxX - b.minX;
+    state.stepLines.forEach((l) => {
+      expandBounds(b, b.minX, l.y - 8, lineW, 16);
+    });
+  } else if (state.stepLines.length > 0) {
+    state.stepLines.forEach((l) => {
+      expandBounds(b, 0, l.y - 8, 320, 16);
+    });
+  }
+
+  if (!Number.isFinite(b.minX)) return null;
+  const minX = Math.max(0, Math.floor(b.minX - pad));
+  const minY = Math.max(0, Math.floor(b.minY - pad));
+  const maxX = Math.min(BOARD_W, Math.ceil(b.maxX + pad));
+  const maxY = Math.min(BOARD_H, Math.ceil(b.maxY + pad));
+  return { x: minX, y: minY, w: Math.max(1, maxX - minX), h: Math.max(1, maxY - minY) };
+}
+
+function roundedRectPath(ctx, x, y, w, h, r) {
+  const rr = Math.max(0, Math.min(r, Math.min(w, h) / 2));
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+  ctx.closePath();
+}
+
+function drawWrappedLines(ctx, text, x, y, maxWidth, lineHeight, maxLines = 6) {
+  const lines = [];
+  const srcLines = String(text || "").split("\n");
+  srcLines.forEach((src) => {
+    const chars = [...src];
+    let current = "";
+    chars.forEach((ch) => {
+      const next = current + ch;
+      if (ctx.measureText(next).width <= maxWidth || current.length === 0) {
+        current = next;
+      } else {
+        lines.push(current);
+        current = ch;
+      }
+    });
+    lines.push(current);
+  });
+  const finalLines = lines.filter((l) => l != null).slice(0, maxLines);
+  finalLines.forEach((line, i) => ctx.fillText(line, x, y + i * lineHeight));
+  return finalLines.length;
+}
+
+function drawNodeToCanvas(ctx, node) {
+  const h = nodeHeight(node);
+  let fill = "#fcfdff";
+  let border = "#b7d0d6";
+  if (node.color === "green") {
+    fill = "#c8e4e9";
+    border = "#088395";
+  } else if (node.color === "orange") {
+    fill = "#f8d8e3";
+    border = "#b3093f";
+  }
+
+  ctx.strokeStyle = border;
+  ctx.lineWidth = 1;
+  ctx.fillStyle = fill;
+  roundedRectPath(ctx, node.x, node.y, NODE_W, h, 5);
+  ctx.fill();
+  ctx.stroke();
+
+  if (node.time) {
+    const tx = node.x - 18;
+    const ty = node.y - 12;
+    const tw = Math.max(52, Math.min(120, 20 + ctx.measureText(node.time).width));
+    const th = 23;
+    ctx.fillStyle = "#09637e";
+    ctx.strokeStyle = "#09637e";
+    roundedRectPath(ctx, tx, ty, tw, th, 11.5);
+    ctx.fill();
+    ctx.font = '10px "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif';
+    ctx.fillStyle = "#ffffff";
+    ctx.textBaseline = "middle";
+    ctx.fillText(node.time, tx + 10, ty + th / 2 + 0.5);
+  }
+
+  ctx.fillStyle = "#14323a";
+  ctx.font = '13px "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif';
+  ctx.textBaseline = "top";
+  const titleY = node.y + (node.tags?.length || node.memos?.length ? 11 : 14);
+  drawWrappedLines(ctx, node.title || "", node.x + 10, titleY, NODE_W - 20, 16, 3);
+
+  let y = node.y + 48;
+  const tags = normalizeNodeTags(node.tags);
+  if (tags.length) {
+    ctx.font = '9px "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif';
+    tags.forEach((tag) => {
+      const tw = Math.min(NODE_W - 20, ctx.measureText(tag).width + 16);
+      const th = 18;
+      ctx.fillStyle = "#f2fafb";
+      ctx.strokeStyle = "#7ab2b2";
+      roundedRectPath(ctx, node.x + 10, y, tw, th, 9);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#2f4f57";
+      ctx.textBaseline = "middle";
+      ctx.fillText(tag, node.x + 18, y + th / 2 + 0.5);
+      y += th + 4;
+    });
+  }
+
+  const memos = normalizeNodeMemos(node.memos);
+  if (memos.length) {
+    ctx.font = '9px "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif';
+    ctx.fillStyle = "#14323a";
+    ctx.textBaseline = "top";
+    drawWrappedLines(ctx, memos[0], node.x + 10, y, NODE_W - 20, 13, 8);
+  }
+}
+
+function drawTextToCanvas(ctx, textItem) {
+  const w = Number.isFinite(Number(textItem.w)) ? Number(textItem.w) : NODE_W;
+  const h = textHeight(textItem);
+  ctx.font = `${textItem.bold ? "700" : "400"} 13px "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif`;
+  ctx.fillStyle = "#14323a";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "center";
+  const lines = String(textItem.text || "").split("\n");
+  const lineHeight = 16;
+  const baseY = textItem.y + h / 2 - ((lines.length - 1) * lineHeight) / 2;
+  lines.forEach((line, i) => {
+    ctx.fillText(line, textItem.x + w / 2, baseY + i * lineHeight);
+  });
+  ctx.textAlign = "start";
+}
+
+function drawStepLineToCanvas(ctx, line, idx) {
+  const y = line.y + 0.5;
+  ctx.save();
+  ctx.strokeStyle = "rgba(107, 114, 128, 0.55)";
+  ctx.lineWidth = 1;
+  ctx.setLineDash([6, 5]);
+  ctx.beginPath();
+  ctx.moveTo(0, y);
+  ctx.lineTo(BOARD_W, y);
+  ctx.stroke();
+  ctx.restore();
+
+  const label = String(line.label || "").trim() || `STEP ${idx + 1}`;
+  ctx.font = '11px "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif';
+  const lw = ctx.measureText(label).width + 10;
+  const lx = 8;
+  const ly = y - 16;
+  ctx.fillStyle = "rgba(248, 250, 252, 0.9)";
+  ctx.fillRect(lx, ly - 1, lw, 14);
+  ctx.fillStyle = "#09637e";
+  ctx.textBaseline = "top";
+  ctx.fillText(label, lx + 5, ly);
+}
+
+function drawEdgesToCanvas(ctx) {
+  state.edges.forEach((edge) => {
+    const from = nodeById(edge.from);
+    const to = nodeById(edge.to);
+    if (!from || !to) return;
+    const sides = resolveEdgeSides(edge, from, to);
+    const a = anchorFor(from, sides.fromSide);
+    const b = anchorFor(to, sides.toSide);
+    const { c1, c2 } = bezierControls(a, sides.fromSide, b, sides.toSide);
+    ctx.strokeStyle = "#09637E";
+    ctx.lineWidth = 1.7;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.bezierCurveTo(c1.x, c1.y, c2.x, c2.y, b.x, b.y);
+    ctx.stroke();
+  });
+}
+
+function drawGridToCanvas(ctx, bounds) {
+  ctx.fillStyle = "#d7eaed";
+  const startX = Math.floor(bounds.x / GRID_SIZE) * GRID_SIZE;
+  const startY = Math.floor(bounds.y / GRID_SIZE) * GRID_SIZE;
+  const endX = bounds.x + bounds.w;
+  const endY = bounds.y + bounds.h;
+  for (let x = startX; x <= endX; x += GRID_SIZE) {
+    for (let y = startY; y <= endY; y += GRID_SIZE) {
+      ctx.beginPath();
+      ctx.arc(x, y, 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+function exportBoardAsImage() {
+  const bounds = contentBoundsWithPadding(30);
+  if (!bounds) {
+    alert("保存対象がありません");
+    return;
+  }
+
+  const canvas = document.createElement("canvas");
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  canvas.width = Math.max(1, Math.floor(bounds.w * dpr));
+  canvas.height = Math.max(1, Math.floor(bounds.h * dpr));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    alert("画像生成に失敗しました");
+    return;
+  }
+
+  ctx.scale(dpr, dpr);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, bounds.w, bounds.h);
+  ctx.save();
+  ctx.translate(-bounds.x, -bounds.y);
+
+  drawGridToCanvas(ctx, bounds);
+  [...state.stepLines]
+    .sort((a, b) => a.y - b.y)
+    .forEach((line, idx) => drawStepLineToCanvas(ctx, line, idx));
+  drawEdgesToCanvas(ctx);
+  state.texts.forEach((t) => drawTextToCanvas(ctx, t));
+  state.nodes.forEach((n) => drawNodeToCanvas(ctx, n));
+
+  ctx.restore();
+
+  const a = document.createElement("a");
+  const safeName = String((currentRecipeLabel || "cooking-chart").trim() || "cooking-chart")
+    .replace(/[\\/:*?"<>|]+/g, "_");
+  a.href = canvas.toDataURL("image/png");
+  a.download = `${safeName}.png`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
 function zoomAtClient(clientX, clientY, nextScale) {
   if (!boardWrap) return;
   const prev = viewScale;
@@ -2633,6 +2904,10 @@ if (toggleJsonBtn && jsonPanel) {
       refreshJsonText();
     }
   });
+}
+
+if (exportImageBtn) {
+  exportImageBtn.addEventListener("click", exportBoardAsImage);
 }
 
 if (jsonOutput) {

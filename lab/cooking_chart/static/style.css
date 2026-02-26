@@ -832,6 +832,12 @@ button.active {
   padding: 0 16px 8px;
 }
 
+.export-wrap {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 16px 8px;
+}
+
 .json-toggle-btn {
   padding: 4px 8px;
   font-size: 12px;
