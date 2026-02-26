@@ -2696,6 +2696,11 @@ function zoomAtClient(clientX, clientY, nextScale) {
   boardWrap.scrollTop = contentY * next - vy;
 }
 
+function canUseBoardZoom() {
+  if (isEditable) return true;
+  return window.matchMedia("(min-width: 961px)").matches;
+}
+
 function resetToNewRecipe() {
   clearEditorToEmpty();
   draftListIndex = recipeNames.length;
@@ -2895,7 +2900,7 @@ document.addEventListener("keydown", (e) => {
 
 if (isEditable) board.addEventListener("pointerdown", startMarqueeSelection);
 
-if (boardWrap && isEditable) {
+if (boardWrap && canUseBoardZoom()) {
   boardWrap.addEventListener(
     "wheel",
     (e) => {
@@ -2965,4 +2970,11 @@ applyViewScale(isEditable ? 1 : VIEW_MODE_INITIAL_SCALE);
 refreshRecipeTitle();
 render();
 markSavedNow();
-refreshRecipeList();
+
+(async () => {
+  await refreshRecipeList();
+  if (!currentRecipeName && !hasDraftRecipe && recipeNames.length > 0) {
+    await loadRecipe(recipeNames[0]);
+    await refreshRecipeList(recipeNames[0]);
+  }
+})();
