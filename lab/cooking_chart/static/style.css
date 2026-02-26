@@ -908,6 +908,11 @@ body[data-mode="view"] .step-line {
   cursor: default;
 }
 
+body[data-mode="view"] {
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+}
+
 body[data-mode="view"] .step-line,
 body[data-mode="view"] .edge-path,
 body[data-mode="view"] .edge-hit,
