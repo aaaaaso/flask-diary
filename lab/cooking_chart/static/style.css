@@ -210,11 +210,21 @@ body {
   background: #f8fcfd;
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 h1 {
   margin: 0;
   font-size: 16px;
   font-weight: 700;
   letter-spacing: 0.01em;
+}
+
+.export-inline-btn {
+  display: none;
 }
 
 .controls {
@@ -882,6 +892,28 @@ button.active {
 }
 
 @media (max-width: 960px) {
+  body[data-mode="view"] .topbar {
+    gap: 8px;
+    align-items: center;
+    flex-direction: row;
+  }
+
+  body[data-mode="view"] .export-inline-btn {
+    display: inline-flex;
+    min-width: 42px;
+    justify-content: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+  }
+
+  body[data-mode="view"] .export-inline-btn span {
+    display: none;
+  }
+
+  body[data-mode="view"] .export-wrap {
+    display: none;
+  }
+
   body[data-mode="view"] .app-shell {
     grid-template-columns: 1fr;
   }

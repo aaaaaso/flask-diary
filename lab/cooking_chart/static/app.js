@@ -63,7 +63,7 @@ const recipeTitleEl = document.getElementById("recipe-title");
 const recipeItemsEl = document.getElementById("recipe-items");
 const recipeDropIndicator = document.getElementById("recipe-drop-indicator");
 const addStepLineBtn = document.getElementById("add-step-line");
-const exportImageBtn = document.getElementById("export-image");
+const exportImageButtons = Array.from(document.querySelectorAll("[data-export-image]"));
 const isEditable = document.body?.dataset?.mode === "edit";
 const pageParams = new URLSearchParams(window.location.search);
 const editorKey = (pageParams.get("key") || "").trim();
@@ -2933,9 +2933,9 @@ if (toggleJsonBtn && jsonPanel) {
   });
 }
 
-if (exportImageBtn) {
-  exportImageBtn.addEventListener("click", exportBoardAsImage);
-}
+exportImageButtons.forEach((btn) => {
+  btn.addEventListener("click", exportBoardAsImage);
+});
 
 if (jsonOutput) {
   jsonOutput.addEventListener("focus", () => {

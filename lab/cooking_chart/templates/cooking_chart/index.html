@@ -29,8 +29,13 @@
       <div class="workspace">
         <header class="topbar">
           <h1 id="recipe-title">タイトルなし</h1>
-          {% if editable %}
-          <div class="controls">
+          <div class="topbar-actions">
+            <button class="icon-btn export-inline-btn" data-export-image title="画像で保存">
+              <img src="static/download_icon.png" alt="" />
+              <span>画像で保存</span>
+            </button>
+            {% if editable %}
+            <div class="controls">
             <button id="add-text" class="icon-btn" title="テキスト追加">
               <img src="static/text_icon.png" alt="" />
               <span>テキスト追加</span>
@@ -47,8 +52,9 @@
               <img src="static/save_icon.png" alt="" />
               <span>保存</span>
             </button>
+            </div>
+            {% endif %}
           </div>
-          {% endif %}
         </header>
 
         <main class="board-wrap" id="board-wrap">
@@ -56,7 +62,7 @@
           <div id="board"></div>
         </main>
         <div class="export-wrap">
-          <button id="export-image" class="icon-btn" title="画像で保存">
+          <button class="icon-btn export-bottom-btn" data-export-image title="画像で保存">
             <img src="static/download_icon.png" alt="" />
             <span>画像で保存</span>
           </button>
