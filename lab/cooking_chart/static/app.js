@@ -8,6 +8,10 @@ const GRID_SIZE = 20;
 const MIN_VIEW_SCALE = 0.5;
 const MAX_VIEW_SCALE = 2.5;
 const VIEW_MODE_INITIAL_SCALE = 1;
+const NODE_COLOR_BASE = "base";
+const NODE_COLOR_TONE1 = "tone1";
+const NODE_COLOR_TONE2 = "tone2";
+const NODE_COLOR_TONE3 = "tone3";
 
 const state = {
   nodes: [],
@@ -336,8 +340,13 @@ function normalizeNodeMode(mode) {
 }
 
 function normalizeNodeColor(color) {
-  if (color === "green" || color === "orange") return color;
-  return "gray";
+  if ([NODE_COLOR_BASE, NODE_COLOR_TONE1, NODE_COLOR_TONE2, NODE_COLOR_TONE3].includes(color)) return color;
+  // Backward compatibility.
+  if (color === "gray") return NODE_COLOR_BASE;
+  if (color === "green") return NODE_COLOR_TONE1;
+  if (color === "orange") return NODE_COLOR_TONE2;
+  if (color === "green-light") return NODE_COLOR_TONE3;
+  return NODE_COLOR_BASE;
 }
 
 function normalizeNodeTime(time) {
@@ -606,7 +615,18 @@ function autoChildPosition(fromNode, fromSide) {
   const preferredY = fromNode.y + yDir * AUTO_CHILD_DY;
   const p = findNearbyFreePosition(preferredX, preferredY, fromNode.y, yDir);
   if (!p) return null;
-  return { id: state.nextId, x: p.x, y: p.y, h: NODE_H, title: "", mode: "material", color: "gray", time: "", tags: [], memos: [] };
+  return {
+    id: state.nextId,
+    x: p.x,
+    y: p.y,
+    h: NODE_H,
+    title: "",
+    mode: "material",
+    color: NODE_COLOR_BASE,
+    time: "",
+    tags: [],
+    memos: [],
+  };
 }
 
 function createConnectedNode(fromId, fromSide) {
@@ -706,7 +726,7 @@ function renderEdges() {
   marker.setAttribute("orient", "auto");
   const tip = document.createElementNS("http://www.w3.org/2000/svg", "path");
   tip.setAttribute("d", "M 0 0 L 8 3 L 0 6 z");
-  tip.setAttribute("fill", "#7a8591");
+  tip.setAttribute("fill", "#6f7045");
   marker.appendChild(tip);
   defs.appendChild(marker);
   edgesSvg.appendChild(defs);
@@ -750,7 +770,7 @@ function renderEdges() {
 
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("d", d);
-    path.setAttribute("stroke", "#09637E");
+    path.setAttribute("stroke", "#41431B");
     path.setAttribute("stroke-width", "1.7");
     path.setAttribute("fill", "none");
     path.setAttribute("class", "edge-path");
@@ -775,7 +795,7 @@ function renderEdges() {
     const d = `M ${a.x} ${a.y} C ${a.x} ${a.y + dy}, ${to.x} ${to.y - dy}, ${to.x} ${to.y}`;
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("d", d);
-    path.setAttribute("stroke", "#7a8591");
+    path.setAttribute("stroke", "#6f7045");
     path.setAttribute("stroke-width", "1.4");
     path.setAttribute("fill", "none");
     path.setAttribute("marker-end", "url(#edge-arrowhead)");
@@ -787,7 +807,7 @@ function renderEdges() {
     if (!from) return;
     const a = anchorFor(from, linkDraft.fromSide);
     const b = { x: linkDraft.toX, y: linkDraft.toY };
-    drawPath(pathD(a, linkDraft.fromSide, b, oppositeSide(linkDraft.fromSide)), "#7AB2B2", true);
+    drawPath(pathD(a, linkDraft.fromSide, b, oppositeSide(linkDraft.fromSide)), "#AEB784", true);
   }
 }
 
@@ -1302,8 +1322,9 @@ function buildNodeElement(node) {
   };
 
   const renderColorUI = () => {
-    el.classList.toggle("tone-green", node.color === "green");
-    el.classList.toggle("tone-orange", node.color === "orange");
+    el.classList.toggle("tone-1", node.color === NODE_COLOR_TONE1);
+    el.classList.toggle("tone-2", node.color === NODE_COLOR_TONE2);
+    el.classList.toggle("tone-3", node.color === NODE_COLOR_TONE3);
   };
 
   const renderMetaStateUI = () => {
@@ -1543,9 +1564,10 @@ function buildNodeElement(node) {
 
   colorSwitchBtn.addEventListener("click", () => {
     const before = cloneEditorState();
-    if (node.color === "gray") node.color = "green";
-    else if (node.color === "green") node.color = "orange";
-    else node.color = "gray";
+    if (node.color === NODE_COLOR_BASE) node.color = NODE_COLOR_TONE1;
+    else if (node.color === NODE_COLOR_TONE1) node.color = NODE_COLOR_TONE3;
+    else if (node.color === NODE_COLOR_TONE3) node.color = NODE_COLOR_TONE2;
+    else node.color = NODE_COLOR_BASE;
     pushHistory(before);
     refreshJsonText();
     renderColorUI();
@@ -1913,7 +1935,18 @@ function addNode() {
   if (!isEditable) return;
   pushHistory();
   const pos = nextRootPosition();
-  const node = { id: state.nextId, x: snap(pos.x), y: snap(pos.y), h: NODE_H, title: "", mode: "material", color: "gray", time: "", tags: [], memos: [] };
+  const node = {
+    id: state.nextId,
+    x: snap(pos.x),
+    y: snap(pos.y),
+    h: NODE_H,
+    title: "",
+    mode: "material",
+    color: NODE_COLOR_BASE,
+    time: "",
+    tags: [],
+    memos: [],
+  };
   clampNode(node);
   state.nodes.push(node);
   state.nextId += 1;
@@ -2340,7 +2373,7 @@ function convertLegacyContent(data) {
     h: NODE_H,
     title: c.title || "",
     mode: "material",
-    color: "gray",
+    color: NODE_COLOR_BASE,
     time: "",
     tags: [],
     memos: [],
@@ -2495,14 +2528,17 @@ function drawWrappedLines(ctx, text, x, y, maxWidth, lineHeight, maxLines = 6) {
 
 function drawNodeToCanvas(ctx, node) {
   const h = nodeHeight(node);
-  let fill = "#fcfdff";
-  let border = "#b7d0d6";
-  if (node.color === "green") {
-    fill = "#c8e4e9";
-    border = "#088395";
-  } else if (node.color === "orange") {
-    fill = "#f8d8e3";
-    border = "#b3093f";
+  let fill = "#ffffff";
+  let border = "#CFC8A8";
+  if (node.color === NODE_COLOR_TONE1) {
+    fill = "#AEB784";
+    border = "#41431B";
+  } else if (node.color === NODE_COLOR_TONE2) {
+    fill = "#E3DBBB";
+    border = "#41431B";
+  } else if (node.color === NODE_COLOR_TONE3) {
+    fill = "#ffffff";
+    border = "#AEB784";
   }
 
   ctx.strokeStyle = border;
@@ -2517,8 +2553,8 @@ function drawNodeToCanvas(ctx, node) {
     const ty = node.y - 12;
     const tw = Math.max(52, Math.min(120, 20 + ctx.measureText(node.time).width));
     const th = 23;
-    ctx.fillStyle = "#09637e";
-    ctx.strokeStyle = "#09637e";
+    ctx.fillStyle = "#41431B";
+    ctx.strokeStyle = "#41431B";
     roundedRectPath(ctx, tx, ty, tw, th, 11.5);
     ctx.fill();
     ctx.font = '10px "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif';
@@ -2527,7 +2563,7 @@ function drawNodeToCanvas(ctx, node) {
     ctx.fillText(node.time, tx + 10, ty + th / 2 + 0.5);
   }
 
-  ctx.fillStyle = "#14323a";
+  ctx.fillStyle = "#41431B";
   ctx.font = '13px "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif';
   ctx.textBaseline = "top";
   const titleY = node.y + (node.tags?.length || node.memos?.length ? 11 : 14);
@@ -2540,12 +2576,12 @@ function drawNodeToCanvas(ctx, node) {
     tags.forEach((tag) => {
       const tw = Math.min(NODE_W - 20, ctx.measureText(tag).width + 16);
       const th = 18;
-      ctx.fillStyle = "#f2fafb";
-      ctx.strokeStyle = "#7ab2b2";
+      ctx.fillStyle = "#F8F3E1";
+      ctx.strokeStyle = "#AEB784";
       roundedRectPath(ctx, node.x + 10, y, tw, th, 9);
       ctx.fill();
       ctx.stroke();
-      ctx.fillStyle = "#2f4f57";
+      ctx.fillStyle = "#41431B";
       ctx.textBaseline = "middle";
       ctx.fillText(tag, node.x + 18, y + th / 2 + 0.5);
       y += th + 4;
@@ -2555,7 +2591,7 @@ function drawNodeToCanvas(ctx, node) {
   const memos = normalizeNodeMemos(node.memos);
   if (memos.length) {
     ctx.font = '9px "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif';
-    ctx.fillStyle = "#14323a";
+    ctx.fillStyle = "#41431B";
     ctx.textBaseline = "top";
     drawWrappedLines(ctx, memos[0], node.x + 10, y, NODE_W - 20, 13, 8);
   }
@@ -2565,7 +2601,7 @@ function drawTextToCanvas(ctx, textItem) {
   const w = Number.isFinite(Number(textItem.w)) ? Number(textItem.w) : NODE_W;
   const h = textHeight(textItem);
   ctx.font = `${textItem.bold ? "700" : "400"} 13px "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif`;
-  ctx.fillStyle = "#14323a";
+  ctx.fillStyle = "#41431B";
   ctx.textBaseline = "middle";
   ctx.textAlign = "center";
   const lines = String(textItem.text || "").split("\n");
@@ -2596,7 +2632,7 @@ function drawStepLineToCanvas(ctx, line, idx) {
   const ly = y - 16;
   ctx.fillStyle = "rgba(248, 250, 252, 0.9)";
   ctx.fillRect(lx, ly - 1, lw, 14);
-  ctx.fillStyle = "#09637e";
+  ctx.fillStyle = "#41431B";
   ctx.textBaseline = "top";
   ctx.fillText(label, lx + 5, ly);
 }
@@ -2610,7 +2646,7 @@ function drawEdgesToCanvas(ctx) {
     const a = anchorFor(from, sides.fromSide);
     const b = anchorFor(to, sides.toSide);
     const { c1, c2 } = bezierControls(a, sides.fromSide, b, sides.toSide);
-    ctx.strokeStyle = "#09637E";
+    ctx.strokeStyle = "#41431B";
     ctx.lineWidth = 1.7;
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
@@ -2620,7 +2656,7 @@ function drawEdgesToCanvas(ctx) {
 }
 
 function drawGridToCanvas(ctx, bounds) {
-  ctx.fillStyle = "#d7eaed";
+  ctx.fillStyle = "#E3DBBB";
   const startX = Math.floor(bounds.x / GRID_SIZE) * GRID_SIZE;
   const startY = Math.floor(bounds.y / GRID_SIZE) * GRID_SIZE;
   const endX = bounds.x + bounds.w;
@@ -2655,7 +2691,7 @@ async function exportBoardAsImage() {
   stage.style.background = "#ffffff";
   stage.style.overflow = "hidden";
   stage.style.zIndex = "-1";
-  stage.style.backgroundImage = "radial-gradient(#d7eaed 1px, transparent 1px)";
+  stage.style.backgroundImage = "radial-gradient(#E3DBBB 1px, transparent 1px)";
   stage.style.backgroundSize = `${GRID_SIZE}px ${GRID_SIZE}px`;
   stage.style.backgroundPosition = `${-bounds.x}px ${-bounds.y}px`;
 

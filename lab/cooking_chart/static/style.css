@@ -1,14 +1,14 @@
 :root {
-  --bg: #f3f4f6;
-  --panel: #f8fafc;
+  --bg: #f8f3e1;
+  --panel: #f3edd8;
   --surface: #ffffff;
-  --text: #14323a;
-  --muted: #4f6f75;
-  --border: #b7d0d6;
-  --line: #d7eaed;
-  --accent: #09637e;
-  --accent-2: #088395;
-  --accent-soft: #7ab2b2;
+  --text: #41431b;
+  --muted: #6f7045;
+  --border: #cfc8a8;
+  --line: #e3dbbb;
+  --accent: #41431b;
+  --accent-2: #41431b;
+  --accent-soft: #aeb784;
 }
 
 * {
@@ -120,7 +120,7 @@ body {
 }
 
 .recipe-row:hover .recipe-item-btn:not(.active) {
-  background: #dfeef1;
+  background: #efe9cf;
 }
 
 .recipe-item-btn.active {
@@ -255,7 +255,7 @@ button:hover {
 }
 
 button.active {
-  background: #ebf4f6;
+  background: #efe9cf;
   border-color: var(--accent-2);
   color: var(--accent-2);
 }
@@ -324,7 +324,7 @@ button.active {
 }
 
 .text-item.selected {
-  outline: 1px dashed rgba(8, 131, 149, 0.35);
+  outline: 1px dashed rgba(65, 67, 27, 0.35);
   outline-offset: 2px;
 }
 
@@ -369,7 +369,7 @@ button.active {
 .selection-box {
   position: absolute;
   border: 1px dashed var(--accent-2);
-  background: rgba(8, 131, 149, 0.1);
+  background: rgba(65, 67, 27, 0.1);
   z-index: 3;
   pointer-events: none;
 }
@@ -412,7 +412,7 @@ button.active {
 }
 
 .step-line.active .step-label {
-  border: 1px solid rgba(8, 131, 149, 0.4);
+  border: 1px solid rgba(65, 67, 27, 0.4);
 }
 
 #edges {
@@ -452,7 +452,7 @@ button.active {
   border-radius: 5px;
   padding: 11px 8px 11px;
   box-shadow:
-    0 2px 0 #d5e7ea,
+    0 2px 0 #ded6b5,
     0 8px 14px rgba(17, 24, 39, 0.08);
   z-index: 2;
 }
@@ -480,8 +480,8 @@ button.active {
   font-size: 10px;
   line-height: 1.2;
   color: #ffffff;
-  background: #09637e;
-  border: 1px solid #09637e;
+  background: var(--accent);
+  border: 1px solid var(--accent);
   z-index: 4;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
   cursor: text;
@@ -499,68 +499,63 @@ button.active {
   font-size: 10px;
   line-height: 1.2;
   border-radius: 999px;
-  border: 1px solid #09637e;
+  border: 1px solid var(--accent);
   background: #ffffff;
   z-index: 5;
 }
 
 .card.selected {
-  border-color: #7aa8b0;
+  border-color: #aeb784;
   box-shadow:
-    0 2px 0 #d5e7ea,
+    0 2px 0 #ded6b5,
     0 8px 14px rgba(17, 24, 39, 0.1),
-    0 0 0 2px rgba(8, 131, 149, 0.18);
+    0 0 0 2px rgba(65, 67, 27, 0.18);
 }
 
-.card.tone-green {
-  border-color: #088395;
-  background: #c8e4e9;
+.card.tone-1 {
+  border-color: #41431b;
+  background: #aeb784;
 }
 
-.card.tone-orange {
-  border-color: #b3093f;
-  background: #f8d8e3;
+.card.tone-2 {
+  border-color: #41431b;
+  background: #e3dbbb;
 }
 
-.card.tone-green.selected {
-  border-color: #09637e;
+.card.tone-3 {
+  border-color: #aeb784;
+  background: #ffffff;
+}
+
+.card.tone-1.selected,
+.card.tone-2.selected,
+.card.tone-3.selected {
+  border-color: #41431b;
   box-shadow:
-    0 2px 0 #b8dbe0,
+    0 2px 0 #d8d0ad,
     0 8px 14px rgba(17, 24, 39, 0.1),
-    0 0 0 2px rgba(9, 99, 126, 0.22);
-}
-
-.card.tone-orange.selected {
-  border-color: #b3093f;
-  box-shadow:
-    0 2px 0 #e6a9be,
-    0 8px 14px rgba(17, 24, 39, 0.1),
-    0 0 0 2px rgba(179, 9, 63, 0.24);
+    0 0 0 2px rgba(65, 67, 27, 0.2);
 }
 
 .card.link-target {
-  border-color: #7aa8b0;
-  box-shadow: 0 0 0 2px rgba(8, 131, 149, 0.2);
+  border-color: #aeb784;
+  box-shadow: 0 0 0 2px rgba(65, 67, 27, 0.2);
 }
 
-.card.tone-green.link-target {
-  border-color: #09637e;
-  box-shadow: 0 0 0 2px rgba(9, 99, 126, 0.24);
+.card.tone-1.link-target,
+.card.tone-2.link-target,
+.card.tone-3.link-target {
+  border-color: #41431b;
+  box-shadow: 0 0 0 2px rgba(65, 67, 27, 0.24);
 }
 
-.card.tone-orange.link-target {
-  border-color: #b3093f;
-  box-shadow: 0 0 0 2px rgba(179, 9, 63, 0.26);
-}
-
-.card.tone-green .title:focus,
-.card.tone-green:focus-within .title {
+.card.tone-1 .title:focus,
+.card.tone-1:focus-within .title,
+.card.tone-2 .title:focus,
+.card.tone-2:focus-within .title,
+.card.tone-3 .title:focus,
+.card.tone-3:focus-within .title {
   border-color: var(--accent-2);
-}
-
-.card.tone-orange .title:focus,
-.card.tone-orange:focus-within .title {
-  border-color: #b3093f;
 }
 
 .node-side-actions {
@@ -656,7 +651,7 @@ button.active {
   border: 1px solid var(--accent-soft);
   border-radius: 999px;
   background: #f2fafb;
-  color: #2f4f57;
+  color: var(--text);
   font-size: 9px;
   line-height: 1;
   padding: 3px 7px;
@@ -833,7 +828,7 @@ button.active {
 
 .connector:hover {
   border-color: var(--accent-2);
-  background: #ebf4f6;
+  background: #efe9cf;
 }
 
 .json-toggle-wrap {
@@ -859,7 +854,7 @@ button.active {
 .json-toggle-btn.active {
   color: var(--accent);
   border-color: var(--accent-2);
-  background: #ebf4f6;
+  background: #efe9cf;
 }
 
 .json-panel {
