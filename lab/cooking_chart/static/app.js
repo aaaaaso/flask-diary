@@ -2681,31 +2681,49 @@ async function exportBoardAsImage() {
     alert("画像保存ライブラリの読み込みに失敗しました");
     return;
   }
-  if (!boardWrap) {
-    alert("描画エリアが見つかりません");
-    return;
-  }
 
-  // Ensure edit controls are closed before capture to avoid transient overlays.
-  board.querySelectorAll("input,textarea").forEach((el) => {
-    if (document.activeElement === el) el.blur();
+  const stage = document.createElement("div");
+  stage.style.position = "fixed";
+  stage.style.left = "-100000px";
+  stage.style.top = "0";
+  stage.style.width = `${bounds.w}px`;
+  stage.style.height = `${bounds.h}px`;
+  stage.style.background = "#ffffff";
+  stage.style.overflow = "hidden";
+  stage.style.zIndex = "-1";
+  stage.style.backgroundImage = "radial-gradient(#E3DBBB 1px, transparent 1px)";
+  stage.style.backgroundSize = `${GRID_SIZE}px ${GRID_SIZE}px`;
+  stage.style.backgroundPosition = `${-bounds.x}px ${-bounds.y}px`;
+
+  const edgesClone = edgesSvg.cloneNode(true);
+  edgesClone.style.position = "absolute";
+  edgesClone.style.left = `${-bounds.x}px`;
+  edgesClone.style.top = `${-bounds.y}px`;
+  edgesClone.style.width = `${BOARD_W}px`;
+  edgesClone.style.height = `${BOARD_H}px`;
+  edgesClone.style.zoom = "1";
+
+  const boardClone = board.cloneNode(true);
+  boardClone.style.position = "absolute";
+  boardClone.style.left = `${-bounds.x}px`;
+  boardClone.style.top = `${-bounds.y}px`;
+  boardClone.style.width = `${BOARD_W}px`;
+  boardClone.style.height = `${BOARD_H}px`;
+  boardClone.style.zoom = "1";
+  boardClone.querySelectorAll("input,textarea").forEach((el) => {
+    el.blur();
   });
 
-  try {
-    const cropX = bounds.x * viewScale - boardWrap.scrollLeft;
-    const cropY = bounds.y * viewScale - boardWrap.scrollTop;
-    const cropW = bounds.w * viewScale;
-    const cropH = bounds.h * viewScale;
+  stage.appendChild(edgesClone);
+  stage.appendChild(boardClone);
+  document.body.appendChild(stage);
 
-    const canvas = await window.html2canvas(boardWrap, {
+  try {
+    const canvas = await window.html2canvas(stage, {
       backgroundColor: "#ffffff",
       scale: Math.max(2, window.devicePixelRatio || 1),
       useCORS: true,
       logging: false,
-      x: cropX,
-      y: cropY,
-      width: cropW,
-      height: cropH,
     });
     const safeName = String((currentRecipeLabel || "cooking-chart").trim() || "cooking-chart")
       .replace(/[\\/:*?"<>|]+/g, "_");
@@ -2743,6 +2761,8 @@ async function exportBoardAsImage() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   } catch (err) {
     alert("画像生成に失敗しました");
+  } finally {
+    stage.remove();
   }
 }
 
