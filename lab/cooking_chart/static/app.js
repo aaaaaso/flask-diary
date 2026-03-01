@@ -2534,7 +2534,7 @@ function drawNodeToCanvas(ctx, node) {
     fill = "#E3DBBB";
     border = "#41431B";
   } else if (node.color === NODE_COLOR_TONE2) {
-    fill = "#AEB784";
+    fill = "#B8C19B";
     border = "#41431B";
   } else if (node.color === NODE_COLOR_TONE3) {
     fill = "#ffffff";

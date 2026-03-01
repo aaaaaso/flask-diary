@@ -1,14 +1,14 @@
 :root {
-  --bg: #fcfbf4;
-  --panel: #f8f6ee;
+  --bg: #f4f8f8;
+  --panel: #eef4f4;
   --surface: #ffffff;
   --text: #41431b;
   --muted: #6f7045;
-  --border: #ddd7c2;
+  --border: #d8e2e2;
   --line: #e3dbbb;
   --accent: #41431b;
   --accent-2: #41431b;
-  --accent-soft: #aeb784;
+  --accent-soft: #b8c19b;
 }
 
 * {
@@ -519,7 +519,7 @@ button.active {
 
 .card.tone-2 {
   border-color: #41431b;
-  background: #aeb784;
+  background: #b8c19b;
 }
 
 .card.tone-3 {
