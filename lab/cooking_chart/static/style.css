@@ -1,10 +1,10 @@
 :root {
-  --bg: #f8f3e1;
-  --panel: #f3edd8;
+  --bg: #fcfbf4;
+  --panel: #f8f6ee;
   --surface: #ffffff;
   --text: #41431b;
   --muted: #6f7045;
-  --border: #cfc8a8;
+  --border: #ddd7c2;
   --line: #e3dbbb;
   --accent: #41431b;
   --accent-2: #41431b;
@@ -207,7 +207,7 @@ body {
   align-items: center;
   padding: 12px 16px;
   border-bottom: 1px solid var(--border);
-  background: #f8fcfd;
+  background: var(--panel);
 }
 
 .topbar-actions {
@@ -514,12 +514,12 @@ button.active {
 
 .card.tone-1 {
   border-color: #41431b;
-  background: #aeb784;
+  background: #e3dbbb;
 }
 
 .card.tone-2 {
   border-color: #41431b;
-  background: #e3dbbb;
+  background: #aeb784;
 }
 
 .card.tone-3 {

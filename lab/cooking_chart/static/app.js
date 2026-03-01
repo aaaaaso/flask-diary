@@ -2531,10 +2531,10 @@ function drawNodeToCanvas(ctx, node) {
   let fill = "#ffffff";
   let border = "#CFC8A8";
   if (node.color === NODE_COLOR_TONE1) {
-    fill = "#AEB784";
+    fill = "#E3DBBB";
     border = "#41431B";
   } else if (node.color === NODE_COLOR_TONE2) {
-    fill = "#E3DBBB";
+    fill = "#AEB784";
     border = "#41431B";
   } else if (node.color === NODE_COLOR_TONE3) {
     fill = "#ffffff";
