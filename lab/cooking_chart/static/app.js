@@ -612,6 +612,7 @@ function createConnectedNode(fromId, fromSide) {
   state.nextId += 1;
   setSelection([newNode.id], []);
   render();
+  focusNodeTitleInput(newNode.id);
 }
 
 function sideVector(side) {
@@ -1906,6 +1907,16 @@ function addNode() {
   state.nextId += 1;
   setSelection([node.id], []);
   render();
+  focusNodeTitleInput(node.id);
+}
+
+function focusNodeTitleInput(nodeId) {
+  requestAnimationFrame(() => {
+    const title = board.querySelector(`.card[data-id="${nodeId}"] .title`);
+    if (!title) return;
+    title.focus();
+    title.select();
+  });
 }
 
 function addText() {
@@ -2119,12 +2130,12 @@ async function refreshRecipeList(selectedName = currentRecipeName) {
           removeBtn.classList.add("is-armed");
           removeBtn.textContent = "!";
           removeBtn.title = "もう一度押すと削除";
-          armedRecipeDeleteTimer = setTimeout(() => {
-            clearArmedRecipeDelete();
-          }, 1800);
-          return;
-        }
-        await runDelete();
+        armedRecipeDeleteTimer = setTimeout(() => {
+          clearArmedRecipeDelete();
+        }, 900);
+        return;
+      }
+      await runDelete();
       });
 
       row.appendChild(removeBtn);
@@ -2855,11 +2866,9 @@ document.addEventListener("keydown", (e) => {
 
   const isSelectAll = isEditable && (e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "a";
   if (isSelectAll) {
+    if (isTyping || active?.isContentEditable) return;
     if (inJsonContext || !inBoardContext) return;
     e.preventDefault();
-    if (active && (active.matches?.(".title,.memo-editor,.text-input,.time-input,.tag-inline-input") || active === jsonOutput)) {
-      active.blur();
-    }
     state.selectedNodeIds = state.nodes.map((n) => n.id);
     state.selectedStepLineIds = state.stepLines.map((l) => l.id);
     state.selectedTextIds = state.texts.map((t) => t.id);
