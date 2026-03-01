@@ -287,8 +287,20 @@ function isEdgeSelected(edge) {
   return state.selectedEdgeKeys.includes(edgeKey(edge));
 }
 
+function snapshotForDirtyCheck() {
+  const snap = snapshot();
+  return {
+    ...snap,
+    nodes: (snap.nodes || []).map((n) => ({
+      ...n,
+      // DOM measurement can shift by 1-2px without user intent; ignore it for dirty marker.
+      h: undefined,
+    })),
+  };
+}
+
 function signatureOfCurrent() {
-  return JSON.stringify(snapshot());
+  return JSON.stringify(snapshotForDirtyCheck());
 }
 
 function hasUnsavedChanges() {
@@ -2010,7 +2022,7 @@ async function refreshRecipeList(selectedName = currentRecipeName) {
     };
     btn.addEventListener("click", activateRecipe);
     row.addEventListener("click", async (event) => {
-      if (event.target.closest(".recipe-remove-btn, .recipe-item-edit")) return;
+      if (event.target.closest(".recipe-item-btn, .recipe-remove-btn, .recipe-item-edit")) return;
       await activateRecipe();
     });
 
