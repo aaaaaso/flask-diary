@@ -108,6 +108,12 @@
       once: false
     });
 
+    function haptic(duration = 12) {
+      if (!window.matchMedia('(pointer: coarse)').matches) return;
+      if (!('vibrate' in navigator)) return;
+      navigator.vibrate(duration);
+    }
+
     // ---- Shuffle機能（ON/OFF切り替え）----
 
     const btn = document.getElementById('shuffle-btn');
@@ -117,6 +123,7 @@
     let isShuffled = false; // 状態フラグ
 
     btn.addEventListener('click', () => {
+      haptic(10);
       const entries = Array.from(container.querySelectorAll('.entry'));
       const newEntries = isShuffled ? originalOrder : shuffleArray([...entries]);
 
@@ -216,6 +223,7 @@
     window.addEventListener('scroll', onScroll, { passive: true });
 
     function scrollToBottom() {
+      haptic(14);
       const target = Math.max(
         document.body.scrollHeight,
         document.documentElement.scrollHeight
