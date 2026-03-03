@@ -71,6 +71,7 @@ const exportImageButtons = Array.from(document.querySelectorAll("[data-export-im
 const isEditable = document.body?.dataset?.mode === "edit";
 const pageParams = new URLSearchParams(window.location.search);
 const editorKey = (pageParams.get("key") || "").trim();
+const requestedRecipeFromQuery = (pageParams.get("recipe") || "").trim();
 
 let currentRecipeName = "";
 let currentRecipeLabel = "タイトルなし";
@@ -102,6 +103,19 @@ function withEditorKey(path) {
 function refreshRecipeTitle() {
   if (!recipeTitleEl) return;
   recipeTitleEl.textContent = (currentRecipeLabel || "").trim() || "タイトルなし";
+}
+
+function syncRecipeQueryParam(recipeName) {
+  const params = new URLSearchParams(window.location.search);
+  const nextName = String(recipeName || "").trim();
+  if (nextName) params.set("recipe", nextName);
+  else params.delete("recipe");
+  const nextQuery = params.toString();
+  const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}`;
+  const currentUrl = `${window.location.pathname}${window.location.search}`;
+  if (nextUrl !== currentUrl) {
+    window.history.replaceState(null, "", nextUrl);
+  }
 }
 
 function clearArmedRecipeDelete() {
@@ -1281,6 +1295,7 @@ async function saveRecipe(opts = {}) {
 
   currentRecipeName = saveName;
   currentRecipeLabel = saveName;
+  syncRecipeQueryParam(currentRecipeName);
   refreshRecipeTitle();
   draftListIndex = null;
   hasDraftRecipe = false;
@@ -2405,6 +2420,7 @@ async function loadRecipe(name) {
   applyNormalizedContent(normalized);
   currentRecipeName = payload.name;
   currentRecipeLabel = payload.name;
+  syncRecipeQueryParam(currentRecipeName);
   refreshRecipeTitle();
   editingRecipeKey = null;
   hasDraftRecipe = false;
@@ -2426,6 +2442,7 @@ function clearEditorToEmpty() {
   historyStack.length = 0;
   currentRecipeName = "";
   currentRecipeLabel = "タイトルなし";
+  syncRecipeQueryParam("");
   refreshRecipeTitle();
   editingRecipeKey = null;
   draftListIndex = null;
@@ -3057,7 +3074,10 @@ markSavedNow();
 (async () => {
   await refreshRecipeList();
   if (!currentRecipeName && !hasDraftRecipe && recipeNames.length > 0) {
-    await loadRecipe(recipeNames[0]);
-    await refreshRecipeList(recipeNames[0]);
+    const initialName = recipeNames.includes(requestedRecipeFromQuery)
+      ? requestedRecipeFromQuery
+      : recipeNames[0];
+    await loadRecipe(initialName);
+    await refreshRecipeList(initialName);
   }
 })();
