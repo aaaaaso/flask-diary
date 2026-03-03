@@ -141,7 +141,7 @@ def list_recipes():
     conn = db_conn()
     rows = conn.execute(
         f"""
-        SELECT name
+        SELECT id, name
         FROM {TABLE_NAME}
         ORDER BY sort_order ASC, updated_at DESC, name ASC
         """
@@ -155,12 +155,12 @@ def get_recipe(name: str):
     conn = db_conn()
     if USE_POSTGRES:
         row = conn.execute(
-            f"SELECT name, content, updated_at FROM {TABLE_NAME} WHERE name=%s",
+            f"SELECT id, name, content, updated_at FROM {TABLE_NAME} WHERE name=%s",
             (name,),
         ).fetchone()
     else:
         row = conn.execute(
-            f"SELECT name, content, updated_at FROM {TABLE_NAME} WHERE name=?",
+            f"SELECT id, name, content, updated_at FROM {TABLE_NAME} WHERE name=?",
             (name,),
         ).fetchone()
     conn.close()

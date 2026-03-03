@@ -71,13 +71,16 @@ const exportImageButtons = Array.from(document.querySelectorAll("[data-export-im
 const isEditable = document.body?.dataset?.mode === "edit";
 const pageParams = new URLSearchParams(window.location.search);
 const editorKey = (pageParams.get("key") || "").trim();
+const requestedRecipeIdFromQuery = Number.parseInt(pageParams.get("recipe_id") || "", 10);
 const requestedRecipeFromQuery = (pageParams.get("recipe") || "").trim();
 
 let currentRecipeName = "";
+let currentRecipeId = null;
 let currentRecipeLabel = "タイトルなし";
 let lastSavedSignature = "";
 let lastSavedLabel = "";
 let recipeNames = [];
+let recipeIdByName = new Map();
 let isEditingJson = false;
 let suppressJsonInput = false;
 let jsonSyncTimer = null;
@@ -105,17 +108,26 @@ function refreshRecipeTitle() {
   recipeTitleEl.textContent = (currentRecipeLabel || "").trim() || "タイトルなし";
 }
 
-function syncRecipeQueryParam(recipeName) {
+function syncRecipeQueryParam(recipeId) {
   const params = new URLSearchParams(window.location.search);
-  const nextName = String(recipeName || "").trim();
-  if (nextName) params.set("recipe", nextName);
-  else params.delete("recipe");
+  const nextId = Number(recipeId);
+  if (Number.isFinite(nextId) && nextId > 0) params.set("recipe_id", String(nextId));
+  else params.delete("recipe_id");
+  // Keep URL compact and stable with ID-based sharing.
+  params.delete("recipe");
   const nextQuery = params.toString();
   const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ""}`;
   const currentUrl = `${window.location.pathname}${window.location.search}`;
   if (nextUrl !== currentUrl) {
     window.history.replaceState(null, "", nextUrl);
   }
+}
+
+function syncCurrentRecipeIdFromList(items) {
+  const list = Array.isArray(items) ? items : [];
+  const hit = list.find((item) => item && item.name === currentRecipeName);
+  currentRecipeId = hit && Number.isFinite(Number(hit.id)) ? Number(hit.id) : null;
+  syncRecipeQueryParam(currentRecipeId);
 }
 
 function clearArmedRecipeDelete() {
@@ -1294,8 +1306,9 @@ async function saveRecipe(opts = {}) {
   }
 
   currentRecipeName = saveName;
+  currentRecipeId = recipeIdByName.get(saveName) ?? null;
   currentRecipeLabel = saveName;
-  syncRecipeQueryParam(currentRecipeName);
+  syncRecipeQueryParam(currentRecipeId);
   refreshRecipeTitle();
   draftListIndex = null;
   hasDraftRecipe = false;
@@ -2030,7 +2043,9 @@ async function refreshRecipeList(selectedName = currentRecipeName) {
   clearArmedRecipeDelete();
   const res = await fetch("api/recipes");
   const items = await res.json();
+  recipeIdByName = new Map(items.map((item) => [item.name, Number(item.id)]));
   recipeNames = items.map((item) => item.name);
+  syncCurrentRecipeIdFromList(items);
   recipeItemsEl.innerHTML = "";
   if (recipeDropIndicator) recipeDropIndicator.classList.remove("is-visible");
 
@@ -2419,8 +2434,9 @@ async function loadRecipe(name) {
   const normalized = convertLegacyContent(payload.content || {});
   applyNormalizedContent(normalized);
   currentRecipeName = payload.name;
+  currentRecipeId = Number.isFinite(Number(payload.id)) ? Number(payload.id) : (recipeIdByName.get(payload.name) ?? null);
   currentRecipeLabel = payload.name;
-  syncRecipeQueryParam(currentRecipeName);
+  syncRecipeQueryParam(currentRecipeId);
   refreshRecipeTitle();
   editingRecipeKey = null;
   hasDraftRecipe = false;
@@ -2441,8 +2457,9 @@ function clearEditorToEmpty() {
   state.selectedTextIds = [];
   historyStack.length = 0;
   currentRecipeName = "";
+  currentRecipeId = null;
   currentRecipeLabel = "タイトルなし";
-  syncRecipeQueryParam("");
+  syncRecipeQueryParam(null);
   refreshRecipeTitle();
   editingRecipeKey = null;
   draftListIndex = null;
@@ -3074,9 +3091,11 @@ markSavedNow();
 (async () => {
   await refreshRecipeList();
   if (!currentRecipeName && !hasDraftRecipe && recipeNames.length > 0) {
-    const initialName = recipeNames.includes(requestedRecipeFromQuery)
-      ? requestedRecipeFromQuery
-      : recipeNames[0];
+    const fromId = Number.isFinite(requestedRecipeIdFromQuery)
+      ? Array.from(recipeIdByName.entries()).find(([, id]) => id === requestedRecipeIdFromQuery)?.[0]
+      : "";
+    const initialName = fromId
+      || (recipeNames.includes(requestedRecipeFromQuery) ? requestedRecipeFromQuery : recipeNames[0]);
     await loadRecipe(initialName);
     await refreshRecipeList(initialName);
   }
