@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mytimeline editor</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='aos.css') }}">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+</head>
+<body>
+  <div class="timeline-wrap">
+    <header class="timeline-header" data-aos="fade-up">
+      <h1>mytimeline editor</h1>
+      <p>編集ページ（URLは非公開で運用）</p>
+    </header>
+
+    <section class="timeline-editor" data-aos="fade-up">
+      {% if posted %}
+        <p class="timeline-notice">投稿を保存しました。</p>
+      {% endif %}
+      {% if error_message %}
+        <p class="timeline-error">{{ error_message }}</p>
+      {% endif %}
+      <form method="post" class="timeline-form">
+        <textarea
+          id="content"
+          name="content"
+          rows="6"
+          maxlength="5000"
+          placeholder="いま思っていることをメモ"
+          required
+        ></textarea>
+        <button type="submit">投稿する</button>
+      </form>
+    </section>
+
+    <main class="timeline-list">
+      {% if posts %}
+        {% for post in posts %}
+          <article class="timeline-item" data-aos="fade-up">
+            <time class="timeline-date">
+              {% if post.created_at.strftime is defined %}
+                {{ post.created_at.astimezone().strftime("%Y-%m-%d %H:%M") }}
+              {% else %}
+                {{ post.created_at }}
+              {% endif %}
+            </time>
+            <p class="timeline-content">{{ post.content }}</p>
+          </article>
+        {% endfor %}
+      {% else %}
+        <p class="timeline-empty" data-aos="fade-up">まだ投稿はありません。</p>
+      {% endif %}
+    </main>
+  </div>
+
+  <script src="{{ url_for('static', filename='aos.js') }}"></script>
+  <script>
+    AOS.init({
+      duration: 500,
+      easing: 'ease-in-out',
+      once: false
+    });
+  </script>
+</body>
+</html>

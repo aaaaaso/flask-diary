@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mytimeline</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='aos.css') }}">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+</head>
+<body>
+  <div class="timeline-wrap">
+    <header class="timeline-header" data-aos="fade-up">
+      <h1>mytimeline</h1>
+      <p>自分用ログ</p>
+    </header>
+
+    <main class="timeline-list">
+      {% if posts %}
+        {% for post in posts %}
+          <article class="timeline-item" data-aos="fade-up">
+            <time class="timeline-date">
+              {% if post.created_at.strftime is defined %}
+                {{ post.created_at.astimezone().strftime("%Y-%m-%d %H:%M") }}
+              {% else %}
+                {{ post.created_at }}
+              {% endif %}
+            </time>
+            <p class="timeline-content">{{ post.content }}</p>
+          </article>
+        {% endfor %}
+      {% else %}
+        <p class="timeline-empty" data-aos="fade-up">まだ投稿はありません。</p>
+      {% endif %}
+    </main>
+  </div>
+
+  <script src="{{ url_for('static', filename='aos.js') }}"></script>
+  <script>
+    AOS.init({
+      duration: 500,
+      easing: 'ease-in-out',
+      once: false
+    });
+  </script>
+</body>
+</html>
