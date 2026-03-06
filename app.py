@@ -2,9 +2,12 @@ from flask import Flask, render_template, abort, request, jsonify, redirect, url
 from settings import TOTAL_PAGES, PAGE_IDS     # settings.pyから読む
 from notion_fetcher import fetch_diary_entries, clear_cache
 from lab import lab_bp
+import json
 import os
+import re
 import sqlite3
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 try:
@@ -17,6 +20,8 @@ app = Flask(__name__)
 app.register_blueprint(lab_bp)
 
 SQLITE_PATH = os.path.join(app.root_path, "mytimeline.db")
+TAG_PATTERN = re.compile(r"#([0-9A-Za-z_ぁ-んァ-ヶ一-龠ー]+)")
+TOKYO_TZ = ZoneInfo("Asia/Tokyo")
 
 
 def _timeline_database_url() -> str:
@@ -54,6 +59,67 @@ def _open_timeline_db():
     return conn
 
 
+def _normalize_tag(tag: str) -> str:
+    return tag.strip().lstrip("#").lower()
+
+
+def _extract_tags(content: str):
+    tags = []
+    seen = set()
+    for raw in TAG_PATTERN.findall(content):
+        tag = _normalize_tag(raw)
+        if not tag or tag in seen:
+            continue
+        seen.add(tag)
+        tags.append(tag)
+    return tags
+
+
+def _timeline_filter_posts(posts, selected_tag: str):
+    if not selected_tag:
+        return posts
+    return [post for post in posts if selected_tag in post["tags"]]
+
+
+def _timeline_collect_tags(posts):
+    seen = set()
+    tags = []
+    for post in posts:
+        for tag in post["tags"]:
+            if tag in seen:
+                continue
+            seen.add(tag)
+            tags.append(tag)
+    return tags
+
+
+def _timeline_prepare_posts(posts):
+    prepared = []
+    prev_date_label = None
+    for index, post in enumerate(posts):
+        created_at = post.get("created_at")
+        if hasattr(created_at, "month") and hasattr(created_at, "day") and hasattr(created_at, "hour") and hasattr(created_at, "minute"):
+            if getattr(created_at, "tzinfo", None) is None:
+                display_dt = created_at.replace(tzinfo=timezone.utc).astimezone(TOKYO_TZ)
+            else:
+                display_dt = created_at.astimezone(TOKYO_TZ)
+            date_label = f"{display_dt.month}/{display_dt.day}"
+            time_label = f"{display_dt.hour:02d}:{display_dt.minute:02d}"
+        else:
+            date_label = ""
+            time_label = str(created_at)
+
+        item = dict(post)
+        item["date_label"] = date_label
+        item["time_label"] = time_label
+        item["show_date_divider"] = bool(date_label) and (date_label != prev_date_label)
+        prepared.append(item)
+
+        if date_label:
+            prev_date_label = date_label
+    return prepared
+
+
 def _init_timeline_table() -> None:
     if _timeline_db_kind() == "postgres":
         with _open_timeline_db() as conn:
@@ -63,8 +129,15 @@ def _init_timeline_table() -> None:
                     CREATE TABLE IF NOT EXISTS mytimeline_posts (
                       id BIGSERIAL PRIMARY KEY,
                       content TEXT NOT NULL,
+                      tags TEXT NOT NULL DEFAULT '[]',
                       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                     )
+                    """
+                )
+                cur.execute(
+                    """
+                    ALTER TABLE mytimeline_posts
+                    ADD COLUMN IF NOT EXISTS tags TEXT NOT NULL DEFAULT '[]'
                     """
                 )
             conn.commit()
@@ -75,10 +148,20 @@ def _init_timeline_table() -> None:
                 CREATE TABLE IF NOT EXISTS mytimeline_posts (
                   id INTEGER PRIMARY KEY AUTOINCREMENT,
                   content TEXT NOT NULL,
+                  tags TEXT NOT NULL DEFAULT '[]',
                   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )
                 """
             )
+            columns = conn.execute("PRAGMA table_info(mytimeline_posts)").fetchall()
+            column_names = {col["name"] for col in columns}
+            if "tags" not in column_names:
+                conn.execute(
+                    """
+                    ALTER TABLE mytimeline_posts
+                    ADD COLUMN tags TEXT NOT NULL DEFAULT '[]'
+                    """
+                )
             conn.commit()
 
 
@@ -89,7 +172,7 @@ def _timeline_list_posts(limit: int = 200):
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT id, content, created_at
+                    SELECT id, content, tags, created_at
                     FROM mytimeline_posts
                     ORDER BY created_at DESC, id DESC
                     LIMIT %s
@@ -100,10 +183,15 @@ def _timeline_list_posts(limit: int = 200):
 
         posts = []
         for row in rows:
-            post_id, content, created_at = row
+            post_id, content, tags_raw, created_at = row
+            try:
+                tags = json.loads(tags_raw or "[]")
+            except (ValueError, TypeError):
+                tags = []
             posts.append({
                 "id": post_id,
                 "content": content,
+                "tags": tags,
                 "created_at": created_at,
             })
         return posts
@@ -111,7 +199,7 @@ def _timeline_list_posts(limit: int = 200):
     with _open_timeline_db() as conn:
         rows = conn.execute(
             """
-            SELECT id, content, created_at
+            SELECT id, content, tags, created_at
             FROM mytimeline_posts
             ORDER BY created_at DESC, id DESC
             LIMIT ?
@@ -126,25 +214,31 @@ def _timeline_list_posts(limit: int = 200):
             parsed_created_at = datetime.strptime(created_at, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
         except ValueError:
             parsed_created_at = created_at
+        try:
+            tags = json.loads(row["tags"] or "[]")
+        except (ValueError, TypeError):
+            tags = []
         posts.append({
             "id": row["id"],
             "content": row["content"],
+            "tags": tags,
             "created_at": parsed_created_at,
         })
     return posts
 
 
-def _timeline_insert_post(content: str) -> None:
+def _timeline_insert_post(content: str, tags) -> None:
+    tags_json = json.dumps(tags, ensure_ascii=False)
     _init_timeline_table()
     if _timeline_db_kind() == "postgres":
         with _open_timeline_db() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    INSERT INTO mytimeline_posts (content)
-                    VALUES (%s)
+                    INSERT INTO mytimeline_posts (content, tags)
+                    VALUES (%s, %s)
                     """,
-                    (content,),
+                    (content, tags_json),
                 )
             conn.commit()
         return
@@ -152,11 +246,25 @@ def _timeline_insert_post(content: str) -> None:
     with _open_timeline_db() as conn:
         conn.execute(
             """
-            INSERT INTO mytimeline_posts (content)
-            VALUES (?)
+            INSERT INTO mytimeline_posts (content, tags)
+            VALUES (?, ?)
             """,
-            (content,),
+            (content, tags_json),
         )
+        conn.commit()
+
+
+def _timeline_delete_post(post_id: int) -> None:
+    _init_timeline_table()
+    if _timeline_db_kind() == "postgres":
+        with _open_timeline_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM mytimeline_posts WHERE id = %s", (post_id,))
+            conn.commit()
+        return
+
+    with _open_timeline_db() as conn:
+        conn.execute("DELETE FROM mytimeline_posts WHERE id = ?", (post_id,))
         conn.commit()
 
 def fetch_diary_by_page(n: int):
@@ -201,8 +309,16 @@ def admin_clear_cache():
 
 @app.route("/mytimeline")
 def mytimeline():
-    posts = _timeline_list_posts()
-    return render_template("mytimeline.html", posts=posts)
+    selected_tag = _normalize_tag(request.args.get("tag", ""))
+    all_posts = _timeline_list_posts()
+    filtered_posts = _timeline_filter_posts(all_posts, selected_tag)
+    posts = _timeline_prepare_posts(filtered_posts)
+    return render_template(
+        "mytimeline.html",
+        posts=posts,
+        selected_tag=selected_tag,
+        available_tags=_timeline_collect_tags(all_posts),
+    )
 
 
 @app.route("/mytimeline/edit/<token>", methods=["GET", "POST"])
@@ -212,24 +328,43 @@ def mytimeline_edit(token: str):
         abort(404)
 
     error_message = ""
+    selected_tag = _normalize_tag(request.args.get("tag", ""))
     if request.method == "POST":
         content = request.form.get("content", "").strip()
+        tags = _extract_tags(content)
         if not content:
             error_message = "投稿内容が空です。"
-        elif len(content) > 5000:
-            error_message = "投稿内容は5000文字以内にしてください。"
+        elif len(content) > 100:
+            error_message = "投稿内容は100文字以内にしてください。"
+        elif len(tags) > 3:
+            error_message = "タグは最大3つまでです。"
         else:
-            _timeline_insert_post(content)
-            return redirect(url_for("mytimeline_edit", token=token, posted=1))
+            _timeline_insert_post(content, tags)
+            return redirect(url_for("mytimeline_edit", token=token, posted=1, tag=selected_tag or None))
 
-    posts = _timeline_list_posts()
+    all_posts = _timeline_list_posts()
+    filtered_posts = _timeline_filter_posts(all_posts, selected_tag)
+    posts = _timeline_prepare_posts(filtered_posts)
     posted = request.args.get("posted") == "1"
     return render_template(
         "mytimeline_edit.html",
         posts=posts,
+        selected_tag=selected_tag,
+        available_tags=_timeline_collect_tags(all_posts),
+        token=token,
         posted=posted,
         error_message=error_message,
     )
+
+
+@app.route("/mytimeline/edit/<token>/delete/<int:post_id>", methods=["POST"])
+def mytimeline_delete(token: str, post_id: int):
+    expected_token = _timeline_edit_token()
+    if not expected_token or token != expected_token:
+        abort(404)
+    _timeline_delete_post(post_id)
+    selected_tag = _normalize_tag(request.args.get("tag", ""))
+    return redirect(url_for("mytimeline_edit", token=token, tag=selected_tag or None))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True)

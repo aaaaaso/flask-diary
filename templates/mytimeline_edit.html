@@ -8,45 +8,81 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='aos.css') }}">
   <meta name="robots" content="noindex,nofollow,noarchive">
 </head>
-<body>
+<body class="timeline-page">
   <div class="timeline-wrap">
-    <header class="timeline-header" data-aos="fade-up">
-      <h1>mytimeline editor</h1>
-      <p>編集ページ（URLは非公開で運用）</p>
-    </header>
-
     <section class="timeline-editor" data-aos="fade-up">
-      {% if posted %}
-        <p class="timeline-notice">投稿を保存しました。</p>
-      {% endif %}
       {% if error_message %}
         <p class="timeline-error">{{ error_message }}</p>
       {% endif %}
       <form method="post" class="timeline-form">
-        <textarea
-          id="content"
-          name="content"
-          rows="6"
-          maxlength="5000"
-          placeholder="いま思っていることをメモ"
-          required
-        ></textarea>
-        <button type="submit">投稿する</button>
+        <div class="timeline-composer">
+          <textarea
+            id="content"
+            name="content"
+            rows="4"
+            maxlength="100"
+            placeholder="メモだからね、推敲しないこと"
+            required
+          ></textarea>
+          <div class="timeline-form-actions">
+            <p id="timeline-char-count" class="timeline-char-count" aria-live="polite">0/100</p>
+            <button type="submit" class="timeline-submit-btn" aria-label="投稿する">
+              <img src="{{ url_for('static', filename='send_icon.png') }}" alt="" aria-hidden="true">
+            </button>
+          </div>
+        </div>
       </form>
     </section>
+
+    {% if selected_tag %}
+      <div class="timeline-filter-state" data-aos="fade-up">
+        <span>#{{ selected_tag }} で絞り込み中</span>
+        <a class="timeline-clear-filter" href="{{ url_for('mytimeline_edit', token=token) }}">解除</a>
+      </div>
+    {% endif %}
+
+    {% if available_tags %}
+      <div class="timeline-tag-cloud" data-aos="fade-up">
+        {% for tag in available_tags %}
+          <a
+            class="timeline-chip {% if selected_tag == tag %}is-active{% endif %}"
+            href="{{ url_for('mytimeline_edit', token=token, tag=tag) }}"
+          >#{{ tag }}</a>
+        {% endfor %}
+      </div>
+    {% endif %}
 
     <main class="timeline-list">
       {% if posts %}
         {% for post in posts %}
           <article class="timeline-item" data-aos="fade-up">
-            <time class="timeline-date">
-              {% if post.created_at.strftime is defined %}
-                {{ post.created_at.astimezone().strftime("%Y-%m-%d %H:%M") }}
-              {% else %}
-                {{ post.created_at }}
-              {% endif %}
-            </time>
+            <div class="timeline-item-top">
+              <div class="timeline-meta">
+                <span class="timeline-date-slot">{% if post.show_date_divider %}{{ post.date_label }}{% endif %}</span>
+                <span class="timeline-time">{{ post.time_label }}</span>
+              </div>
+              <div class="timeline-menu-wrap">
+                <button
+                  type="button"
+                  class="timeline-menu-toggle"
+                  aria-label="投稿メニュー"
+                  aria-expanded="false"
+                >⋯</button>
+                <div class="timeline-menu">
+                  <form method="post" action="{{ url_for('mytimeline_delete', token=token, post_id=post.id, tag=selected_tag or None) }}">
+                    <button type="submit" class="timeline-delete-btn">削除</button>
+                  </form>
+                </div>
+              </div>
+            </div>
             <p class="timeline-content">{{ post.content }}</p>
+            {% if post.tags %}
+              <div class="timeline-chip-row">
+                {% for tag in post.tags %}
+                  <a class="timeline-chip" href="{{ url_for('mytimeline_edit', token=token, tag=tag) }}">#{{ tag }}</a>
+                {% endfor %}
+              </div>
+            {% endif %}
           </article>
         {% endfor %}
       {% else %}
@@ -62,6 +98,60 @@
       easing: 'ease-in-out',
       once: false
     });
+
+    const contentEl = document.getElementById('content');
+    const charCountEl = document.getElementById('timeline-char-count');
+    if (contentEl) {
+      const updateCharCount = () => {
+        if (!charCountEl) return;
+        charCountEl.textContent = `${contentEl.value.length}/100`;
+      };
+      updateCharCount();
+      contentEl.addEventListener('input', updateCharCount);
+
+      contentEl.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+          event.preventDefault();
+          const form = contentEl.closest('form');
+          if (form) {
+            form.requestSubmit();
+          }
+        }
+      });
+    }
+
+    const menuToggles = document.querySelectorAll('.timeline-menu-toggle');
+    menuToggles.forEach((toggle) => {
+      toggle.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const wrap = toggle.closest('.timeline-menu-wrap');
+        if (!wrap) return;
+        const isOpen = wrap.classList.contains('is-open');
+        document.querySelectorAll('.timeline-menu-wrap.is-open').forEach((openWrap) => {
+          openWrap.classList.remove('is-open');
+          const btn = openWrap.querySelector('.timeline-menu-toggle');
+          if (btn) btn.setAttribute('aria-expanded', 'false');
+        });
+        if (!isOpen) {
+          wrap.classList.add('is-open');
+          toggle.setAttribute('aria-expanded', 'true');
+        }
+      });
+    });
+
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.timeline-menu-wrap.is-open').forEach((openWrap) => {
+        openWrap.classList.remove('is-open');
+        const btn = openWrap.querySelector('.timeline-menu-toggle');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+      });
+    });
+
+    const cleanedUrl = new URL(window.location.href);
+    if (cleanedUrl.searchParams.has('posted')) {
+      cleanedUrl.searchParams.delete('posted');
+      window.history.replaceState({}, '', cleanedUrl.toString());
+    }
   </script>
 </body>
 </html>

@@ -8,25 +8,44 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='aos.css') }}">
   <meta name="robots" content="noindex,nofollow,noarchive">
 </head>
-<body>
+<body class="timeline-page">
   <div class="timeline-wrap">
-    <header class="timeline-header" data-aos="fade-up">
-      <h1>mytimeline</h1>
-      <p>自分用ログ</p>
-    </header>
+    {% if selected_tag %}
+      <div class="timeline-filter-state" data-aos="fade-up">
+        <span>#{{ selected_tag }} で絞り込み中</span>
+        <a class="timeline-clear-filter" href="{{ url_for('mytimeline') }}">解除</a>
+      </div>
+    {% endif %}
+
+    {% if available_tags %}
+      <div class="timeline-tag-cloud" data-aos="fade-up">
+        {% for tag in available_tags %}
+          <a
+            class="timeline-chip {% if selected_tag == tag %}is-active{% endif %}"
+            href="{{ url_for('mytimeline', tag=tag) }}"
+          >#{{ tag }}</a>
+        {% endfor %}
+      </div>
+    {% endif %}
 
     <main class="timeline-list">
       {% if posts %}
         {% for post in posts %}
           <article class="timeline-item" data-aos="fade-up">
-            <time class="timeline-date">
-              {% if post.created_at.strftime is defined %}
-                {{ post.created_at.astimezone().strftime("%Y-%m-%d %H:%M") }}
-              {% else %}
-                {{ post.created_at }}
-              {% endif %}
-            </time>
+            <div class="timeline-item-top">
+              <div class="timeline-meta">
+                <span class="timeline-date-slot">{% if post.show_date_divider %}{{ post.date_label }}{% endif %}</span>
+                <time class="timeline-time">{{ post.time_label }}</time>
+              </div>
+            </div>
             <p class="timeline-content">{{ post.content }}</p>
+            {% if post.tags %}
+              <div class="timeline-chip-row">
+                {% for tag in post.tags %}
+                  <a class="timeline-chip" href="{{ url_for('mytimeline', tag=tag) }}">#{{ tag }}</a>
+                {% endfor %}
+              </div>
+            {% endif %}
           </article>
         {% endfor %}
       {% else %}
