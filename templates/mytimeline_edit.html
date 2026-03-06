@@ -34,19 +34,17 @@
       </form>
     </section>
 
-    {% if selected_tag %}
-      <div class="timeline-filter-state" data-aos="fade-up">
-        <span>#{{ selected_tag }} で絞り込み中</span>
-        <a class="timeline-clear-filter" href="{{ url_for('mytimeline_edit', token=token) }}">解除</a>
-      </div>
-    {% endif %}
-
     {% if available_tags %}
       <div class="timeline-tag-cloud" data-aos="fade-up">
         {% for tag in available_tags %}
+          {% if selected_tag == tag %}
+            {% set tag_href = url_for('mytimeline_edit', token=token) %}
+          {% else %}
+            {% set tag_href = url_for('mytimeline_edit', token=token, tag=tag) %}
+          {% endif %}
           <a
             class="timeline-chip {% if selected_tag == tag %}is-active{% endif %}"
-            href="{{ url_for('mytimeline_edit', token=token, tag=tag) }}"
+            href="{{ tag_href }}"
           >#{{ tag }}</a>
         {% endfor %}
       </div>
