@@ -310,6 +310,71 @@ h2 {
   margin-left: calc(var(--timeline-date-col) + var(--timeline-meta-gap));
 }
 
+.timeline-content a {
+  color: #2a5c8e;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+}
+
+.timeline-link-previews {
+  margin-top: 10px;
+  margin-left: calc(var(--timeline-date-col) + var(--timeline-meta-gap));
+  display: grid;
+  gap: 10px;
+}
+
+.timeline-link-card {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 10px;
+  align-items: start;
+  text-decoration: none;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 10px;
+  padding: 8px;
+}
+
+.timeline-link-image {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.timeline-link-texts {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.timeline-link-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.timeline-link-desc {
+  font-size: 0.73rem;
+  color: #666;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.timeline-link-site {
+  font-size: 0.7rem;
+  color: #7a7a7a;
+}
+
 .timeline-meta {
   display: inline-flex;
   align-items: center;
@@ -572,6 +637,17 @@ h2 {
   .timeline-content {
     font-size: 0.76rem;
     line-height: 1.95;
+  }
+
+  .timeline-link-card {
+    grid-template-columns: 56px 1fr;
+    gap: 8px;
+    padding: 7px;
+  }
+
+  .timeline-link-image {
+    width: 56px;
+    height: 56px;
   }
 
   .timeline-form textarea {

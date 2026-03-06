@@ -38,7 +38,27 @@
                 <time class="timeline-time">{{ post.time_label }}</time>
               </div>
             </div>
-            <p class="timeline-content">{{ post.content }}</p>
+            <p class="timeline-content">{{ post.content_html | safe }}</p>
+            {% if post.link_previews %}
+              <div class="timeline-link-previews">
+                {% for preview in post.link_previews %}
+                  <a class="timeline-link-card" href="{{ preview.url }}" target="_blank" rel="noopener noreferrer nofollow ugc">
+                    {% if preview.image_url %}
+                      <img class="timeline-link-image" src="{{ preview.image_url }}" alt="">
+                    {% endif %}
+                    <span class="timeline-link-texts">
+                      <span class="timeline-link-title">{{ preview.title }}</span>
+                      {% if preview.description %}
+                        <span class="timeline-link-desc">{{ preview.description }}</span>
+                      {% endif %}
+                      {% if preview.site_name %}
+                        <span class="timeline-link-site">{{ preview.site_name }}</span>
+                      {% endif %}
+                    </span>
+                  </a>
+                {% endfor %}
+              </div>
+            {% endif %}
             {% if post.tags %}
               <div class="timeline-chip-row">
                 {% for tag in post.tags %}
