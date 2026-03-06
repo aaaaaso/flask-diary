@@ -319,6 +319,8 @@ h2 {
 .timeline-date-slot {
   display: inline-block;
   min-width: var(--timeline-date-col);
+  box-sizing: border-box;
+  padding-left: 6px;
   font-size: 0.98rem;
   font-weight: 600;
   letter-spacing: 0.03em;
