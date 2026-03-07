@@ -58,6 +58,31 @@
         <span class="hint">← 左移動<br />→ 右移動<br />↓ 1マス落下<br />↑ ハードドロップ<br />Z 左回転 / X 右回転<br />SPACE ホールド<br />P ポーズ</span>
       </aside>
     </main>
+    <section id="touchPanel" class="touch-panel" aria-label="touch controls">
+      <div class="touch-grid">
+        <button class="touch-btn" data-action="rot-left" aria-label="rotate left">
+          <img src="./rotate-left.png" alt="" />
+        </button>
+        <button class="touch-btn arrow up" data-action="hard-drop" aria-label="hard drop">
+          <img src="./right-arrow.png" alt="" />
+        </button>
+        <button class="touch-btn" data-action="rot-right" aria-label="rotate right">
+          <img src="./rotate-right.png" alt="" />
+        </button>
+        <button class="touch-btn" data-action="hold" aria-label="hold">
+          <img src="./hold.png" alt="" />
+        </button>
+        <button class="touch-btn arrow left" data-action="left" aria-label="move left">
+          <img src="./right-arrow.png" alt="" />
+        </button>
+        <button class="touch-btn arrow down" data-action="down" aria-label="soft drop">
+          <img src="./right-arrow.png" alt="" />
+        </button>
+        <button class="touch-btn arrow right" data-action="right" aria-label="move right">
+          <img src="./right-arrow.png" alt="" />
+        </button>
+      </div>
+    </section>
 
     <audio id="bgm" src="./tetris_music.mp3" loop preload="auto"></audio>
     <audio id="sfxDrop" src="./drop.mp3" preload="auto"></audio>

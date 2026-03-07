@@ -13,6 +13,7 @@ const pauseBtn = document.getElementById("pauseBtn");
 const overlayEl = document.getElementById("overlay");
 const appEl = document.querySelector(".app");
 const boardWrapEl = document.querySelector(".board-wrap");
+const touchPanelEl = document.getElementById("touchPanel");
 const bgm = document.getElementById("bgm");
 const sfxDrop = document.getElementById("sfxDrop");
 const sfxRotate = document.getElementById("sfxRotate");
@@ -825,6 +826,42 @@ function triggerGameOver() {
   requestSfx("gameover");
 }
 
+function performAction(action) {
+  if (!running) {
+    startGame();
+  }
+  if (!running || paused || gameOver) return;
+  switch (action) {
+    case "left":
+      tryMove(-1, 0, true);
+      break;
+    case "right":
+      tryMove(1, 0, true);
+      break;
+    case "down":
+      if (tryMove(0, 1, true)) {
+        score += SOFT_DROP_SCORE;
+        syncStats();
+      }
+      break;
+    case "hard-drop":
+      hardDrop();
+      syncStats();
+      break;
+    case "rot-left":
+      tryRotate(-1);
+      break;
+    case "rot-right":
+      tryRotate(1);
+      break;
+    case "hold":
+      holdCurrentPiece();
+      break;
+    default:
+      break;
+  }
+}
+
 function pauseMusic() {
   if (!musicReady) return;
   bgmWasPlayingBeforePause = !bgm.paused;
@@ -928,6 +965,33 @@ pauseBtn.addEventListener("click", togglePause);
 boardWrapEl.addEventListener("click", () => {
   if (!running) startGame();
 });
+
+if (touchPanelEl) {
+  const repeatable = new Set(["left", "right", "down"]);
+  let repeatTimer = null;
+  const stopRepeat = () => {
+    if (repeatTimer) {
+      clearInterval(repeatTimer);
+      repeatTimer = null;
+    }
+  };
+
+  for (const btn of touchPanelEl.querySelectorAll(".touch-btn")) {
+    const action = btn.dataset.action;
+    btn.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      performAction(action);
+      if (repeatable.has(action)) {
+        stopRepeat();
+        repeatTimer = setInterval(() => performAction(action), 80);
+      }
+    });
+    btn.addEventListener("pointerup", stopRepeat);
+    btn.addEventListener("pointercancel", stopRepeat);
+    btn.addEventListener("pointerleave", stopRepeat);
+  }
+}
+
 document.body.addEventListener(
   "pointerdown",
   () => {
