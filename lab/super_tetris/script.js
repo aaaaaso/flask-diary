@@ -54,11 +54,13 @@ let shapesBySize = {
   4: [],
   5: [],
   6: [],
+  7: [],
 };
 let bagBySize = {
   4: [],
   5: [],
   6: [],
+  7: [],
 };
 let queue = [];
 let currentPiece = null;
@@ -82,6 +84,7 @@ let lastMoveWasRotation = false;
 let specialPieceQueued = false;
 let specialPieceUsed = false;
 let groundedMs = 0;
+let tSpinFxTimer = null;
 
 const SFX_PRIORITY = {
   move: 1,
@@ -166,6 +169,11 @@ function rotateCW(cells) {
   return normalize(rotated);
 }
 
+function rotateCCW(cells) {
+  const rotated = cells.map(([x, y]) => [-y, x]);
+  return normalize(rotated);
+}
+
 function uniqueRotations(baseCells) {
   const seen = new Set();
   const rotations = [];
@@ -246,9 +254,11 @@ function buildShapeSets() {
   shapesBySize[4] = generateAllPolyominoes(4);
   shapesBySize[5] = generateAllPolyominoes(5);
   shapesBySize[6] = generateAllPolyominoes(6);
+  shapesBySize[7] = generateAllPolyominoes(7);
   refillBag(4);
   refillBag(5);
   refillBag(6);
+  refillBag(7);
 }
 
 function shuffle(arr) {
@@ -273,9 +283,20 @@ function hideOverlay() {
 }
 
 function pickPieceSize() {
+  const step = Math.max(0, level - 1);
+  const raw4 = 0.7 - 0.01 * step;
+  const raw5 = 0.2 + 0.006 * step;
+  const raw6 = 0.1 + 0.004 * step;
+  const p4 = Math.max(0, raw4);
+  const p5 = Math.max(0, raw5);
+  const p6 = Math.max(0, raw6);
+  const total = p4 + p5 + p6 || 1;
+  const n4 = p4 / total;
+  const n5 = p5 / total;
   const r = Math.random();
-  if (r < 0.7) return 4;
-  if (r < 0.9) return 5;
+  if (r < n4) return 4;
+  if (r < n4 + n5) return 5;
+  if (level >= 25) return Math.random() < 0.5 ? 6 : 7;
   return 6;
 }
 
@@ -439,68 +460,108 @@ function getTPieceKickTests(from, to) {
   return kicks[key] || [[0, 0]];
 }
 
-function getAdaptiveKickTests(piece, toRotation) {
-  const currentCells = [...piece.shape.rotations[piece.rotationIndex]];
-  const rotatedCells = [...piece.shape.rotations[toRotation]];
-  const seen = new Set();
-  const candidates = [];
-  const push = (ox, oy) => {
-    const key = `${ox},${oy}`;
-    if (seen.has(key)) return;
-    seen.add(key);
-    candidates.push([ox, oy]);
-  };
-
-  const shiftedCells = currentCells.map(([x, y]) => [x, y + 1]);
-  rotatedCells.sort((a, b) => (b[1] - a[1]) || (a[0] - b[0]));
-
-  const toKey = (x, y) => `${x},${y}`;
-  const hasOriginal = new Set(currentCells.map(([x, y]) => toKey(x, y)));
-  const hasShifted = new Set(shiftedCells.map(([x, y]) => toKey(x, y)));
-
-  // Union of original + shifted coordinates, searched from lower cells first.
-  const unionAnchors = [];
-  const anchorSeen = new Set();
-  const pushAnchor = (x, y) => {
-    const k = toKey(x, y);
-    if (anchorSeen.has(k)) return;
-    anchorSeen.add(k);
-    unionAnchors.push([x, y]);
-  };
-  for (const [x, y] of currentCells) pushAnchor(x, y);
-  for (const [x, y] of shiftedCells) pushAnchor(x, y);
-  unionAnchors.sort((a, b) => (b[1] - a[1]) || (a[0] - b[0]));
-
-  for (const [ax, ay] of unionAnchors) {
-    const key = toKey(ax, ay);
-
-    // If this anchor exists in shifted piece, try shifted-basis rotation first.
-    if (hasShifted.has(key)) {
-      for (const [rx, ry] of rotatedCells) {
-        push(ax - rx, ay - ry);
-      }
-    }
-
-    // If this anchor exists in original piece, try original-basis rotation.
-    if (hasOriginal.has(key)) {
-      for (const [rx, ry] of rotatedCells) {
-        push(ax - rx, ay - ry);
-      }
-    }
-  }
-  return candidates;
+function toCellKey(x, y) {
+  return `${x},${y}`;
 }
 
-function mergeKickTests(primary, secondary) {
-  const merged = [];
-  const seen = new Set();
-  for (const [x, y] of [...primary, ...secondary]) {
-    const key = `${x},${y}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    merged.push([x, y]);
+function canPlaceWorldCells(cells) {
+  for (const [x, y] of cells) {
+    if (x < 0 || x >= COLS || y >= ROWS) return false;
+    if (y < 0) continue;
+    if (board[y][x] !== 0) return false;
   }
-  return merged;
+  return true;
+}
+
+function rotateWorldCellsAroundPivot(cells, pivotX, pivotY, dir) {
+  return cells.map(([x, y]) => {
+    const dx = x - pivotX;
+    const dy = y - pivotY;
+    if (dir === 1) return [pivotX + dy, pivotY - dx];
+    return [pivotX - dy, pivotY + dx];
+  });
+}
+
+function applyRotatedWorldCells(piece, toRotation, worldCells) {
+  const minX = Math.min(...worldCells.map(([x]) => x));
+  const minY = Math.min(...worldCells.map(([, y]) => y));
+  piece.x = minX;
+  piece.y = minY;
+  piece.rotationIndex = toRotation;
+}
+
+function tryTPivotSearchRotate(piece, dir) {
+  const fromRotation = piece.rotationIndex;
+  const rotationsLen = piece.shape.rotations.length;
+  const toForward = (fromRotation + dir + rotationsLen) % rotationsLen;
+  const toReverse = (fromRotation - dir + rotationsLen) % rotationsLen;
+
+  const originalWorld = getPieceCells(piece);
+  const shiftedWorld = originalWorld.map(([x, y]) => [x, y + 1]);
+  const originalSet = new Set(originalWorld.map(([x, y]) => toCellKey(x, y)));
+  const shiftedSet = new Set(shiftedWorld.map(([x, y]) => toCellKey(x, y)));
+
+  const union = [];
+  const seen = new Set();
+  const push = (x, y) => {
+    const key = toCellKey(x, y);
+    if (seen.has(key)) return;
+    seen.add(key);
+    union.push([x, y]);
+  };
+  for (const [x, y] of originalWorld) push(x, y);
+  for (const [x, y] of shiftedWorld) push(x, y);
+  union.sort((a, b) => (b[1] - a[1]) || (a[0] - b[0]));
+
+  const shiftedBottomY = Math.max(...shiftedWorld.map(([, y]) => y));
+  const shiftedBottomAnchors = union.filter(
+    ([x, y]) => y === shiftedBottomY && shiftedSet.has(toCellKey(x, y)),
+  );
+
+  // Priority 1: shifted-basis bottom-row pivots.
+  for (const [px, py] of shiftedBottomAnchors) {
+    // Shifted-basis only: try requested direction first, then reverse direction.
+    for (const checkDir of [dir, -dir]) {
+      const rotated = rotateWorldCellsAroundPivot(shiftedWorld, px, py, checkDir);
+      if (!canPlaceWorldCells(rotated)) continue;
+      const to = checkDir === dir ? toForward : toReverse;
+      applyRotatedWorldCells(piece, to, rotated);
+      return true;
+    }
+  }
+
+  // Priority 2: union anchors from lower rows upward.
+  // shifted-basis first, then original-basis.
+  for (const [px, py] of union) {
+    const key = toCellKey(px, py);
+    if (shiftedSet.has(key)) {
+      // Shifted-basis only: try requested direction first, then reverse direction.
+      for (const checkDir of [dir, -dir]) {
+        const rotated = rotateWorldCellsAroundPivot(shiftedWorld, px, py, checkDir);
+        if (!canPlaceWorldCells(rotated)) continue;
+        const to = checkDir === dir ? toForward : toReverse;
+        applyRotatedWorldCells(piece, to, rotated);
+        return true;
+      }
+    }
+    if (originalSet.has(key)) {
+      const rotated = rotateWorldCellsAroundPivot(originalWorld, px, py, dir);
+      if (canPlaceWorldCells(rotated)) {
+        applyRotatedWorldCells(piece, toForward, rotated);
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function triggerTSpinEffect() {
+  boardWrapEl.classList.add("tspin-flash");
+  if (tSpinFxTimer) clearTimeout(tSpinFxTimer);
+  tSpinFxTimer = setTimeout(() => {
+    boardWrapEl.classList.remove("tspin-flash");
+    tSpinFxTimer = null;
+  }, 260);
 }
 
 function tryRotate(dir) {
@@ -509,6 +570,17 @@ function tryRotate(dir) {
   const rotationsLen = currentPiece.shape.rotations.length;
   const from = currentPiece.rotationIndex;
   const to = (from + dir + rotationsLen) % rotationsLen;
+
+  // T piece: try pivot-search rotation first (higher priority).
+  if (currentPiece.shape.isTPiece) {
+    if (tryTPivotSearchRotate(currentPiece, dir)) {
+      lastMoveWasRotation = true;
+      groundedMs = 0;
+      requestSfx("rot");
+      return;
+    }
+  }
+
   const baseKicks =
     currentPiece.shape.isTPiece && rotationsLen === 4
       ? getTPieceKickTests(from, to)
@@ -522,13 +594,13 @@ function tryRotate(dir) {
           [1, -1],
           [-1, -1],
         ];
-  const kicks = mergeKickTests(baseKicks, getAdaptiveKickTests(currentPiece, to));
-  for (const [kx, ky] of kicks) {
+  for (const [kx, ky] of baseKicks) {
     if (!collides(currentPiece, kx, ky, dir)) {
       currentPiece.x += kx;
       currentPiece.y += ky;
       currentPiece.rotationIndex = to;
       lastMoveWasRotation = true;
+      groundedMs = 0;
       requestSfx("rot");
       return;
     }
@@ -559,6 +631,7 @@ function lockCurrentPiece() {
   const removed = clearLines();
   if (removed > 0) {
     if (wasSpecialBar) requestSfx("special_clear");
+    else if (tSpin) requestSfx("clear_big");
     else if (removed >= 4) requestSfx("clear_big");
     else requestSfx("clear");
   }
@@ -566,6 +639,7 @@ function lockCurrentPiece() {
     const scoreIdx = Math.min(removed, T_SPIN_SCORE.length - 1);
     score += T_SPIN_SCORE[scoreIdx] * level;
     syncStats();
+    triggerTSpinEffect();
   }
   maybeQueueSpecialPiece();
   spawnPiece();
@@ -596,11 +670,27 @@ function isOccupiedOrWall(x, y) {
   return board[y][x] !== 0;
 }
 
+function getTPivotLocal(cells) {
+  const set = new Set(cells.map(([x, y]) => `${x},${y}`));
+  for (const [x, y] of cells) {
+    let neighbors = 0;
+    if (set.has(`${x + 1},${y}`)) neighbors += 1;
+    if (set.has(`${x - 1},${y}`)) neighbors += 1;
+    if (set.has(`${x},${y + 1}`)) neighbors += 1;
+    if (set.has(`${x},${y - 1}`)) neighbors += 1;
+    if (neighbors >= 3) return [x, y];
+  }
+  return null;
+}
+
 function isTSpin(piece) {
   if (!piece?.shape?.isTPiece) return false;
   if (!lastMoveWasRotation) return false;
-  const pivotX = piece.x + 1;
-  const pivotY = piece.y + 1;
+  const cells = piece.shape.rotations[piece.rotationIndex];
+  const pivotLocal = getTPivotLocal(cells);
+  if (!pivotLocal) return false;
+  const pivotX = piece.x + pivotLocal[0];
+  const pivotY = piece.y + pivotLocal[1];
   const corners = [
     [pivotX - 1, pivotY - 1],
     [pivotX + 1, pivotY - 1],
@@ -732,6 +822,7 @@ function resetGame() {
   refillBag(4);
   refillBag(5);
   refillBag(6);
+  refillBag(7);
   spawnPiece();
   syncStats();
   drawBoard();
@@ -822,6 +913,8 @@ function requestSfx(key) {
 function triggerGameOver() {
   running = false;
   gameOver = true;
+  bgm.pause();
+  bgmWasPlayingBeforePause = false;
   drawTextOverlay("GAME OVER");
   requestSfx("gameover");
 }
@@ -909,6 +1002,11 @@ function restartGame() {
 }
 
 document.addEventListener("keydown", (e) => {
+  if (e.code === "KeyR") {
+    e.preventDefault();
+    restartGame();
+    return;
+  }
   if (!running && e.code === "Space") {
     e.preventDefault();
     startGame();

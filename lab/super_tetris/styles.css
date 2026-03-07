@@ -107,6 +107,29 @@ body::before {
   background: #171717;
 }
 
+.board-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.board-wrap.tspin-flash::after {
+  animation: tspinFlash 260ms ease-out;
+}
+
+@keyframes tspinFlash {
+  0% {
+    opacity: 0.9;
+    background: radial-gradient(circle at 50% 50%, rgba(235, 217, 122, 0.88), transparent 62%);
+  }
+  100% {
+    opacity: 0;
+    background: radial-gradient(circle at 50% 50%, rgba(235, 217, 122, 0.2), transparent 72%);
+  }
+}
+
 #board {
   display: block;
   width: min(320px, 78vw);
