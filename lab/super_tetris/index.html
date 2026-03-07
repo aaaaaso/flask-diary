@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>super tetris</title>
+    <meta name="description" content="テトリス好きの友人にプレイさせるためにつくった。" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="panel game-panel">
+        <div class="controls top-controls">
+          <button id="startBtn" class="btn">Start</button>
+          <button id="restartBtn" class="btn secondary">Restart</button>
+          <button id="pauseBtn" class="btn tertiary">Pause</button>
+        </div>
+        <div class="board-wrap">
+          <canvas id="board" width="320" height="704" aria-label="tetris board"></canvas>
+          <div id="overlay" class="overlay hidden"></div>
+        </div>
+      </section>
+
+      <aside class="panel side-panel">
+        <div class="stat">
+          <span>Score</span>
+          <strong id="score">0</strong>
+        </div>
+        <div class="stat">
+          <span>Lines</span>
+          <strong id="lines">0</strong>
+        </div>
+        <div class="stat">
+          <span>Level</span>
+          <strong id="level">1</strong>
+        </div>
+
+        <section class="next-wrap">
+          <h2>Next</h2>
+          <div class="preview-wrap">
+            <canvas id="next" width="192" height="192" aria-label="next piece"></canvas>
+            <div class="conceal-layer"></div>
+          </div>
+        </section>
+        <section class="next-wrap">
+          <h2>Hold</h2>
+          <div class="preview-wrap">
+            <canvas id="hold" width="192" height="192" aria-label="hold piece"></canvas>
+            <div class="conceal-layer"></div>
+          </div>
+        </section>
+        <span class="hint">← 左移動<br />→ 右移動<br />↓ 1マス落下<br />↑ ハードドロップ<br />Z 左回転 / X 右回転<br />SPACE ホールド<br />P ポーズ</span>
+      </aside>
+    </main>
+
+    <audio id="bgm" src="./tetris_music.mp3" loop preload="auto"></audio>
+    <audio id="sfxDrop" src="./drop.mp3" preload="auto"></audio>
+    <audio id="sfxRotate" src="./rot.mp3" preload="auto"></audio>
+    <audio id="sfxMove" src="./move.mp3" preload="auto"></audio>
+    <audio id="sfxClear" src="./clear.mp3" preload="auto"></audio>
+    <audio id="sfxClearBig" src="./clear_big.mp3" preload="auto"></audio>
+    <script src="./script.js"></script>
+  </body>
+</html>

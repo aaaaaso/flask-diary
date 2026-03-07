@@ -10,12 +10,6 @@
 </head>
 <body class="timeline-page">
   <div class="timeline-wrap">
-    {% if selected_tag %}
-      <div class="timeline-active-filter-wrap">
-        <a class="timeline-chip is-active timeline-active-filter-text" href="{{ url_for('mytimeline') }}">#{{ selected_tag }}</a>
-      </div>
-    {% endif %}
-
     <main class="timeline-list">
       {% if posts %}
         {% for post in posts %}
@@ -50,7 +44,7 @@
             {% if post.tags %}
               <div class="timeline-chip-row">
                 {% for tag in post.tags %}
-                  <a class="timeline-chip timeline-chip-inline" href="{{ url_for('mytimeline', tag=tag) }}">#{{ tag }}</a>
+                  <a class="timeline-chip timeline-chip-inline" href="{{ url_for('mytimeline', q='#' ~ tag) }}">#{{ tag }}</a>
                 {% endfor %}
               </div>
             {% endif %}
@@ -62,27 +56,32 @@
     </main>
   </div>
 
-  <div class="timeline-tag-dock">
-    {% if available_tags %}
-      <div id="timeline-tag-panel" class="timeline-tag-panel">
-        <div class="timeline-tag-cloud">
-          {% for tag in available_tags %}
-            {% if selected_tag == tag %}
-              {% set tag_href = url_for('mytimeline') %}
-            {% else %}
-              {% set tag_href = url_for('mytimeline', tag=tag) %}
-            {% endif %}
-            <a
-              class="timeline-chip {% if selected_tag == tag %}is-active{% endif %}"
-              href="{{ tag_href }}"
-            >#{{ tag }}</a>
-          {% endfor %}
-        </div>
-      </div>
-      <button id="tag-toggle-btn" class="timeline-tag-toggle" type="button" aria-label="タグ一覧を表示" aria-expanded="false">
-        <img src="{{ url_for('static', filename='hashtag_icon.png') }}" alt="" aria-hidden="true">
+  <div class="timeline-search-dock">
+    <form
+      id="timeline-search-shell"
+      class="timeline-search-shell {% if search_query %}is-open{% endif %}"
+      method="get"
+      action="{{ url_for('mytimeline') }}"
+    >
+      <input
+        id="timeline-search-input"
+        class="timeline-search-input"
+        type="search"
+        name="q"
+        value="{{ search_query }}"
+        placeholder="search..."
+        autocomplete="off"
+      >
+      <button
+        id="search-toggle-btn"
+        class="timeline-search-toggle {% if search_query %}is-open{% endif %}"
+        type="button"
+        aria-label="検索を表示"
+        aria-expanded="{{ 'true' if search_query else 'false' }}"
+      >
+        <img src="{{ url_for('static', filename='search_icon.png') }}" alt="" aria-hidden="true">
       </button>
-    {% endif %}
+    </form>
   </div>
 
   <script src="{{ url_for('static', filename='aos.js') }}"></script>
@@ -93,25 +92,32 @@
       once: false
     });
 
-    const tagToggleBtn = document.getElementById('tag-toggle-btn');
-    const tagPanel = document.getElementById('timeline-tag-panel');
-    if (tagToggleBtn && tagPanel) {
-      tagToggleBtn.addEventListener('click', (event) => {
+    const searchToggleBtn = document.getElementById('search-toggle-btn');
+    const searchShell = document.getElementById('timeline-search-shell');
+    const searchInput = document.getElementById('timeline-search-input');
+    if (searchToggleBtn && searchShell) {
+      searchToggleBtn.addEventListener('click', (event) => {
         event.stopPropagation();
-        const willOpen = !tagPanel.classList.contains('is-open');
-        tagPanel.classList.toggle('is-open', willOpen);
-        tagToggleBtn.classList.toggle('is-open', willOpen);
-        tagToggleBtn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
-        tagToggleBtn.classList.remove('spin');
-        void tagToggleBtn.offsetWidth;
-        tagToggleBtn.classList.add('spin');
-        setTimeout(() => tagToggleBtn.classList.remove('spin'), 600);
+        const isOpen = searchShell.classList.contains('is-open');
+        if (isOpen && searchInput && searchInput.value.trim()) {
+          searchShell.requestSubmit();
+          return;
+        }
+        const willOpen = !isOpen;
+        searchShell.classList.toggle('is-open', willOpen);
+        searchToggleBtn.classList.toggle('is-open', willOpen);
+        searchToggleBtn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+        if (willOpen && searchInput) {
+          setTimeout(() => searchInput.focus(), 120);
+        }
       });
 
-      document.addEventListener('click', () => {
-        tagPanel.classList.remove('is-open');
-        tagToggleBtn.classList.remove('is-open');
-        tagToggleBtn.setAttribute('aria-expanded', 'false');
+      document.addEventListener('click', (event) => {
+        if (searchShell.contains(event.target) || searchToggleBtn.contains(event.target)) return;
+        if (searchInput && searchInput.value.trim()) return;
+        searchShell.classList.remove('is-open');
+        searchToggleBtn.classList.remove('is-open');
+        searchToggleBtn.setAttribute('aria-expanded', 'false');
       });
     }
   </script>

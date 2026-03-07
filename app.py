@@ -93,10 +93,23 @@ def _strip_tags_from_content(content: str) -> str:
     return "\n".join(lines).strip()
 
 
-def _timeline_filter_posts(posts, selected_tag: str):
-    if not selected_tag:
+def _timeline_search_posts(posts, query: str):
+    if not query:
         return posts
-    return [post for post in posts if selected_tag in post["tags"]]
+    q = query.lower().strip()
+    hashtag_terms = [_normalize_tag(tag) for tag in TAG_PATTERN.findall(query)]
+    text_query = TAG_PATTERN.sub(" ", query)
+    text_query = re.sub(r"\s+", " ", text_query).strip().lower()
+    filtered = []
+    for post in posts:
+        content = (post.get("content") or "").lower()
+        tags = [str(t).lower() for t in (post.get("tags") or [])]
+        hashtag_match = all(term in tags for term in hashtag_terms) if hashtag_terms else True
+        text_match = (not text_query) or (text_query in content) or any(text_query in t for t in tags)
+        fallback_match = q in content or any(q in t for t in tags)
+        if hashtag_match and text_match and (hashtag_terms or text_query or fallback_match):
+            filtered.append(post)
+    return filtered
 
 
 def _timeline_collect_tags(posts):
@@ -707,18 +720,14 @@ def admin_clear_cache():
 
 @app.route("/mytimeline")
 def mytimeline():
-    selected_tag = _normalize_tag(request.args.get("tag", ""))
+    search_query = request.args.get("q", "").strip()
     all_posts = _timeline_list_posts()
-    filtered_posts = _timeline_filter_posts(all_posts, selected_tag)
-    if selected_tag and not filtered_posts:
-        selected_tag = ""
-        filtered_posts = all_posts
+    filtered_posts = _timeline_search_posts(all_posts, search_query)
     posts = _timeline_prepare_posts(filtered_posts)
     return render_template(
         "mytimeline.html",
         posts=posts,
-        selected_tag=selected_tag,
-        available_tags=_timeline_collect_tags(all_posts),
+        search_query=search_query,
     )
 
 
@@ -729,7 +738,7 @@ def mytimeline_edit(token: str):
         abort(404)
 
     error_message = ""
-    selected_tag = _normalize_tag(request.args.get("tag", ""))
+    search_query = request.args.get("q", "").strip()
     if request.method == "POST":
         raw_content = request.form.get("content", "").strip()
         tags = _extract_tags(raw_content)
@@ -742,20 +751,16 @@ def mytimeline_edit(token: str):
             error_message = "タグは最大3つまでです。"
         else:
             _timeline_insert_post(content, tags)
-            return redirect(url_for("mytimeline_edit", token=token, posted=1, tag=selected_tag or None))
+            return redirect(url_for("mytimeline_edit", token=token, posted=1, q=search_query or None))
 
     all_posts = _timeline_list_posts()
-    filtered_posts = _timeline_filter_posts(all_posts, selected_tag)
-    if selected_tag and not filtered_posts:
-        selected_tag = ""
-        filtered_posts = all_posts
+    filtered_posts = _timeline_search_posts(all_posts, search_query)
     posts = _timeline_prepare_posts(filtered_posts)
     posted = request.args.get("posted") == "1"
     return render_template(
         "mytimeline_edit.html",
         posts=posts,
-        selected_tag=selected_tag,
-        available_tags=_timeline_collect_tags(all_posts),
+        search_query=search_query,
         token=token,
         posted=posted,
         error_message=error_message,
@@ -768,8 +773,8 @@ def mytimeline_delete(token: str, post_id: int):
     if not expected_token or token != expected_token:
         abort(404)
     _timeline_delete_post(post_id)
-    selected_tag = _normalize_tag(request.args.get("tag", ""))
-    return redirect(url_for("mytimeline_edit", token=token, tag=selected_tag or None))
+    search_query = request.args.get("q", "").strip()
+    return redirect(url_for("mytimeline_edit", token=token, q=search_query or None))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True)

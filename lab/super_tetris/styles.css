@@ -1,0 +1,252 @@
+:root {
+  --bg: #090909;
+  --bg-soft: #111111;
+  --panel: #141414;
+  --panel-2: #1b1b1b;
+  --panel-border: #2a2a2a;
+  --text: #f2f2ee;
+  --muted: #a8a8a1;
+  --accent: #e67f5f;
+  --accent-2: #6aa7ff;
+  --ok: #7ecb89;
+  --shadow: rgba(0, 0, 0, 0.45);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  color: var(--text);
+  font-family: "Manrope", sans-serif;
+}
+
+body {
+  position: relative;
+  background:
+    radial-gradient(circle at 8% 12%, rgba(230, 127, 95, 0.12), transparent 32%),
+    radial-gradient(circle at 88% 88%, rgba(106, 167, 255, 0.1), transparent 34%),
+    linear-gradient(180deg, #0b0b0b 0%, #070707 100%);
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(circle at 65% 48%, black 35%, transparent 75%);
+}
+
+.app {
+  width: min(1080px, 100%);
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) 290px;
+  gap: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.panel {
+  background: #141414;
+  border: 1px solid var(--panel-border);
+  border-radius: 24px;
+  box-shadow: 0 12px 28px -24px rgba(0, 0, 0, 0.65);
+}
+
+.game-panel {
+  padding: 22px;
+  position: relative;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.top-controls {
+  margin: 0 0 16px;
+}
+
+.game-header {
+  margin-bottom: 14px;
+}
+
+.game-header h1 {
+  margin: 0 0 8px;
+  font-family: "Cormorant Garamond", serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+
+.board-wrap {
+  position: relative;
+  width: fit-content;
+  margin: 0 auto;
+  border-radius: 0;
+  overflow: hidden;
+  border: 1px solid #2d2d2d;
+  background: #171717;
+}
+
+#board {
+  display: block;
+  width: min(320px, 78vw);
+  height: auto;
+  image-rendering: crisp-edges;
+  border-radius: 0;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #f5f4ef;
+  background: rgba(8, 8, 8, 0.78);
+  backdrop-filter: blur(4px);
+}
+
+.overlay.hidden {
+  display: none;
+}
+
+.btn {
+  appearance: none;
+  border: 1px solid #d9d6cb;
+  border-radius: 999px;
+  padding: 10px 22px;
+  font-weight: 700;
+  color: #262626;
+  background: #f2cf62;
+  box-shadow: none;
+  cursor: pointer;
+  transition: transform 120ms ease, filter 120ms ease;
+}
+
+.btn:hover {
+  filter: brightness(1.06);
+}
+
+.btn:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.btn.secondary {
+  background: #f5f5f2;
+  border-color: #dadad5;
+}
+
+.btn.tertiary {
+  background: #f5f5f2;
+  border-color: #dadad5;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 0.79rem;
+  line-height: 1.55;
+  display: block;
+}
+
+.side-panel {
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  background: #161616;
+}
+
+.stat {
+  background: #1f1f1f;
+  border: 1px solid #303030;
+  border-radius: 14px;
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.stat span {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.stat strong {
+  font-size: 1.23rem;
+}
+
+.next-wrap {
+  background: #1f1f1f;
+  border: 1px solid #303030;
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.next-wrap h2 {
+  margin: 0 0 8px;
+  font-size: 0.93rem;
+  color: #ecebe6;
+}
+
+.preview-wrap {
+  position: relative;
+}
+
+#next,
+#hold {
+  width: 100%;
+  max-width: 192px;
+  display: block;
+  margin: 0 auto;
+  border-radius: 10px;
+  background: #1d1d1d;
+  border: 1px solid #323232;
+}
+
+.conceal-layer {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.92);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+.app.paused-view .conceal-layer {
+  opacity: 1;
+}
+
+@media (max-width: 840px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  .side-panel {
+    grid-template-columns: repeat(3, minmax(90px, 1fr));
+    align-items: stretch;
+  }
+
+  .next-wrap {
+    grid-column: span 3;
+  }
+}
