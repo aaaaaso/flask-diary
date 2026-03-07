@@ -454,7 +454,30 @@ function getAdaptiveKickTests(piece, toRotation) {
   currentCells.sort((a, b) => (b[1] - a[1]) || (a[0] - b[0]));
   rotatedCells.sort((a, b) => (b[1] - a[1]) || (a[0] - b[0]));
 
-  for (const [cx, cy] of currentCells) {
+  const maxY = Math.max(...currentCells.map(([, y]) => y));
+  const bottomRowCells = currentCells
+    .filter(([, y]) => y === maxY)
+    .sort((a, b) => a[0] - b[0]);
+  const anchorCandidates = [];
+  const anchorSeen = new Set();
+  const pushAnchor = (ax, ay) => {
+    const key = `${ax},${ay}`;
+    if (anchorSeen.has(key)) return;
+    anchorSeen.add(key);
+    anchorCandidates.push([ax, ay]);
+  };
+
+  // First priority: one row below the lowest pre-rotation cells.
+  for (const [x, y] of bottomRowCells) {
+    pushAnchor(x, y + 1);
+  }
+
+  // Then fallback to the original occupied-cell range search.
+  for (const [x, y] of currentCells) {
+    pushAnchor(x, y);
+  }
+
+  for (const [cx, cy] of anchorCandidates) {
     for (const [rx, ry] of rotatedCells) {
       push(cx - rx, cy - ry);
     }
