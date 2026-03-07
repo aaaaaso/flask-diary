@@ -435,13 +435,49 @@ function getTPieceKickTests(from, to) {
   return kicks[key] || [[0, 0]];
 }
 
+function getAdaptiveKickTests(piece, toRotation) {
+  const currentCells = [...piece.shape.rotations[piece.rotationIndex]];
+  const rotatedCells = [...piece.shape.rotations[toRotation]];
+  const seen = new Set();
+  const candidates = [];
+  const push = (ox, oy) => {
+    const key = `${ox},${oy}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    candidates.push([ox, oy]);
+  };
+
+  // Search within pre-rotation occupied-cell range, prioritizing lower cells first.
+  currentCells.sort((a, b) => (b[1] - a[1]) || (a[0] - b[0]));
+  rotatedCells.sort((a, b) => (b[1] - a[1]) || (a[0] - b[0]));
+
+  for (const [cx, cy] of currentCells) {
+    for (const [rx, ry] of rotatedCells) {
+      push(cx - rx, cy - ry);
+    }
+  }
+  return candidates;
+}
+
+function mergeKickTests(primary, secondary) {
+  const merged = [];
+  const seen = new Set();
+  for (const [x, y] of [...primary, ...secondary]) {
+    const key = `${x},${y}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push([x, y]);
+  }
+  return merged;
+}
+
 function tryRotate(dir) {
   if (!currentPiece || paused || gameOver) return;
   lastMoveWasRotation = false;
   const rotationsLen = currentPiece.shape.rotations.length;
   const from = currentPiece.rotationIndex;
   const to = (from + dir + rotationsLen) % rotationsLen;
-  const kicks =
+  const baseKicks =
     currentPiece.shape.isTPiece && rotationsLen === 4
       ? getTPieceKickTests(from, to)
       : [
@@ -454,6 +490,7 @@ function tryRotate(dir) {
           [1, -1],
           [-1, -1],
         ];
+  const kicks = mergeKickTests(baseKicks, getAdaptiveKickTests(currentPiece, to));
   for (const [kx, ky] of kicks) {
     if (!collides(currentPiece, kx, ky, dir)) {
       currentPiece.x += kx;
