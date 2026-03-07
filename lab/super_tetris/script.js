@@ -17,8 +17,11 @@ const bgm = document.getElementById("bgm");
 const sfxDrop = document.getElementById("sfxDrop");
 const sfxRotate = document.getElementById("sfxRotate");
 const sfxMove = document.getElementById("sfxMove");
+const sfx2Dan = document.getElementById("sfx2dan");
+const sfx2DanClear = document.getElementById("sfx2danClear");
 const sfxClear = document.getElementById("sfxClear");
 const sfxClearBig = document.getElementById("sfxClearBig");
+const sfxGameOver = document.getElementById("sfxGameOver");
 
 const COLS = 10;
 const ROWS = 22;
@@ -29,6 +32,7 @@ const TICK_BASE = 800;
 const SOFT_DROP_SCORE = 1;
 const HARD_DROP_SCORE = 2;
 const LINE_CLEAR_SCORE = [0, 100, 300, 500, 800, 1200, 1700];
+const T_SPIN_SCORE = [400, 800, 1200, 1600];
 const COLORS = [
   "#d6aca4",
   "#c6a4d8",
@@ -73,13 +77,19 @@ let bgmWasPlayingBeforePause = false;
 let sfxFlushScheduled = false;
 let pendingSfxKey = null;
 let pendingSfxPriority = -1;
+let lastMoveWasRotation = false;
+let specialPieceQueued = false;
+let specialPieceUsed = false;
 
 const SFX_PRIORITY = {
   move: 1,
   rot: 2,
   drop: 3,
   clear: 4,
+  two_line: 4,
   clear_big: 5,
+  special_clear: 6,
+  gameover: 7,
 };
 
 const SFX_AUDIO = {
@@ -87,7 +97,42 @@ const SFX_AUDIO = {
   rot: sfxRotate,
   drop: sfxDrop,
   clear: sfxClear,
+  two_line: sfx2Dan,
   clear_big: sfxClearBig,
+  special_clear: sfx2DanClear,
+  gameover: sfxGameOver,
+};
+
+const SPECIAL_BAR_SHAPE = {
+  id: "special-2x10",
+  size: 20,
+  color: "#d9d1a8",
+  isTPiece: false,
+  isSpecialBar: true,
+  rotations: [
+    [
+      [0, 0],
+      [1, 0],
+      [2, 0],
+      [3, 0],
+      [4, 0],
+      [5, 0],
+      [6, 0],
+      [7, 0],
+      [8, 0],
+      [9, 0],
+      [0, 1],
+      [1, 1],
+      [2, 1],
+      [3, 1],
+      [4, 1],
+      [5, 1],
+      [6, 1],
+      [7, 1],
+      [8, 1],
+      [9, 1],
+    ],
+  ],
 };
 
 function createBoard() {
@@ -154,6 +199,13 @@ function canonicalRotationKey(cells) {
   return best;
 }
 
+const T_PIECE_CANONICAL_KEY = canonicalRotationKey([
+  [0, 0],
+  [1, 0],
+  [2, 0],
+  [1, 1],
+]);
+
 function generateAllPolyominoes(size) {
   let current = new Set(["0,0"]);
   for (let n = 2; n <= size; n += 1) {
@@ -177,10 +229,12 @@ function generateAllPolyominoes(size) {
   }
   return [...current].map((key, idx) => {
     const base = decode(key);
+    const isTPiece = size === 4 && canonicalRotationKey(base) === T_PIECE_CANONICAL_KEY;
     return {
       id: `${size}-${idx}`,
       size,
       color: COLORS[idx % COLORS.length],
+      isTPiece,
       rotations: uniqueRotations(base),
     };
   });
@@ -218,8 +272,8 @@ function hideOverlay() {
 
 function pickPieceSize() {
   const r = Math.random();
-  if (r < 0.8) return 4;
-  if (r < 0.95) return 5;
+  if (r < 0.7) return 4;
+  if (r < 0.9) return 5;
   return 6;
 }
 
@@ -281,25 +335,28 @@ function clearLines() {
     }
   }
   if (removed > 0) {
-    if (removed >= 4) requestSfx("clear_big");
-    else requestSfx("clear");
     lines += removed;
     const scoreIndex = Math.min(removed, LINE_CLEAR_SCORE.length - 1);
     score += LINE_CLEAR_SCORE[scoreIndex] * level;
     level = 1 + Math.floor(lines / 10);
     syncStats();
   }
+  return removed;
 }
 
 function spawnPiece(resetHold = true) {
   if (queue.length < 2) queue.push(makeRandomPiece(), makeRandomPiece());
   currentPiece = queue.shift();
+  if (currentPiece?.shape?.isSpecialBar) {
+    specialPieceQueued = false;
+    specialPieceUsed = true;
+    requestSfx("two_line");
+  }
   queue.push(makeRandomPiece());
+  lastMoveWasRotation = false;
   if (resetHold) holdUsedInTurn = false;
   if (collides(currentPiece)) {
-    running = false;
-    gameOver = true;
-    drawTextOverlay("GAME OVER");
+    triggerGameOver();
   }
 }
 
@@ -308,31 +365,101 @@ function tryMove(dx, dy, playMoveSfx = false) {
   if (!collides(currentPiece, dx, dy, 0)) {
     currentPiece.x += dx;
     currentPiece.y += dy;
+    lastMoveWasRotation = false;
     if (playMoveSfx && (dx !== 0 || dy !== 0)) requestSfx("move");
     return true;
   }
   return false;
 }
 
+function getTPieceKickTests(from, to) {
+  const key = `${from}->${to}`;
+  const kicks = {
+    "0->1": [
+      [0, 0],
+      [-1, 0],
+      [-1, -1],
+      [0, 2],
+      [-1, 2],
+    ],
+    "1->0": [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+      [0, -2],
+      [1, -2],
+    ],
+    "1->2": [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+      [0, -2],
+      [1, -2],
+    ],
+    "2->1": [
+      [0, 0],
+      [-1, 0],
+      [-1, -1],
+      [0, 2],
+      [-1, 2],
+    ],
+    "2->3": [
+      [0, 0],
+      [1, 0],
+      [1, -1],
+      [0, 2],
+      [1, 2],
+    ],
+    "3->2": [
+      [0, 0],
+      [-1, 0],
+      [-1, 1],
+      [0, -2],
+      [-1, -2],
+    ],
+    "3->0": [
+      [0, 0],
+      [-1, 0],
+      [-1, 1],
+      [0, -2],
+      [-1, -2],
+    ],
+    "0->3": [
+      [0, 0],
+      [1, 0],
+      [1, -1],
+      [0, 2],
+      [1, 2],
+    ],
+  };
+  return kicks[key] || [[0, 0]];
+}
+
 function tryRotate(dir) {
   if (!currentPiece || paused || gameOver) return;
-  const kicks = [
-    [0, 0],
-    [1, 0],
-    [-1, 0],
-    [2, 0],
-    [-2, 0],
-    [0, -1],
-    [1, -1],
-    [-1, -1],
-  ];
+  lastMoveWasRotation = false;
+  const rotationsLen = currentPiece.shape.rotations.length;
+  const from = currentPiece.rotationIndex;
+  const to = (from + dir + rotationsLen) % rotationsLen;
+  const kicks =
+    currentPiece.shape.isTPiece && rotationsLen === 4
+      ? getTPieceKickTests(from, to)
+      : [
+          [0, 0],
+          [1, 0],
+          [-1, 0],
+          [2, 0],
+          [-2, 0],
+          [0, -1],
+          [1, -1],
+          [-1, -1],
+        ];
   for (const [kx, ky] of kicks) {
     if (!collides(currentPiece, kx, ky, dir)) {
       currentPiece.x += kx;
       currentPiece.y += ky;
-      currentPiece.rotationIndex =
-        (currentPiece.rotationIndex + dir + currentPiece.shape.rotations.length) %
-        currentPiece.shape.rotations.length;
+      currentPiece.rotationIndex = to;
+      lastMoveWasRotation = true;
       requestSfx("rot");
       return;
     }
@@ -348,15 +475,36 @@ function hardDrop() {
 }
 
 function lockCurrentPiece() {
+  if (!currentPiece) return;
+  const lockedCells = getPieceCells(currentPiece);
+  const hasBlockAboveTop = lockedCells.some(([, y]) => y < 0);
+  const tSpin = isTSpin(currentPiece);
+  const wasSpecialBar = Boolean(currentPiece.shape?.isSpecialBar);
   mergePiece(currentPiece);
   requestSfx("drop");
-  clearLines();
+  if (hasBlockAboveTop) {
+    triggerGameOver();
+    return;
+  }
+  const removed = clearLines();
+  if (removed > 0) {
+    if (wasSpecialBar) requestSfx("special_clear");
+    else if (removed >= 4) requestSfx("clear_big");
+    else requestSfx("clear");
+  }
+  if (tSpin) {
+    const scoreIdx = Math.min(removed, T_SPIN_SCORE.length - 1);
+    score += T_SPIN_SCORE[scoreIdx] * level;
+    syncStats();
+  }
+  maybeQueueSpecialPiece();
   spawnPiece();
   syncStats();
 }
 
 function holdCurrentPiece() {
   if (!currentPiece || paused || gameOver || holdUsedInTurn) return;
+  lastMoveWasRotation = false;
   holdUsedInTurn = true;
   if (!holdShape) {
     holdShape = currentPiece.shape;
@@ -366,12 +514,33 @@ function holdCurrentPiece() {
     holdShape = currentPiece.shape;
     currentPiece = createPiece(swap);
     if (collides(currentPiece)) {
-      running = false;
-      gameOver = true;
-      drawTextOverlay("GAME OVER");
+      triggerGameOver();
     }
   }
   drawHold();
+}
+
+function isOccupiedOrWall(x, y) {
+  if (x < 0 || x >= COLS || y < 0 || y >= ROWS) return true;
+  return board[y][x] !== 0;
+}
+
+function isTSpin(piece) {
+  if (!piece?.shape?.isTPiece) return false;
+  if (!lastMoveWasRotation) return false;
+  const pivotX = piece.x + 1;
+  const pivotY = piece.y + 1;
+  const corners = [
+    [pivotX - 1, pivotY - 1],
+    [pivotX + 1, pivotY - 1],
+    [pivotX - 1, pivotY + 1],
+    [pivotX + 1, pivotY + 1],
+  ];
+  let occupiedCorners = 0;
+  for (const [x, y] of corners) {
+    if (isOccupiedOrWall(x, y)) occupiedCorners += 1;
+  }
+  return occupiedCorners >= 3;
 }
 
 function getDropInterval() {
@@ -478,6 +647,9 @@ function resetGame() {
   gameOver = false;
   holdShape = null;
   holdUsedInTurn = false;
+  lastMoveWasRotation = false;
+  specialPieceQueued = false;
+  specialPieceUsed = false;
   forcedFourRemaining = 3;
   fallAccumulator = 0;
   lastTime = 0;
@@ -493,6 +665,13 @@ function resetGame() {
   drawBoard();
   drawNext();
   drawHold();
+}
+
+function maybeQueueSpecialPiece() {
+  if (specialPieceUsed || specialPieceQueued) return;
+  if (score < 1000) return;
+  queue.unshift(createPiece(SPECIAL_BAR_SHAPE));
+  specialPieceQueued = true;
 }
 
 function gameLoop(ts) {
@@ -559,6 +738,13 @@ function requestSfx(key) {
     sfxFlushScheduled = true;
     queueMicrotask(flushPendingSfx);
   }
+}
+
+function triggerGameOver() {
+  running = false;
+  gameOver = true;
+  drawTextOverlay("GAME OVER");
+  requestSfx("gameover");
 }
 
 function pauseMusic() {
