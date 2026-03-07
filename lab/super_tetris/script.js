@@ -80,6 +80,7 @@ let pendingSfxPriority = -1;
 let lastMoveWasRotation = false;
 let specialPieceQueued = false;
 let specialPieceUsed = false;
+let groundedMs = 0;
 
 const SFX_PRIORITY = {
   move: 1,
@@ -354,6 +355,7 @@ function spawnPiece(resetHold = true) {
   }
   queue.push(makeRandomPiece());
   lastMoveWasRotation = false;
+  groundedMs = 0;
   if (resetHold) holdUsedInTurn = false;
   if (collides(currentPiece)) {
     triggerGameOver();
@@ -366,6 +368,7 @@ function tryMove(dx, dy, playMoveSfx = false) {
     currentPiece.x += dx;
     currentPiece.y += dy;
     lastMoveWasRotation = false;
+    if (dy > 0) groundedMs = 0;
     if (playMoveSfx && (dx !== 0 || dy !== 0)) requestSfx("move");
     return true;
   }
@@ -508,6 +511,7 @@ function hardDrop() {
   let dropped = 0;
   while (tryMove(0, 1, false)) dropped += 1;
   score += dropped * HARD_DROP_SCORE;
+  groundedMs = 0;
   lockCurrentPiece();
 }
 
@@ -542,6 +546,7 @@ function lockCurrentPiece() {
 function holdCurrentPiece() {
   if (!currentPiece || paused || gameOver || holdUsedInTurn) return;
   lastMoveWasRotation = false;
+  groundedMs = 0;
   holdUsedInTurn = true;
   if (!holdShape) {
     holdShape = currentPiece.shape;
@@ -687,6 +692,7 @@ function resetGame() {
   lastMoveWasRotation = false;
   specialPieceQueued = false;
   specialPieceUsed = false;
+  groundedMs = 0;
   forcedFourRemaining = 3;
   fallAccumulator = 0;
   lastTime = 0;
@@ -721,10 +727,17 @@ function gameLoop(ts) {
     const interval = getDropInterval();
     while (fallAccumulator >= interval) {
       fallAccumulator -= interval;
-      if (!tryMove(0, 1)) {
+      if (!tryMove(0, 1)) break;
+    }
+
+    if (collides(currentPiece, 0, 1)) {
+      groundedMs += delta;
+      if (groundedMs >= interval) {
+        groundedMs = 0;
         lockCurrentPiece();
-        break;
       }
+    } else {
+      groundedMs = 0;
     }
   }
   drawBoard();
