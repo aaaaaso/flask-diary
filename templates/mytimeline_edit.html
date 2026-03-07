@@ -34,19 +34,9 @@
       </form>
     </section>
 
-    {% if available_tags %}
-      <div class="timeline-tag-cloud" data-aos="fade-up">
-        {% for tag in available_tags %}
-          {% if selected_tag == tag %}
-            {% set tag_href = url_for('mytimeline_edit', token=token) %}
-          {% else %}
-            {% set tag_href = url_for('mytimeline_edit', token=token, tag=tag) %}
-          {% endif %}
-          <a
-            class="timeline-chip {% if selected_tag == tag %}is-active{% endif %}"
-            href="{{ tag_href }}"
-          >#{{ tag }}</a>
-        {% endfor %}
+    {% if selected_tag %}
+      <div class="timeline-active-filter-wrap">
+        <a class="timeline-chip is-active timeline-active-filter-text" href="{{ url_for('mytimeline_edit', token=token) }}">#{{ selected_tag }}</a>
       </div>
     {% endif %}
 
@@ -97,7 +87,7 @@
             {% if post.tags %}
               <div class="timeline-chip-row">
                 {% for tag in post.tags %}
-                  <a class="timeline-chip" href="{{ url_for('mytimeline_edit', token=token, tag=tag) }}">#{{ tag }}</a>
+                  <a class="timeline-chip timeline-chip-inline" href="{{ url_for('mytimeline_edit', token=token, tag=tag) }}">#{{ tag }}</a>
                 {% endfor %}
               </div>
             {% endif %}
@@ -107,6 +97,29 @@
         <p class="timeline-empty" data-aos="fade-up">まだ投稿はありません。</p>
       {% endif %}
     </main>
+  </div>
+
+  <div class="timeline-tag-dock">
+    {% if available_tags %}
+      <div id="timeline-tag-panel" class="timeline-tag-panel">
+        <div class="timeline-tag-cloud">
+          {% for tag in available_tags %}
+            {% if selected_tag == tag %}
+              {% set tag_href = url_for('mytimeline_edit', token=token) %}
+            {% else %}
+              {% set tag_href = url_for('mytimeline_edit', token=token, tag=tag) %}
+            {% endif %}
+            <a
+              class="timeline-chip {% if selected_tag == tag %}is-active{% endif %}"
+              href="{{ tag_href }}"
+            >#{{ tag }}</a>
+          {% endfor %}
+        </div>
+      </div>
+      <button id="tag-toggle-btn" class="timeline-tag-toggle" type="button" aria-label="タグ一覧を表示" aria-expanded="false">
+        <img src="{{ url_for('static', filename='hashtag_icon.png') }}" alt="" aria-hidden="true">
+      </button>
+    {% endif %}
   </div>
 
   <script src="{{ url_for('static', filename='aos.js') }}"></script>
@@ -164,6 +177,28 @@
         if (btn) btn.setAttribute('aria-expanded', 'false');
       });
     });
+
+    const tagToggleBtn = document.getElementById('tag-toggle-btn');
+    const tagPanel = document.getElementById('timeline-tag-panel');
+    if (tagToggleBtn && tagPanel) {
+      tagToggleBtn.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const willOpen = !tagPanel.classList.contains('is-open');
+        tagPanel.classList.toggle('is-open', willOpen);
+        tagToggleBtn.classList.toggle('is-open', willOpen);
+        tagToggleBtn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+        tagToggleBtn.classList.remove('spin');
+        void tagToggleBtn.offsetWidth;
+        tagToggleBtn.classList.add('spin');
+        setTimeout(() => tagToggleBtn.classList.remove('spin'), 600);
+      });
+
+      document.addEventListener('click', () => {
+        tagPanel.classList.remove('is-open');
+        tagToggleBtn.classList.remove('is-open');
+        tagToggleBtn.setAttribute('aria-expanded', 'false');
+      });
+    }
 
     const cleanedUrl = new URL(window.location.href);
     if (cleanedUrl.searchParams.has('posted')) {

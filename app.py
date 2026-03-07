@@ -185,6 +185,22 @@ def _linkify_content(content: str) -> str:
     return "".join(parts).replace("\n", "<br>")
 
 
+def _remove_urls_from_content(content: str, urls_to_remove):
+    if not urls_to_remove:
+        return content
+    cleaned = content
+    for url in urls_to_remove:
+        if not url:
+            continue
+        cleaned = cleaned.replace(url, "")
+
+    lines = []
+    for line in cleaned.splitlines():
+        normalized = re.sub(r"[ \t]{2,}", " ", line).strip()
+        lines.append(normalized)
+    return "\n".join(lines).strip()
+
+
 def _fetch_text(url: str, timeout: int = 5, max_bytes: int = 250_000):
     req = Request(url, headers={"User-Agent": FETCH_USER_AGENT})
     with urlopen(req, timeout=timeout) as res:
@@ -486,11 +502,14 @@ def _timeline_prepare_posts(posts):
             if preview:
                 link_previews.append(preview)
 
+        preview_urls = [p.get("url", "") for p in link_previews]
+        display_content = _remove_urls_from_content(content, preview_urls)
+
         item = dict(post)
         item["date_label"] = date_label
         item["time_label"] = time_label
         item["show_date_divider"] = bool(date_label) and (date_label != prev_date_label)
-        item["content_html"] = _linkify_content(content)
+        item["content_html"] = _linkify_content(display_content)
         item["link_previews"] = link_previews
         prepared.append(item)
 
@@ -691,6 +710,9 @@ def mytimeline():
     selected_tag = _normalize_tag(request.args.get("tag", ""))
     all_posts = _timeline_list_posts()
     filtered_posts = _timeline_filter_posts(all_posts, selected_tag)
+    if selected_tag and not filtered_posts:
+        selected_tag = ""
+        filtered_posts = all_posts
     posts = _timeline_prepare_posts(filtered_posts)
     return render_template(
         "mytimeline.html",
@@ -724,6 +746,9 @@ def mytimeline_edit(token: str):
 
     all_posts = _timeline_list_posts()
     filtered_posts = _timeline_filter_posts(all_posts, selected_tag)
+    if selected_tag and not filtered_posts:
+        selected_tag = ""
+        filtered_posts = all_posts
     posts = _timeline_prepare_posts(filtered_posts)
     posted = request.args.get("posted") == "1"
     return render_template(
