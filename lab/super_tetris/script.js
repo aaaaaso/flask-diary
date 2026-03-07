@@ -450,36 +450,41 @@ function getAdaptiveKickTests(piece, toRotation) {
     candidates.push([ox, oy]);
   };
 
-  // Search within pre-rotation occupied-cell range, prioritizing lower cells first.
-  currentCells.sort((a, b) => (b[1] - a[1]) || (a[0] - b[0]));
+  const shiftedCells = currentCells.map(([x, y]) => [x, y + 1]);
   rotatedCells.sort((a, b) => (b[1] - a[1]) || (a[0] - b[0]));
 
-  const maxY = Math.max(...currentCells.map(([, y]) => y));
-  const bottomRowCells = currentCells
-    .filter(([, y]) => y === maxY)
-    .sort((a, b) => a[0] - b[0]);
-  const anchorCandidates = [];
+  const toKey = (x, y) => `${x},${y}`;
+  const hasOriginal = new Set(currentCells.map(([x, y]) => toKey(x, y)));
+  const hasShifted = new Set(shiftedCells.map(([x, y]) => toKey(x, y)));
+
+  // Union of original + shifted coordinates, searched from lower cells first.
+  const unionAnchors = [];
   const anchorSeen = new Set();
-  const pushAnchor = (ax, ay) => {
-    const key = `${ax},${ay}`;
-    if (anchorSeen.has(key)) return;
-    anchorSeen.add(key);
-    anchorCandidates.push([ax, ay]);
+  const pushAnchor = (x, y) => {
+    const k = toKey(x, y);
+    if (anchorSeen.has(k)) return;
+    anchorSeen.add(k);
+    unionAnchors.push([x, y]);
   };
+  for (const [x, y] of currentCells) pushAnchor(x, y);
+  for (const [x, y] of shiftedCells) pushAnchor(x, y);
+  unionAnchors.sort((a, b) => (b[1] - a[1]) || (a[0] - b[0]));
 
-  // First priority: one row below the lowest pre-rotation cells.
-  for (const [x, y] of bottomRowCells) {
-    pushAnchor(x, y + 1);
-  }
+  for (const [ax, ay] of unionAnchors) {
+    const key = toKey(ax, ay);
 
-  // Then fallback to the original occupied-cell range search.
-  for (const [x, y] of currentCells) {
-    pushAnchor(x, y);
-  }
+    // If this anchor exists in shifted piece, try shifted-basis rotation first.
+    if (hasShifted.has(key)) {
+      for (const [rx, ry] of rotatedCells) {
+        push(ax - rx, ay - ry);
+      }
+    }
 
-  for (const [cx, cy] of anchorCandidates) {
-    for (const [rx, ry] of rotatedCells) {
-      push(cx - rx, cy - ry);
+    // If this anchor exists in original piece, try original-basis rotation.
+    if (hasOriginal.has(key)) {
+      for (const [rx, ry] of rotatedCells) {
+        push(ax - rx, ay - ry);
+      }
     }
   }
   return candidates;
