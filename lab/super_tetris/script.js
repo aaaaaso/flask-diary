@@ -123,8 +123,8 @@ const SFX_AUDIO = {
 function primeSfxIfNeeded() {
   if (sfxReady) return;
   sfxReady = true;
-  const uniqueSfx = [...new Set(Object.values(SFX_AUDIO).filter(Boolean))];
-  for (const audioEl of uniqueSfx) {
+  const primeTargets = [sfxMove, sfxRotate].filter(Boolean);
+  for (const audioEl of primeTargets) {
     const prevVolume = audioEl.volume;
     audioEl.currentTime = 0;
     audioEl.volume = 0;
