@@ -502,7 +502,7 @@ body::before {
     display: block;
     height: var(--mobile-touch-vh);
     box-sizing: border-box;
-    padding: 6px 10px max(6px, env(safe-area-inset-bottom));
+    padding: 6px 10px calc(env(safe-area-inset-bottom) + 12px);
     background: linear-gradient(180deg, rgba(212, 213, 216, 0), rgba(212, 213, 216, 0.96) 32%);
   }
 
