@@ -313,8 +313,8 @@ body::before {
 
 @media (max-width: 840px) {
   :root {
-    --mobile-main-vh: 85dvh;
-    --mobile-touch-vh: 15dvh;
+    --mobile-touch-vh: calc(15dvh + env(safe-area-inset-bottom) + 10px);
+    --mobile-main-vh: calc(100dvh - var(--mobile-touch-vh));
   }
 
   html,
@@ -501,8 +501,9 @@ body::before {
     z-index: 40;
     display: block;
     height: var(--mobile-touch-vh);
+    min-height: calc(108px + env(safe-area-inset-bottom));
     box-sizing: border-box;
-    padding: 6px 10px calc(env(safe-area-inset-bottom) + 12px);
+    padding: 6px 10px calc(env(safe-area-inset-bottom) + 10px);
     background: linear-gradient(180deg, rgba(212, 213, 216, 0), rgba(212, 213, 216, 0.96) 32%);
   }
 
