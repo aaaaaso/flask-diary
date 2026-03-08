@@ -21,6 +21,20 @@
           <button id="restartBtn" class="btn secondary">Restart</button>
           <button id="pauseBtn" class="btn tertiary">Pause</button>
         </div>
+        <div class="bgm-switch" aria-label="bgm switch">
+          <button class="bgm-btn is-active" data-bgm-src="./wind_bg.mp3" aria-label="wind bgm">
+            <img src="./wind.png" alt="" />
+          </button>
+          <button class="bgm-btn" data-bgm-src="./morning_bg.mp3" aria-label="morning bgm">
+            <img src="./morning.png" alt="" />
+          </button>
+          <button class="bgm-btn" data-bgm-src="./bird_bg.mp3" aria-label="bird bgm">
+            <img src="./bird.png" alt="" />
+          </button>
+          <button class="bgm-btn" data-bgm-src="./fire_bg.mp3" aria-label="fire bgm">
+            <img src="./fire.png" alt="" />
+          </button>
+        </div>
         <div class="board-wrap">
           <canvas id="board" width="320" height="704" aria-label="tetris board"></canvas>
           <div id="overlay" class="overlay hidden"></div>
@@ -84,9 +98,10 @@
       </div>
     </section>
 
-    <audio id="bgm" src="./tetris_music.mp3" loop preload="auto"></audio>
+    <audio id="bgm" src="./wind_bg.mp3" loop preload="auto"></audio>
+    <audio id="bgmAlt" loop preload="auto"></audio>
     <audio id="sfxDrop" src="./drop.mp3" preload="auto"></audio>
-    <audio id="sfxRotate" src="./rot.mp3" preload="auto"></audio>
+    <audio id="sfxRotate" src="./rot2.mp3" preload="auto"></audio>
     <audio id="sfxMove" src="./move.mp3" preload="auto"></audio>
     <audio id="sfx2dan" src="./2dan.mp3" preload="auto"></audio>
     <audio id="sfx2danClear" src="./2dan_clear.mp3" preload="auto"></audio>

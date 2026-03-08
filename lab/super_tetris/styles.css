@@ -1,15 +1,12 @@
 :root {
-  --bg: #090909;
-  --bg-soft: #111111;
-  --panel: #141414;
-  --panel-2: #1b1b1b;
-  --panel-border: #2a2a2a;
-  --text: #f2f2ee;
-  --muted: #a8a8a1;
-  --accent: #e67f5f;
-  --accent-2: #6aa7ff;
-  --ok: #7ecb89;
-  --shadow: rgba(0, 0, 0, 0.45);
+  --bg: #cfd6d6;
+  --bg-soft: #c3cccd;
+  --panel: #e8efef;
+  --panel-2: #e0e8e8;
+  --panel-border: #bcc7c8;
+  --text: #1d2525;
+  --muted: #586768;
+  --shadow: rgba(27, 45, 46, 0.12);
 }
 
 * {
@@ -21,15 +18,12 @@ body {
   height: 100%;
   margin: 0;
   color: var(--text);
-  font-family: "Manrope", sans-serif;
+  font-family: "Futura", "Futura PT", "Avenir Next", "Avenir", "Century Gothic", sans-serif;
 }
 
 body {
   position: relative;
-  background:
-    radial-gradient(circle at 8% 12%, rgba(230, 127, 95, 0.12), transparent 32%),
-    radial-gradient(circle at 88% 88%, rgba(106, 167, 255, 0.1), transparent 34%),
-    linear-gradient(180deg, #0b0b0b 0%, #070707 100%);
+  background: var(--bg);
   display: grid;
   place-items: center;
   padding: 18px;
@@ -41,11 +35,7 @@ body::before {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: radial-gradient(circle at 65% 48%, black 35%, transparent 75%);
+  background: transparent;
 }
 
 .app {
@@ -62,10 +52,10 @@ body::before {
 }
 
 .panel {
-  background: #141414;
+  background: var(--panel);
   border: 1px solid var(--panel-border);
-  border-radius: 24px;
-  box-shadow: 0 12px 28px -24px rgba(0, 0, 0, 0.65);
+  border-radius: 7px;
+  box-shadow: 0 4px 12px -10px var(--shadow);
 }
 
 .game-panel {
@@ -82,6 +72,39 @@ body::before {
 
 .top-controls {
   margin: 0 0 16px;
+}
+
+.bgm-switch {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.bgm-btn {
+  appearance: none;
+  border: 1px solid #c2cccd;
+  border-radius: 4px;
+  background: #eaf1f1;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 2px 6px -6px rgba(52, 74, 75, 0.26);
+}
+
+.bgm-btn img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  opacity: 0.8;
+}
+
+.bgm-btn.is-active {
+  border-color: #9fb3b5;
+  background: #d6e2e2;
+  box-shadow: 0 2px 6px -6px rgba(44, 66, 67, 0.32);
 }
 
 .game-header {
@@ -103,8 +126,8 @@ body::before {
   margin: 0 auto;
   border-radius: 0;
   overflow: hidden;
-  border: 1px solid #2d2d2d;
-  background: #171717;
+  border: 1px solid #bcc8ca;
+  background: #bcc8c9;
 }
 
 .board-wrap::after {
@@ -121,12 +144,12 @@ body::before {
 
 @keyframes tspinFlash {
   0% {
-    opacity: 0.9;
-    background: radial-gradient(circle at 50% 50%, rgba(235, 217, 122, 0.88), transparent 62%);
+    opacity: 0.5;
+    background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.75), transparent 62%);
   }
   100% {
     opacity: 0;
-    background: radial-gradient(circle at 50% 50%, rgba(235, 217, 122, 0.2), transparent 72%);
+    background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.2), transparent 72%);
   }
 }
 
@@ -147,8 +170,8 @@ body::before {
   font-size: 1.4rem;
   font-weight: 800;
   letter-spacing: 0.08em;
-  color: #f5f4ef;
-  background: rgba(8, 8, 8, 0.78);
+  color: #f8f8f9;
+  background: rgba(34, 35, 39, 0.78);
   backdrop-filter: blur(4px);
 }
 
@@ -158,15 +181,15 @@ body::before {
 
 .btn {
   appearance: none;
-  border: 1px solid #d9d6cb;
+  border: 1px solid #bcc8ca;
   border-radius: 999px;
   padding: 10px 22px;
   font-weight: 700;
-  color: #262626;
-  background: #f2cf62;
-  box-shadow: none;
+  color: #1a2323;
+  background: #d4e0e0;
+  box-shadow: 0 3px 8px -7px rgba(56, 75, 77, 0.34);
   cursor: pointer;
-  transition: transform 120ms ease, filter 120ms ease;
+  transition: transform 120ms ease, filter 120ms ease, box-shadow 120ms ease;
 }
 
 .btn:hover {
@@ -175,16 +198,17 @@ body::before {
 
 .btn:active {
   transform: translateY(1px) scale(0.99);
+  box-shadow: 0 1px 3px -3px rgba(56, 75, 77, 0.35);
 }
 
 .btn.secondary {
-  background: #f5f5f2;
-  border-color: #dadad5;
+  background: #e5eeee;
+  border-color: #c0cbcc;
 }
 
 .btn.tertiary {
-  background: #f5f5f2;
-  border-color: #dadad5;
+  background: #e5eeee;
+  border-color: #c0cbcc;
 }
 
 .hint {
@@ -199,17 +223,18 @@ body::before {
   display: grid;
   gap: 14px;
   align-content: start;
-  background: #161616;
+  background: var(--panel-2);
 }
 
 .stat {
-  background: #1f1f1f;
-  border: 1px solid #303030;
-  border-radius: 14px;
+  background: #edf3f3;
+  border: 1px solid #c2cccd;
+  border-radius: 6px;
   padding: 12px;
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+  box-shadow: 0 3px 8px -8px rgba(55, 75, 76, 0.25);
 }
 
 .stat span {
@@ -222,16 +247,17 @@ body::before {
 }
 
 .next-wrap {
-  background: #1f1f1f;
-  border: 1px solid #303030;
-  border-radius: 14px;
+  background: #edf3f3;
+  border: 1px solid #c2cccd;
+  border-radius: 6px;
   padding: 12px;
+  box-shadow: 0 3px 8px -8px rgba(55, 75, 76, 0.25);
 }
 
 .next-wrap h2 {
   margin: 0 0 8px;
   font-size: 0.93rem;
-  color: #ecebe6;
+  color: #24262c;
 }
 
 .preview-wrap {
@@ -244,16 +270,16 @@ body::before {
   max-width: 192px;
   display: block;
   margin: 0 auto;
-  border-radius: 10px;
-  background: #1d1d1d;
-  border: 1px solid #323232;
+  border-radius: 4px;
+  background: #c9d4d5;
+  border: 1px solid #c3cdce;
 }
 
 .conceal-layer {
   position: absolute;
   inset: 0;
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.92);
+  border-radius: 4px;
+  background: rgba(27, 28, 32, 0.95);
   opacity: 0;
   pointer-events: none;
   transition: opacity 180ms ease;
@@ -292,6 +318,21 @@ body::before {
     gap: 6px;
   }
 
+  .bgm-switch {
+    margin: 0 0 8px;
+    gap: 6px;
+  }
+
+  .bgm-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .bgm-btn img {
+    width: 18px;
+    height: 18px;
+  }
+
   .btn {
     padding: 8px 12px;
     font-size: 0.82rem;
@@ -314,7 +355,7 @@ body::before {
 
   .stat {
     padding: 8px;
-    border-radius: 10px;
+    border-radius: 6px;
   }
 
   .stat span {
@@ -341,7 +382,7 @@ body::before {
     z-index: 40;
     display: block;
     padding: 8px 10px max(8px, env(safe-area-inset-bottom));
-    background: linear-gradient(180deg, rgba(10, 10, 10, 0), rgba(10, 10, 10, 0.92) 32%);
+    background: linear-gradient(180deg, rgba(212, 213, 216, 0), rgba(212, 213, 216, 0.96) 32%);
   }
 
   .touch-grid {
@@ -354,13 +395,14 @@ body::before {
 
   .touch-btn {
     appearance: none;
-    border: 1px solid #3a3a3a;
-    border-radius: 12px;
-    background: #1a1a1a;
+    border: 1px solid #c0cbcc;
+    border-radius: 6px;
+    background: linear-gradient(180deg, #ebf3f3 0%, #e4ecec 100%);
     min-height: 50px;
     display: grid;
     place-items: center;
     padding: 0;
+    box-shadow: 0 2px 6px -6px rgba(55, 75, 76, 0.28);
   }
 
   .touch-btn img {

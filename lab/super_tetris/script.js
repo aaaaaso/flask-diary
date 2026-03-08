@@ -14,7 +14,9 @@ const overlayEl = document.getElementById("overlay");
 const appEl = document.querySelector(".app");
 const boardWrapEl = document.querySelector(".board-wrap");
 const touchPanelEl = document.getElementById("touchPanel");
+const bgmButtons = Array.from(document.querySelectorAll(".bgm-btn"));
 const bgm = document.getElementById("bgm");
+const bgmAlt = document.getElementById("bgmAlt");
 const sfxDrop = document.getElementById("sfxDrop");
 const sfxRotate = document.getElementById("sfxRotate");
 const sfxMove = document.getElementById("sfxMove");
@@ -55,12 +57,14 @@ let shapesBySize = {
   5: [],
   6: [],
   7: [],
+  8: [],
 };
 let bagBySize = {
   4: [],
   5: [],
   6: [],
   7: [],
+  8: [],
 };
 let queue = [];
 let currentPiece = null;
@@ -85,6 +89,9 @@ let specialPieceQueued = false;
 let specialPieceUsed = false;
 let groundedMs = 0;
 let tSpinFxTimer = null;
+let activeBgm = bgm;
+let standbyBgm = bgmAlt;
+let bgmFadeRaf = null;
 
 const SFX_PRIORITY = {
   move: 1,
@@ -136,6 +143,25 @@ const SPECIAL_BAR_SHAPE = {
       [7, 1],
       [8, 1],
       [9, 1],
+    ],
+  ],
+};
+
+const O_RING_8_SHAPE = {
+  id: "8-o-ring",
+  size: 8,
+  color: "#c4b7a1",
+  isTPiece: false,
+  rotations: [
+    [
+      [0, 0],
+      [1, 0],
+      [2, 0],
+      [0, 1],
+      [2, 1],
+      [0, 2],
+      [1, 2],
+      [2, 2],
     ],
   ],
 };
@@ -255,10 +281,12 @@ function buildShapeSets() {
   shapesBySize[5] = generateAllPolyominoes(5);
   shapesBySize[6] = generateAllPolyominoes(6);
   shapesBySize[7] = generateAllPolyominoes(7);
+  shapesBySize[8] = [O_RING_8_SHAPE];
   refillBag(4);
   refillBag(5);
   refillBag(6);
   refillBag(7);
+  refillBag(8);
 }
 
 function shuffle(arr) {
@@ -296,7 +324,12 @@ function pickPieceSize() {
   const r = Math.random();
   if (r < n4) return 4;
   if (r < n4 + n5) return 5;
-  if (level >= 25) return Math.random() < 0.5 ? 6 : 7;
+  if (level >= 25) {
+    const highR = Math.random();
+    if (highR < 1 / 3) return 6;
+    if (highR < 2 / 3) return 7;
+    return 8;
+  }
   return 6;
 }
 
@@ -717,14 +750,14 @@ function getGhostOffset(piece) {
 function drawCell(ctx, x, y, color, cellSize) {
   ctx.fillStyle = color;
   ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
-  ctx.strokeStyle = "rgba(30,34,32,0.16)";
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(38, 46, 47, 0.11)";
+  ctx.lineWidth = 0.8;
   ctx.strokeRect(x * cellSize + 0.5, y * cellSize + 0.5, cellSize - 1, cellSize - 1);
 }
 
 function drawBoard() {
   boardCtx.clearRect(0, 0, boardCanvas.width, boardCanvas.height);
-  boardCtx.fillStyle = "#cfc8bc";
+  boardCtx.fillStyle = "#c5d0d1";
   boardCtx.fillRect(0, 0, boardCanvas.width, boardCanvas.height);
 
   for (let y = 0; y < ROWS; y += 1) {
@@ -733,7 +766,8 @@ function drawBoard() {
       if (color) {
         drawCell(boardCtx, x, y, color, CELL);
       } else {
-        boardCtx.strokeStyle = "rgba(45, 51, 48, 0.08)";
+        boardCtx.strokeStyle = "rgba(55, 67, 69, 0.1)";
+        boardCtx.lineWidth = 0.75;
         boardCtx.strokeRect(x * CELL + 0.5, y * CELL + 0.5, CELL - 1, CELL - 1);
       }
     }
@@ -743,7 +777,7 @@ function drawBoard() {
     const ghostOffset = getGhostOffset(currentPiece);
     for (const [x, y] of getPieceCells(currentPiece, 0, ghostOffset)) {
       if (y < 0) continue;
-      boardCtx.fillStyle = "rgba(80, 95, 87, 0.18)";
+      boardCtx.fillStyle = "rgba(71, 75, 83, 0.2)";
       boardCtx.fillRect(x * CELL + 1, y * CELL + 1, CELL - 2, CELL - 2);
     }
 
@@ -756,7 +790,7 @@ function drawBoard() {
 
 function drawNext() {
   nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
-  nextCtx.fillStyle = "#d2ccbf";
+  nextCtx.fillStyle = "#c5d0d1";
   nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
   const next = queue[0];
   if (!next) return;
@@ -775,7 +809,7 @@ function drawNext() {
 
 function drawHold() {
   holdCtx.clearRect(0, 0, holdCanvas.width, holdCanvas.height);
-  holdCtx.fillStyle = "#d2ccbf";
+  holdCtx.fillStyle = "#c5d0d1";
   holdCtx.fillRect(0, 0, holdCanvas.width, holdCanvas.height);
   if (!holdShape) return;
 
@@ -823,6 +857,7 @@ function resetGame() {
   refillBag(5);
   refillBag(6);
   refillBag(7);
+  refillBag(8);
   spawnPiece();
   syncStats();
   drawBoard();
@@ -867,18 +902,90 @@ function gameLoop(ts) {
 }
 
 function startMusic() {
-  bgm.volume = 0.35;
-  bgm.playbackRate = 1.3;
+  activeBgm.volume = 0.35;
+  activeBgm.playbackRate = 1.3;
   if (musicReady) {
-    if (bgm.paused) {
-      bgm.play().catch(() => {});
+    if (activeBgm.paused) {
+      activeBgm.play().catch(() => {});
     }
     return;
   }
   musicReady = true;
-  bgm.play().catch(() => {
+  activeBgm.play().catch(() => {
     musicReady = false;
   });
+}
+
+function setActiveBgmButton(src) {
+  for (const btn of bgmButtons) {
+    const active = btn.dataset.bgmSrc === src;
+    btn.classList.toggle("is-active", active);
+  }
+}
+
+function switchBgm(nextSrc) {
+  const currentSrc = activeBgm.getAttribute("src");
+  if (!nextSrc || currentSrc === nextSrc) {
+    setActiveBgmButton(nextSrc || currentSrc);
+    return;
+  }
+  if (bgmFadeRaf) {
+    cancelAnimationFrame(bgmFadeRaf);
+    bgmFadeRaf = null;
+  }
+  const shouldCrossFade = musicReady && !activeBgm.paused && !paused && !gameOver;
+  if (!shouldCrossFade) {
+    activeBgm.pause();
+    activeBgm.currentTime = 0;
+    activeBgm.setAttribute("src", nextSrc);
+    activeBgm.load();
+    activeBgm.playbackRate = 1.3;
+    activeBgm.volume = 0.35;
+    if (musicReady && !paused && !gameOver) {
+      activeBgm.play().catch(() => {});
+    }
+    setActiveBgmButton(nextSrc);
+    return;
+  }
+  standbyBgm.pause();
+  standbyBgm.currentTime = 0;
+  standbyBgm.setAttribute("src", nextSrc);
+  standbyBgm.load();
+  standbyBgm.playbackRate = 1.3;
+  standbyBgm.volume = 0;
+  standbyBgm.play().then(() => {
+    const from = activeBgm;
+    const to = standbyBgm;
+    const targetVolume = 0.35;
+    const durationMs = 450;
+    const startedAt = performance.now();
+    const tick = (now) => {
+      const t = Math.min(1, (now - startedAt) / durationMs);
+      from.volume = targetVolume * (1 - t);
+      to.volume = targetVolume * t;
+      if (t < 1) {
+        bgmFadeRaf = requestAnimationFrame(tick);
+        return;
+      }
+      from.pause();
+      from.currentTime = 0;
+      from.volume = targetVolume;
+      to.volume = targetVolume;
+      activeBgm = to;
+      standbyBgm = from;
+      bgmFadeRaf = null;
+    };
+    bgmFadeRaf = requestAnimationFrame(tick);
+  }).catch(() => {
+    activeBgm.pause();
+    activeBgm.currentTime = 0;
+    activeBgm.setAttribute("src", nextSrc);
+    activeBgm.load();
+    activeBgm.playbackRate = 1.3;
+    activeBgm.volume = 0.35;
+    activeBgm.play().catch(() => {});
+  });
+  setActiveBgmButton(nextSrc);
 }
 
 function flushPendingSfx() {
@@ -913,7 +1020,8 @@ function requestSfx(key) {
 function triggerGameOver() {
   running = false;
   gameOver = true;
-  bgm.pause();
+  activeBgm.pause();
+  standbyBgm.pause();
   bgmWasPlayingBeforePause = false;
   drawTextOverlay("GAME OVER");
   requestSfx("gameover");
@@ -957,13 +1065,14 @@ function performAction(action) {
 
 function pauseMusic() {
   if (!musicReady) return;
-  bgmWasPlayingBeforePause = !bgm.paused;
-  bgm.pause();
+  bgmWasPlayingBeforePause = !activeBgm.paused;
+  activeBgm.pause();
+  standbyBgm.pause();
 }
 
 function resumeMusic() {
   if (!musicReady || !bgmWasPlayingBeforePause) return;
-  bgm.play().catch(() => {});
+  activeBgm.play().catch(() => {});
   bgmWasPlayingBeforePause = false;
 }
 
@@ -1063,6 +1172,11 @@ pauseBtn.addEventListener("click", togglePause);
 boardWrapEl.addEventListener("click", () => {
   if (!running) startGame();
 });
+for (const btn of bgmButtons) {
+  btn.addEventListener("click", () => {
+    switchBgm(btn.dataset.bgmSrc);
+  });
+}
 
 if (touchPanelEl) {
   const repeatable = new Set(["left", "right", "down"]);
@@ -1101,6 +1215,7 @@ document.body.addEventListener(
 function init() {
   buildShapeSets();
   syncStats();
+  setActiveBgmButton(activeBgm.getAttribute("src"));
   drawBoard();
   drawNext();
   drawHold();
