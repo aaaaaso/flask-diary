@@ -790,8 +790,6 @@ function drawBoard() {
 
 function drawNext() {
   nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
-  nextCtx.fillStyle = "#c5d0d1";
-  nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
   const next = queue[0];
   if (!next) return;
 
@@ -809,8 +807,6 @@ function drawNext() {
 
 function drawHold() {
   holdCtx.clearRect(0, 0, holdCanvas.width, holdCanvas.height);
-  holdCtx.fillStyle = "#c5d0d1";
-  holdCtx.fillRect(0, 0, holdCanvas.width, holdCanvas.height);
   if (!holdShape) return;
 
   const cells = holdShape.rotations[0];
@@ -1179,28 +1175,12 @@ for (const btn of bgmButtons) {
 }
 
 if (touchPanelEl) {
-  const repeatable = new Set(["left", "right", "down"]);
-  let repeatTimer = null;
-  const stopRepeat = () => {
-    if (repeatTimer) {
-      clearInterval(repeatTimer);
-      repeatTimer = null;
-    }
-  };
-
   for (const btn of touchPanelEl.querySelectorAll(".touch-btn")) {
     const action = btn.dataset.action;
     btn.addEventListener("pointerdown", (e) => {
       e.preventDefault();
       performAction(action);
-      if (repeatable.has(action)) {
-        stopRepeat();
-        repeatTimer = setInterval(() => performAction(action), 80);
-      }
     });
-    btn.addEventListener("pointerup", stopRepeat);
-    btn.addEventListener("pointercancel", stopRepeat);
-    btn.addEventListener("pointerleave", stopRepeat);
   }
 }
 

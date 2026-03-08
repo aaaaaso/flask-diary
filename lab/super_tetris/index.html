@@ -2,7 +2,10 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
     <title>super tetris</title>
     <meta name="description" content="テトリス好きの友人にプレイさせるためにつくった。" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -20,20 +23,20 @@
           <button id="startBtn" class="btn">Start</button>
           <button id="restartBtn" class="btn secondary">Restart</button>
           <button id="pauseBtn" class="btn tertiary">Pause</button>
-        </div>
-        <div class="bgm-switch" aria-label="bgm switch">
-          <button class="bgm-btn is-active" data-bgm-src="./wind_bg.mp3" aria-label="wind bgm">
-            <img src="./wind.png" alt="" />
-          </button>
-          <button class="bgm-btn" data-bgm-src="./morning_bg.mp3" aria-label="morning bgm">
-            <img src="./morning.png" alt="" />
-          </button>
-          <button class="bgm-btn" data-bgm-src="./bird_bg.mp3" aria-label="bird bgm">
-            <img src="./bird.png" alt="" />
-          </button>
-          <button class="bgm-btn" data-bgm-src="./fire_bg.mp3" aria-label="fire bgm">
-            <img src="./fire.png" alt="" />
-          </button>
+          <div class="bgm-switch" aria-label="bgm switch">
+            <button class="bgm-btn is-active" data-bgm-src="./wind_bg.mp3" aria-label="wind bgm">
+              <img src="./wind.png" alt="" />
+            </button>
+            <button class="bgm-btn" data-bgm-src="./morning_bg.mp3" aria-label="morning bgm">
+              <img src="./morning.png" alt="" />
+            </button>
+            <button class="bgm-btn" data-bgm-src="./bird_bg.mp3" aria-label="bird bgm">
+              <img src="./bird.png" alt="" />
+            </button>
+            <button class="bgm-btn" data-bgm-src="./fire_bg.mp3" aria-label="fire bgm">
+              <img src="./fire.png" alt="" />
+            </button>
+          </div>
         </div>
         <div class="board-wrap">
           <canvas id="board" width="320" height="704" aria-label="tetris board"></canvas>
@@ -42,15 +45,15 @@
       </section>
 
       <aside class="panel side-panel">
-        <div class="stat">
+        <div class="stat stat-score">
           <span>Score</span>
           <strong id="score">0</strong>
         </div>
-        <div class="stat">
+        <div class="stat stat-lines">
           <span>Lines</span>
           <strong id="lines">0</strong>
         </div>
-        <div class="stat">
+        <div class="stat stat-level">
           <span>Level</span>
           <strong id="level">1</strong>
         </div>
@@ -73,28 +76,32 @@
       </aside>
     </main>
     <section id="touchPanel" class="touch-panel" aria-label="touch controls">
-      <div class="touch-grid">
-        <button class="touch-btn" data-action="rot-left" aria-label="rotate left">
-          <img src="./rotate-left.png" alt="" />
-        </button>
-        <button class="touch-btn arrow up" data-action="hard-drop" aria-label="hard drop">
-          <img src="./right-arrow.png" alt="" />
-        </button>
-        <button class="touch-btn" data-action="rot-right" aria-label="rotate right">
-          <img src="./rotate-right.png" alt="" />
-        </button>
-        <button class="touch-btn" data-action="hold" aria-label="hold">
-          <img src="./hold.png" alt="" />
-        </button>
-        <button class="touch-btn arrow left" data-action="left" aria-label="move left">
-          <img src="./right-arrow.png" alt="" />
-        </button>
-        <button class="touch-btn arrow down" data-action="down" aria-label="soft drop">
-          <img src="./right-arrow.png" alt="" />
-        </button>
-        <button class="touch-btn arrow right" data-action="right" aria-label="move right">
-          <img src="./right-arrow.png" alt="" />
-        </button>
+      <div class="touch-layout">
+        <div class="touch-pad touch-pad-left">
+          <button class="touch-btn hold-btn" data-action="hold" aria-label="hold">
+            <img src="./hold.png" alt="" />
+          </button>
+          <button class="touch-btn" data-action="rot-left" aria-label="rotate left">
+            <img src="./rotate-left.png" alt="" />
+          </button>
+          <button class="touch-btn" data-action="rot-right" aria-label="rotate right">
+            <img src="./rotate-right.png" alt="" />
+          </button>
+        </div>
+        <div class="touch-pad touch-pad-right">
+          <button class="touch-btn arrow up" data-action="hard-drop" aria-label="hard drop">
+            <img src="./right-arrow.png" alt="" />
+          </button>
+          <button class="touch-btn arrow left" data-action="left" aria-label="move left">
+            <img src="./right-arrow.png" alt="" />
+          </button>
+          <button class="touch-btn arrow down" data-action="down" aria-label="soft drop">
+            <img src="./right-arrow.png" alt="" />
+          </button>
+          <button class="touch-btn arrow right" data-action="right" aria-label="move right">
+            <img src="./right-arrow.png" alt="" />
+          </button>
+        </div>
       </div>
     </section>
 
