@@ -94,6 +94,7 @@ let tSpinFxTimer = null;
 let activeBgm = bgm;
 let standbyBgm = bgmAlt;
 let bgmFadeRaf = null;
+let sfxReady = false;
 
 const SFX_PRIORITY = {
   move: 1,
@@ -118,6 +119,26 @@ const SFX_AUDIO = {
   special_clear: sfx2DanClear,
   gameover: sfxGameOver,
 };
+
+function primeSfxIfNeeded() {
+  if (sfxReady) return;
+  sfxReady = true;
+  const uniqueSfx = [...new Set(Object.values(SFX_AUDIO).filter(Boolean))];
+  for (const audioEl of uniqueSfx) {
+    const prevVolume = audioEl.volume;
+    audioEl.currentTime = 0;
+    audioEl.volume = 0;
+    audioEl.play()
+      .then(() => {
+        audioEl.pause();
+        audioEl.currentTime = 0;
+        audioEl.volume = prevVolume;
+      })
+      .catch(() => {
+        audioEl.volume = prevVolume;
+      });
+  }
+}
 
 const SPECIAL_BAR_SHAPE = {
   id: "special-2x10",
@@ -1138,6 +1159,7 @@ function restartGame() {
 }
 
 document.addEventListener("keydown", (e) => {
+  primeSfxIfNeeded();
   if (e.code === "KeyR") {
     e.preventDefault();
     restartGame();
@@ -1218,6 +1240,7 @@ if (touchPanelEl) {
     const action = btn.dataset.action;
     btn.addEventListener("pointerdown", (e) => {
       e.preventDefault();
+      primeSfxIfNeeded();
       performAction(action);
     });
   }
@@ -1226,6 +1249,7 @@ if (touchPanelEl) {
 document.body.addEventListener(
   "pointerdown",
   () => {
+    primeSfxIfNeeded();
     startMusic();
   },
   { once: true },
