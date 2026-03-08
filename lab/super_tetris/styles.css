@@ -44,6 +44,7 @@ body::before {
   display: grid;
   grid-template-columns: minmax(360px, 1fr) 290px;
   gap: 20px;
+  align-items: start;
   position: relative;
   z-index: 1;
 }
@@ -224,6 +225,10 @@ body::before {
   display: block;
 }
 
+.mobile-side-controls {
+  display: none;
+}
+
 .side-panel {
   padding: 16px;
   display: grid;
@@ -236,7 +241,7 @@ body::before {
   background: #edf3f3;
   border: 1px solid #c2cccd;
   border-radius: 6px;
-  padding: 12px;
+  padding: 10px 12px;
   display: flex;
   justify-content: space-between;
   align-items: baseline;
@@ -301,47 +306,96 @@ body::before {
   }
 
   .app {
-    grid-template-columns: 1fr;
-    gap: 8px;
     width: min(100%, 520px);
-  }
-
-  .side-panel {
-    order: 1;
-    grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.85fr) minmax(0, 0.85fr);
-    grid-template-rows: repeat(3, auto);
-    grid-template-areas:
-      "score next hold"
-      "lines next hold"
-      "level next hold";
-    align-items: stretch;
+    grid-template-columns: minmax(0, 1fr) 108px;
     gap: 8px;
-    padding: 8px;
-  }
-
-  .stat-score {
-    grid-area: score;
-  }
-
-  .stat-lines {
-    grid-area: lines;
-  }
-
-  .stat-level {
-    grid-area: level;
-  }
-
-  .side-panel .next-wrap:nth-of-type(1) {
-    grid-area: next;
-  }
-
-  .side-panel .next-wrap:nth-of-type(2) {
-    grid-area: hold;
   }
 
   .game-panel {
-    order: 2;
     padding: 10px;
+  }
+
+  .side-panel {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    gap: 6px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .side-panel .next-wrap:nth-of-type(1) {
+    order: 1;
+  }
+
+  .side-panel .next-wrap:nth-of-type(2) {
+    order: 2;
+  }
+
+  .side-panel .stat-score {
+    order: 3;
+  }
+
+  .side-panel .stat-lines {
+    order: 4;
+  }
+
+  .side-panel .stat-level {
+    order: 5;
+  }
+
+  .mobile-side-controls {
+    order: 6;
+    display: grid;
+    gap: 6px;
+  }
+
+  .mobile-game-controls,
+  .mobile-bgm-controls {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .mobile-bgm-controls {
+    order: 1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mobile-game-controls {
+    order: 2;
+  }
+
+  .mobile-game-controls .btn {
+    width: 100%;
+    padding: 6px 8px;
+    font-size: 0.72rem;
+  }
+
+  .mobile-bgm-controls .bgm-btn {
+    width: 100%;
+    height: 30px;
+    border-radius: 4px;
+  }
+
+  .mobile-bgm-controls .bgm-btn img {
+    width: 16px;
+    height: 16px;
+  }
+
+  .stat {
+    padding: 6px 8px;
+    border-radius: 6px;
+    min-height: 40px;
+  }
+
+  .stat span {
+    font-size: 0.62rem;
+  }
+
+  .stat strong {
+    font-size: 0.84rem;
   }
 
   .top-controls {
@@ -354,6 +408,11 @@ body::before {
     gap: 6px;
     margin-left: auto;
     padding-left: 8px;
+  }
+
+  .game-panel .top-controls,
+  .game-panel .bgm-switch {
+    display: none;
   }
 
   .bgm-btn {
@@ -372,34 +431,22 @@ body::before {
   }
 
   .next-wrap {
-    padding: 8px;
+    padding: 6px;
     display: grid;
     align-content: start;
+    gap: 4px;
   }
 
   .next-wrap h2 {
-    font-size: 0.75rem;
-    margin-bottom: 4px;
+    font-size: 0.68rem;
+    margin-bottom: 0;
   }
 
   #next,
   #hold {
-    max-width: 64px;
+    max-width: 100%;
     margin: 0 auto;
     border-radius: 0;
-  }
-
-  .stat {
-    padding: 8px;
-    border-radius: 6px;
-  }
-
-  .stat span {
-    font-size: 0.68rem;
-  }
-
-  .stat strong {
-    font-size: 0.92rem;
   }
 
   .hint {
@@ -407,7 +454,7 @@ body::before {
   }
 
   #board {
-    width: min(27vh, 62vw, 240px);
+    width: min(66vw, 252px);
   }
 
   .touch-panel {

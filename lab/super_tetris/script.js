@@ -15,11 +15,13 @@ const appEl = document.querySelector(".app");
 const boardWrapEl = document.querySelector(".board-wrap");
 const touchPanelEl = document.getElementById("touchPanel");
 const bgmButtons = Array.from(document.querySelectorAll(".bgm-btn"));
+const mobileGameButtons = Array.from(document.querySelectorAll(".mobile-game-btn"));
 const bgm = document.getElementById("bgm");
 const bgmAlt = document.getElementById("bgmAlt");
 const sfxDrop = document.getElementById("sfxDrop");
 const sfxRotate = document.getElementById("sfxRotate");
 const sfxMove = document.getElementById("sfxMove");
+const sfxHold = document.getElementById("sfxHold");
 const sfx2Dan = document.getElementById("sfx2dan");
 const sfx2DanClear = document.getElementById("sfx2danClear");
 const sfxClear = document.getElementById("sfxClear");
@@ -95,6 +97,7 @@ let bgmFadeRaf = null;
 
 const SFX_PRIORITY = {
   move: 1,
+  hold: 1,
   rot: 2,
   drop: 3,
   clear: 4,
@@ -106,6 +109,7 @@ const SFX_PRIORITY = {
 
 const SFX_AUDIO = {
   move: sfxMove,
+  hold: sfxHold,
   rot: sfxRotate,
   drop: sfxDrop,
   clear: sfxClear,
@@ -696,6 +700,7 @@ function holdCurrentPiece() {
     }
   }
   drawHold();
+  requestSfx("hold");
 }
 
 function isOccupiedOrWall(x, y) {
@@ -1077,6 +1082,11 @@ function setPaused(nextPaused) {
   paused = nextPaused;
   appEl.classList.toggle("paused-view", paused);
   pauseBtn.textContent = paused ? "Resume" : "Pause";
+  for (const btn of mobileGameButtons) {
+    if (btn.dataset.mobileAction === "pause") {
+      btn.textContent = paused ? "Resume" : "Pause";
+    }
+  }
   if (paused) {
     drawTextOverlay("PAUSED");
     pauseMusic();
@@ -1171,6 +1181,14 @@ boardWrapEl.addEventListener("click", () => {
 for (const btn of bgmButtons) {
   btn.addEventListener("click", () => {
     switchBgm(btn.dataset.bgmSrc);
+  });
+}
+for (const btn of mobileGameButtons) {
+  btn.addEventListener("click", () => {
+    const action = btn.dataset.mobileAction;
+    if (action === "start") startGame();
+    else if (action === "restart") restartGame();
+    else if (action === "pause") togglePause();
   });
 }
 

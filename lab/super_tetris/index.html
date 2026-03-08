@@ -73,6 +73,27 @@
           </div>
         </section>
         <span class="hint">← 左移動<br />→ 右移動<br />↓ 1マス落下<br />↑ ハードドロップ<br />Z 左回転 / X 右回転<br />SPACE ホールド<br />P ポーズ</span>
+        <div class="mobile-side-controls" aria-label="mobile side controls">
+          <div class="mobile-game-controls">
+            <button class="btn mobile-game-btn" data-mobile-action="start">Start</button>
+            <button class="btn secondary mobile-game-btn" data-mobile-action="restart">Restart</button>
+            <button class="btn tertiary mobile-game-btn" data-mobile-action="pause">Pause</button>
+          </div>
+          <div class="mobile-bgm-controls">
+            <button class="bgm-btn" data-bgm-src="./wind_bg.mp3" aria-label="wind bgm">
+              <img src="./wind.png" alt="" />
+            </button>
+            <button class="bgm-btn" data-bgm-src="./morning_bg.mp3" aria-label="morning bgm">
+              <img src="./morning.png" alt="" />
+            </button>
+            <button class="bgm-btn" data-bgm-src="./bird_bg.mp3" aria-label="bird bgm">
+              <img src="./bird.png" alt="" />
+            </button>
+            <button class="bgm-btn" data-bgm-src="./fire_bg.mp3" aria-label="fire bgm">
+              <img src="./fire.png" alt="" />
+            </button>
+          </div>
+        </div>
       </aside>
     </main>
     <section id="touchPanel" class="touch-panel" aria-label="touch controls">
@@ -110,6 +131,7 @@
     <audio id="sfxDrop" src="./drop.mp3" preload="auto"></audio>
     <audio id="sfxRotate" src="./rot2.mp3" preload="auto"></audio>
     <audio id="sfxMove" src="./move.mp3" preload="auto"></audio>
+    <audio id="sfxHold" src="./hold.mp3" preload="auto"></audio>
     <audio id="sfx2dan" src="./2dan.mp3" preload="auto"></audio>
     <audio id="sfx2danClear" src="./2dan_clear.mp3" preload="auto"></audio>
     <audio id="sfxClear" src="./clear.mp3" preload="auto"></audio>
