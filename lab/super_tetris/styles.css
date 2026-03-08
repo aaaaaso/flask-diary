@@ -20,6 +20,17 @@ body {
   color: var(--text);
   font-family: "Futura", "Futura PT", "Avenir Next", "Avenir", "Century Gothic", sans-serif;
   touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+button,
+canvas,
+img {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 body {
@@ -313,6 +324,7 @@ body::before {
 
   .game-panel {
     padding: 10px;
+    min-width: 0;
   }
 
   .side-panel {
@@ -454,7 +466,13 @@ body::before {
   }
 
   #board {
-    width: min(66vw, 252px);
+    width: min(100%, 252px);
+  }
+
+  .board-wrap {
+    width: 100%;
+    display: flex;
+    justify-content: center;
   }
 
   .touch-panel {

@@ -527,6 +527,24 @@ function applyRotatedWorldCells(piece, toRotation, worldCells) {
   piece.rotationIndex = toRotation;
 }
 
+function isPieceEdgeTouchingWallOrBlocks(piece) {
+  const cells = getPieceCells(piece);
+  for (const [x, y] of cells) {
+    const neighbors = [
+      [x + 1, y],
+      [x - 1, y],
+      [x, y + 1],
+      [x, y - 1],
+    ];
+    for (const [nx, ny] of neighbors) {
+      if (nx < 0 || nx >= COLS || ny >= ROWS) return true;
+      if (ny < 0) continue;
+      if (board[ny][nx] !== 0) return true;
+    }
+  }
+  return false;
+}
+
 function tryTPivotSearchRotate(piece, dir) {
   const fromRotation = piece.rotationIndex;
   const rotationsLen = piece.shape.rotations.length;
@@ -608,8 +626,9 @@ function tryRotate(dir) {
   const from = currentPiece.rotationIndex;
   const to = (from + dir + rotationsLen) % rotationsLen;
 
-  // T piece: try pivot-search rotation first (higher priority).
-  if (currentPiece.shape.isTPiece) {
+  // T piece: pivot-search is only enabled when the piece is edge-touching
+  // (wall or stacked blocks). Otherwise, rotate with normal logic only.
+  if (currentPiece.shape.isTPiece && isPieceEdgeTouchingWallOrBlocks(currentPiece)) {
     if (tryTPivotSearchRotate(currentPiece, dir)) {
       lastMoveWasRotation = true;
       groundedMs = 0;
@@ -1035,10 +1054,12 @@ function performAction(action) {
   if (!running || paused || gameOver) return;
   switch (action) {
     case "left":
-      tryMove(-1, 0, true);
+      tryMove(-1, 0, false);
+      requestSfx("move");
       break;
     case "right":
-      tryMove(1, 0, true);
+      tryMove(1, 0, false);
+      requestSfx("move");
       break;
     case "down":
       if (tryMove(0, 1, true)) {
