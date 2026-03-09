@@ -678,6 +678,99 @@ def _timeline_delete_post(post_id: int) -> None:
         conn.execute("DELETE FROM mytimeline_posts WHERE id = ?", (post_id,))
         conn.commit()
 
+
+def _init_tetris_ranking_table() -> None:
+    if _timeline_db_kind() == "postgres":
+        with _open_timeline_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS super_tetris_scores (
+                      id BIGSERIAL PRIMARY KEY,
+                      name VARCHAR(16) NOT NULL,
+                      score INTEGER NOT NULL CHECK (score >= 0),
+                      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                    )
+                    """
+                )
+            conn.commit()
+        return
+
+    with _open_timeline_db() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS super_tetris_scores (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              name TEXT NOT NULL,
+              score INTEGER NOT NULL CHECK (score >= 0),
+              created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        conn.commit()
+
+
+def _tetris_insert_score(name: str, score: int) -> None:
+    _init_tetris_ranking_table()
+    safe_name = (name or "NONAME").strip()[:16] or "NONAME"
+    safe_score = max(0, int(score))
+    if _timeline_db_kind() == "postgres":
+        with _open_timeline_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO super_tetris_scores (name, score)
+                    VALUES (%s, %s)
+                    """,
+                    (safe_name, safe_score),
+                )
+            conn.commit()
+        return
+
+    with _open_timeline_db() as conn:
+        conn.execute(
+            """
+            INSERT INTO super_tetris_scores (name, score)
+            VALUES (?, ?)
+            """,
+            (safe_name, safe_score),
+        )
+        conn.commit()
+
+
+def _tetris_top3():
+    _init_tetris_ranking_table()
+    if _timeline_db_kind() == "postgres":
+        with _open_timeline_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT name, score, created_at
+                    FROM super_tetris_scores
+                    ORDER BY score DESC, created_at ASC
+                    LIMIT 3
+                    """
+                )
+                rows = cur.fetchall()
+        return [
+            {"name": str(name or "NONAME"), "score": int(score or 0), "created_at": str(created_at)}
+            for name, score, created_at in rows
+        ]
+
+    with _open_timeline_db() as conn:
+        rows = conn.execute(
+            """
+            SELECT name, score, created_at
+            FROM super_tetris_scores
+            ORDER BY score DESC, created_at ASC
+            LIMIT 3
+            """
+        ).fetchall()
+    return [
+        {"name": str(row["name"] or "NONAME"), "score": int(row["score"] or 0), "created_at": str(row["created_at"])}
+        for row in rows
+    ]
+
 def fetch_diary_by_page(n: int):
     page_id = PAGE_IDS.get(n)   # ← 直接PAGE_IDSから取得
 
@@ -775,6 +868,23 @@ def mytimeline_delete(token: str, post_id: int):
     _timeline_delete_post(post_id)
     search_query = request.args.get("q", "").strip()
     return redirect(url_for("mytimeline_edit", token=token, q=search_query or None))
+
+
+@app.route("/api/ranking", methods=["GET", "POST"])
+@app.route("/lab/super_tetris/api/ranking", methods=["GET", "POST"])
+def super_tetris_ranking_api():
+    if request.method == "GET":
+        return jsonify(_tetris_top3())
+
+    payload = request.get_json(silent=True) or {}
+    name = str(payload.get("name", "NONAME")).strip()[:16] or "NONAME"
+    try:
+        score = int(payload.get("score", 0))
+    except (TypeError, ValueError):
+        score = 0
+    score = max(0, score)
+    _tetris_insert_score(name, score)
+    return jsonify(_tetris_top3())
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True)
