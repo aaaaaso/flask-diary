@@ -123,6 +123,11 @@ def save_score(name, score):
 
 
 class Handler(SimpleHTTPRequestHandler):
+  @staticmethod
+  def _is_ranking_path(path):
+    normalized = path.rstrip("/")
+    return normalized in ("/api/ranking", "/lab/super_tetris/api/ranking")
+
   def _send_json(self, payload, status=HTTPStatus.OK):
     body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     self.send_response(status)
@@ -134,7 +139,7 @@ class Handler(SimpleHTTPRequestHandler):
 
   def do_GET(self):
     path = urlparse(self.path).path
-    if path == "/api/ranking":
+    if self._is_ranking_path(path):
       with LOCK:
         rows = fetch_top3()
       self._send_json(rows)
@@ -143,7 +148,7 @@ class Handler(SimpleHTTPRequestHandler):
 
   def do_POST(self):
     path = urlparse(self.path).path
-    if path != "/api/ranking":
+    if not self._is_ranking_path(path):
       self.send_error(HTTPStatus.NOT_FOUND)
       return
     try:

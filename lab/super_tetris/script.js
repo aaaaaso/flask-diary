@@ -28,7 +28,7 @@ const sfxClear = document.getElementById("sfxClear");
 const sfxClearBig = document.getElementById("sfxClearBig");
 const sfxGameOver = document.getElementById("sfxGameOver");
 const sfxBell = document.getElementById("sfxBell");
-const RANKING_API = "/api/ranking";
+const RANKING_API = "api/ranking";
 
 const COLS = 10;
 const ROWS = 22;
