@@ -593,6 +593,24 @@ h2 {
   margin-bottom: 24px;
 }
 
+.timeline-editor-nav {
+  width: 80%;
+  margin: 8px auto 28px;
+  text-align: center;
+}
+
+.timeline-editor-link {
+  font-size: 0.68rem;
+  color: #666;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.timeline-editor-link:hover {
+  color: #555;
+  text-decoration: underline;
+}
+
 .timeline-form textarea {
   display: block;
   width: 100%;
@@ -870,6 +888,11 @@ h2 {
 
   .timeline-form {
     width: 92%;
+  }
+
+  .timeline-editor-nav {
+    width: 92%;
+    margin: 6px auto 22px;
   }
 
   .timeline-search-dock {

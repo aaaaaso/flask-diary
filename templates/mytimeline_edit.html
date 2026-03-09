@@ -34,6 +34,10 @@
       </form>
     </section>
 
+    <div class="timeline-editor-nav" data-aos="fade-up">
+      <a class="timeline-editor-link" href="{{ url_for('mytimeline', q=search_query or None) }}">閲覧ページをみる</a>
+    </div>
+
     <main class="timeline-list">
       {% if posts %}
         {% for post in posts %}
@@ -114,7 +118,7 @@
           </article>
         {% endfor %}
       {% else %}
-        <p class="timeline-empty" data-aos="fade-up">まだ投稿はありません。</p>
+        <p class="timeline-empty" data-aos="fade-up">そんなことあったっけ？<br>書き忘れたか、あるいは夢じゃないかな。</p>
       {% endif %}
     </main>
   </div>
@@ -132,7 +136,7 @@
         type="search"
         name="q"
         value="{{ search_query }}"
-        placeholder="search..."
+        placeholder="思いだす..."
         autocomplete="off"
       >
       <button
@@ -246,11 +250,31 @@
     const searchShell = document.getElementById('timeline-search-shell');
     const searchInput = document.getElementById('timeline-search-input');
     if (searchToggleBtn && searchShell) {
+      const clearSearchFilter = () => {
+        const currentUrl = new URL(window.location.href);
+        if (!currentUrl.searchParams.has('q')) return;
+        currentUrl.searchParams.delete('q');
+        window.location.assign(currentUrl.toString());
+      };
+
+      searchShell.addEventListener('submit', (event) => {
+        if (!searchInput || searchInput.value.trim()) return;
+        event.preventDefault();
+        clearSearchFilter();
+      });
+
       searchToggleBtn.addEventListener('click', (event) => {
         event.stopPropagation();
         const isOpen = searchShell.classList.contains('is-open');
         if (isOpen && searchInput && searchInput.value.trim()) {
           searchShell.requestSubmit();
+          return;
+        }
+        if (isOpen && searchInput && !searchInput.value.trim()) {
+          searchShell.classList.remove('is-open');
+          searchToggleBtn.classList.remove('is-open');
+          searchToggleBtn.setAttribute('aria-expanded', 'false');
+          clearSearchFilter();
           return;
         }
         const willOpen = !isOpen;
@@ -268,7 +292,21 @@
         searchShell.classList.remove('is-open');
         searchToggleBtn.classList.remove('is-open');
         searchToggleBtn.setAttribute('aria-expanded', 'false');
+        clearSearchFilter();
       });
+
+      if (searchInput) {
+        searchInput.addEventListener('blur', () => {
+          if (searchInput.value.trim()) return;
+          setTimeout(() => {
+            if (searchShell.contains(document.activeElement)) return;
+            searchShell.classList.remove('is-open');
+            searchToggleBtn.classList.remove('is-open');
+            searchToggleBtn.setAttribute('aria-expanded', 'false');
+            clearSearchFilter();
+          }, 0);
+        });
+      }
     }
 
     const cleanedUrl = new URL(window.location.href);
