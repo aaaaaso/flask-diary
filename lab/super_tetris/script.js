@@ -356,6 +356,16 @@ function drawStartOverlay() {
 }
 
 function hideOverlay() {
+  if (rankInPromptActive) {
+    // Fallback: if rank-in prompt is ever closed unexpectedly, record as NONAME.
+    saveRankingEntry("NONAME", score).then(() => fetchRankingTop3()).then((rows) => {
+      rankingTop = rows;
+      drawStartOverlay();
+    }).catch(() => {});
+    rankInPromptActive = false;
+    rankInPendingAction = null;
+    rankInSubmitting = false;
+  }
   overlayEl.classList.add("hidden");
   overlayEl.classList.remove("overlay-game-clear");
   overlayEl.classList.remove("overlay-rank-in");
@@ -1303,6 +1313,7 @@ function triggerGameOver() {
 }
 
 function performAction(action) {
+  if (rankInPromptActive) return;
   if (!running) {
     startGame();
   }
@@ -1373,10 +1384,12 @@ function setPaused(nextPaused) {
 }
 
 function togglePause() {
+  if (rankInPromptActive) return;
   setPaused(!paused);
 }
 
 function startGame() {
+  if (rankInPromptActive) return;
   if (running && !gameOver) return;
   startMusic();
   resetGame();
@@ -1384,13 +1397,16 @@ function startGame() {
 }
 
 function restartGame() {
+  if (rankInPromptActive) return;
   returnToStartScreen();
 }
 
 document.addEventListener("keydown", (e) => {
-  if (rankInPromptActive && e.code === "Enter") {
-    e.preventDefault();
-    submitRankIn();
+  if (rankInPromptActive) {
+    if (e.code === "Enter") {
+      e.preventDefault();
+      submitRankIn();
+    }
     return;
   }
   if (clearPromptActive) {

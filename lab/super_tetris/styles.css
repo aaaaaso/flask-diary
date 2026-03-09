@@ -245,6 +245,9 @@ body::before {
 }
 
 .overlay.overlay-rank-in {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
   place-items: center;
   text-align: center;
 }
