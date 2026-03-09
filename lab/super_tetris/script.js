@@ -27,6 +27,8 @@ const sfx2DanClear = document.getElementById("sfx2danClear");
 const sfxClear = document.getElementById("sfxClear");
 const sfxClearBig = document.getElementById("sfxClearBig");
 const sfxGameOver = document.getElementById("sfxGameOver");
+const sfxBell = document.getElementById("sfxBell");
+const RANKING_API = "/api/ranking";
 
 const COLS = 10;
 const ROWS = 22;
@@ -60,6 +62,8 @@ let shapesBySize = {
   6: [],
   7: [],
   8: [],
+  9: [],
+  10: [],
 };
 let bagBySize = {
   4: [],
@@ -67,6 +71,8 @@ let bagBySize = {
   6: [],
   7: [],
   8: [],
+  9: [],
+  10: [],
 };
 let queue = [];
 let currentPiece = null;
@@ -95,6 +101,13 @@ let activeBgm = bgm;
 let standbyBgm = bgmAlt;
 let bgmFadeRaf = null;
 let sfxReady = false;
+let clearPromptActive = false;
+let gameClearReached = false;
+let shouldResumeMusicAfterClear = false;
+let rankingTop = [];
+let rankInPromptActive = false;
+let rankInPendingAction = null;
+let rankInSubmitting = false;
 
 const SFX_PRIORITY = {
   move: 1,
@@ -168,25 +181,6 @@ const SPECIAL_BAR_SHAPE = {
       [7, 1],
       [8, 1],
       [9, 1],
-    ],
-  ],
-};
-
-const O_RING_8_SHAPE = {
-  id: "8-o-ring",
-  size: 8,
-  color: "#c4b7a1",
-  isTPiece: false,
-  rotations: [
-    [
-      [0, 0],
-      [1, 0],
-      [2, 0],
-      [0, 1],
-      [2, 1],
-      [0, 2],
-      [1, 2],
-      [2, 2],
     ],
   ],
 };
@@ -306,12 +300,16 @@ function buildShapeSets() {
   shapesBySize[5] = generateAllPolyominoes(5);
   shapesBySize[6] = generateAllPolyominoes(6);
   shapesBySize[7] = generateAllPolyominoes(7);
-  shapesBySize[8] = [O_RING_8_SHAPE];
+  shapesBySize[8] = generateAllPolyominoes(8);
+  shapesBySize[9] = generateAllPolyominoes(9);
+  shapesBySize[10] = generateAllPolyominoes(10);
   refillBag(4);
   refillBag(5);
   refillBag(6);
   refillBag(7);
   refillBag(8);
+  refillBag(9);
+  refillBag(10);
 }
 
 function shuffle(arr) {
@@ -328,34 +326,236 @@ function refillBag(size) {
 
 function drawTextOverlay(text) {
   overlayEl.classList.remove("hidden");
+  overlayEl.classList.remove("overlay-game-clear");
+  overlayEl.classList.remove("overlay-rank-in");
   overlayEl.textContent = text;
+}
+
+function rankingLine(index) {
+  const row = rankingTop[index];
+  if (!row) return `${index + 1}. ---- / ---`;
+  return `${index + 1}. ${row.score} / ${row.name}`;
+}
+
+function drawStartOverlay() {
+  overlayEl.classList.remove("hidden");
+  overlayEl.classList.remove("overlay-game-clear");
+  overlayEl.classList.remove("overlay-rank-in");
+  overlayEl.innerHTML = `
+    <div class="overlay-start">
+      <div class="overlay-start-title">GAME START</div>
+      <div class="overlay-start-note">30段消したらクリア!</div>
+      <div class="overlay-ranking">
+        <div class="overlay-ranking-title">RANKING</div>
+        <div class="overlay-ranking-line">${rankingLine(0)}</div>
+        <div class="overlay-ranking-line">${rankingLine(1)}</div>
+        <div class="overlay-ranking-line">${rankingLine(2)}</div>
+      </div>
+    </div>
+  `;
 }
 
 function hideOverlay() {
   overlayEl.classList.add("hidden");
+  overlayEl.classList.remove("overlay-game-clear");
+  overlayEl.classList.remove("overlay-rank-in");
+  overlayEl.textContent = "";
+}
+
+async function fetchRankingTop3() {
+  try {
+    const res = await fetch(RANKING_API, { cache: "no-store" });
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!Array.isArray(data)) return [];
+    return data.slice(0, 3).map((row) => ({
+      name: String(row.name || "---"),
+      score: Number(row.score) || 0,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+async function saveRankingEntry(name, value) {
+  try {
+    const res = await fetch(RANKING_API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, score: value }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    if (Array.isArray(data)) {
+      rankingTop = data.slice(0, 3).map((row) => ({
+        name: String(row.name || "---"),
+        score: Number(row.score) || 0,
+      }));
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function isRankInScore(value) {
+  if (value <= 0) return false;
+  if (rankingTop.length < 3) return true;
+  return value > rankingTop[rankingTop.length - 1].score;
+}
+
+function drawRankInOverlay() {
+  overlayEl.classList.remove("hidden");
+  overlayEl.classList.add("overlay-rank-in");
+  overlayEl.classList.remove("overlay-game-clear");
+  overlayEl.innerHTML = `
+    <div class="overlay-card">
+      <div class="overlay-title">RANK IN!</div>
+      <div class="overlay-score">SCORE: ${score}</div>
+      <div class="overlay-subtitle">nameを入力してください</div>
+      <div class="overlay-rankin-form">
+        <input class="overlay-input" data-rank-name maxlength="16" placeholder="name" />
+        <button class="overlay-btn" data-rank-submit>OK</button>
+      </div>
+    </div>
+  `;
+  const input = overlayEl.querySelector("[data-rank-name]");
+  if (input) input.focus();
+}
+
+function openRankInPrompt(nextAction) {
+  rankInPromptActive = true;
+  rankInPendingAction = nextAction;
+  drawRankInOverlay();
+}
+
+async function submitRankIn() {
+  if (!rankInPromptActive || rankInSubmitting) return;
+  const input = overlayEl.querySelector("[data-rank-name]");
+  const rawName = input instanceof HTMLInputElement ? input.value : "";
+  const name = (rawName || "").trim().slice(0, 16) || "NONAME";
+  rankInSubmitting = true;
+  await saveRankingEntry(name, score);
+  rankingTop = await fetchRankingTop3();
+  rankInSubmitting = false;
+  rankInPromptActive = false;
+  const action = rankInPendingAction;
+  rankInPendingAction = null;
+  if (typeof action === "function") action();
+}
+
+function drawGameClearOverlay() {
+  overlayEl.classList.remove("hidden");
+  overlayEl.classList.add("overlay-game-clear");
+  overlayEl.innerHTML = `
+    <div class="overlay-card">
+      <div class="overlay-title">GAME CLEAR</div>
+      <div class="overlay-score">SCORE: ${score}</div>
+      <div class="overlay-divider"></div>
+      <div class="overlay-subtitle">つづけますか？</div>
+      <div class="overlay-actions">
+        <button class="overlay-btn" data-clear-action="yes">YES</button>
+        <button class="overlay-btn" data-clear-action="no">NO</button>
+      </div>
+    </div>
+  `;
+}
+
+function returnToStartScreen() {
+  running = false;
+  paused = false;
+  gameOver = false;
+  clearPromptActive = false;
+  gameClearReached = false;
+  rankInPromptActive = false;
+  rankInPendingAction = null;
+  rankInSubmitting = false;
+  shouldResumeMusicAfterClear = false;
+  board = createBoard();
+  queue = [];
+  currentPiece = null;
+  holdShape = null;
+  holdUsedInTurn = false;
+  score = 0;
+  lines = 0;
+  level = 1 + Math.floor(lines / 10);
+  lastTime = 0;
+  fallAccumulator = 0;
+  groundedMs = 0;
+  forcedFourRemaining = 3;
+  specialPieceQueued = false;
+  specialPieceUsed = false;
+  lastMoveWasRotation = false;
+  appEl.classList.remove("paused-view");
+  pauseBtn.textContent = "Pause";
+  for (const btn of mobileGameButtons) {
+    if (btn.dataset.mobileAction === "pause") btn.textContent = "Pause";
+  }
+  drawBoard();
+  drawNext();
+  drawHold();
+  syncStats();
+  drawStartOverlay();
+  fetchRankingTop3().then((rows) => {
+    rankingTop = rows;
+    if (!running && !gameOver && !clearPromptActive && !rankInPromptActive) {
+      drawStartOverlay();
+    }
+  });
+}
+
+function triggerGameClear() {
+  if (gameClearReached || clearPromptActive || rankInPromptActive) return;
+  gameClearReached = true;
+  running = false;
+  paused = false;
+  shouldResumeMusicAfterClear = musicReady && !activeBgm.paused;
+  activeBgm.pause();
+  standbyBgm.pause();
+  if (sfxBell) {
+    sfxBell.currentTime = 0;
+    sfxBell.play().catch(() => {});
+  }
+  const showClearPrompt = () => {
+    clearPromptActive = true;
+    drawGameClearOverlay();
+  };
+  if (isRankInScore(score)) {
+    openRankInPrompt(showClearPrompt);
+    return;
+  }
+  showClearPrompt();
+}
+
+function resolveGameClear(shouldContinue) {
+  if (!clearPromptActive) return;
+  clearPromptActive = false;
+  hideOverlay();
+  if (shouldContinue) {
+    running = true;
+    lastTime = 0;
+    if (shouldResumeMusicAfterClear) {
+      activeBgm.play().catch(() => {});
+    }
+    shouldResumeMusicAfterClear = false;
+    requestAnimationFrame(gameLoop);
+    return;
+  }
+  shouldResumeMusicAfterClear = false;
+  returnToStartScreen();
 }
 
 function pickPieceSize() {
-  const step = Math.max(0, level - 1);
-  const raw4 = 0.7 - 0.01 * step;
-  const raw5 = 0.2 + 0.006 * step;
-  const raw6 = 0.1 + 0.004 * step;
-  const p4 = Math.max(0, raw4);
-  const p5 = Math.max(0, raw5);
-  const p6 = Math.max(0, raw6);
-  const total = p4 + p5 + p6 || 1;
-  const n4 = p4 / total;
-  const n5 = p5 / total;
-  const r = Math.random();
-  if (r < n4) return 4;
-  if (r < n4 + n5) return 5;
-  if (level >= 25) {
-    const highR = Math.random();
-    if (highR < 1 / 3) return 6;
-    if (highR < 2 / 3) return 7;
-    return 8;
-  }
-  return 6;
+  const aRate = Math.max(0.5, 0.8 - lines * 0.01);
+  if (Math.random() < aRate) return 4;
+
+  const bSizes = [5];
+  if (lines >= 5) bSizes.push(6);
+  if (lines >= 10) bSizes.push(7);
+  if (lines >= 15) bSizes.push(8);
+  if (lines >= 20) bSizes.push(9);
+  if (lines >= 25) bSizes.push(10);
+  return bSizes[Math.floor(Math.random() * bSizes.length)];
 }
 
 function pullShape(size) {
@@ -405,6 +605,19 @@ function mergePiece(piece) {
   }
 }
 
+function getPieceScoreMultiplier(piece) {
+  const size = piece?.shape?.size ?? 4;
+  const multipliers = {
+    5: 1.5,
+    6: 2,
+    7: 2.5,
+    8: 3,
+    9: 3.5,
+    10: 4,
+  };
+  return multipliers[size] || 1;
+}
+
 function clearLines() {
   let removed = 0;
   for (let y = ROWS - 1; y >= 0; y -= 1) {
@@ -414,13 +627,6 @@ function clearLines() {
       removed += 1;
       y += 1;
     }
-  }
-  if (removed > 0) {
-    lines += removed;
-    const scoreIndex = Math.min(removed, LINE_CLEAR_SCORE.length - 1);
-    score += LINE_CLEAR_SCORE[scoreIndex] * level;
-    level = 1 + Math.floor(lines / 10);
-    syncStats();
   }
   return removed;
 }
@@ -688,13 +894,14 @@ function hardDrop() {
   if (!currentPiece || paused || gameOver) return;
   let dropped = 0;
   while (tryMove(0, 1, false)) dropped += 1;
-  score += dropped * HARD_DROP_SCORE;
+  score += Math.round(dropped * HARD_DROP_SCORE * getPieceScoreMultiplier(currentPiece));
   groundedMs = 0;
   lockCurrentPiece();
 }
 
 function lockCurrentPiece() {
   if (!currentPiece) return;
+  const scoreMultiplier = getPieceScoreMultiplier(currentPiece);
   const lockedCells = getPieceCells(currentPiece);
   const hasBlockAboveTop = lockedCells.some(([, y]) => y < 0);
   const tSpin = isTSpin(currentPiece);
@@ -707,10 +914,18 @@ function lockCurrentPiece() {
   }
   const removed = clearLines();
   if (removed > 0) {
+    lines += removed;
+    level = 1 + Math.floor(lines / 10);
+    const scoreIndex = Math.min(removed, LINE_CLEAR_SCORE.length - 1);
+    score += Math.round(LINE_CLEAR_SCORE[scoreIndex] * level * scoreMultiplier);
     if (wasSpecialBar) requestSfx("special_clear");
     else if (tSpin) requestSfx("clear_big");
     else if (removed >= 4) requestSfx("clear_big");
     else requestSfx("clear");
+  }
+  if (lines >= 30 && !gameClearReached) {
+    triggerGameClear();
+    return;
   }
   if (tSpin) {
     const scoreIdx = Math.min(removed, T_SPIN_SCORE.length - 1);
@@ -866,10 +1081,19 @@ function drawHold() {
   }
 }
 
+function getSpawnTierLabelByLines(currentLines) {
+  if (currentLines >= 25) return "S";
+  if (currentLines >= 20) return "A";
+  if (currentLines >= 15) return "B";
+  if (currentLines >= 10) return "C";
+  if (currentLines >= 5) return "D";
+  return "E";
+}
+
 function syncStats() {
   scoreEl.textContent = String(score);
   linesEl.textContent = String(lines);
-  levelEl.textContent = String(level);
+  levelEl.textContent = `${getSpawnTierLabelByLines(lines)}-${level}`;
 }
 
 function resetGame() {
@@ -877,10 +1101,13 @@ function resetGame() {
   queue = [];
   score = 0;
   lines = 0;
-  level = 1;
+  level = 1 + Math.floor(lines / 10);
   running = true;
   paused = false;
   gameOver = false;
+  clearPromptActive = false;
+  gameClearReached = false;
+  shouldResumeMusicAfterClear = false;
   holdShape = null;
   holdUsedInTurn = false;
   lastMoveWasRotation = false;
@@ -899,6 +1126,8 @@ function resetGame() {
   refillBag(6);
   refillBag(7);
   refillBag(8);
+  refillBag(9);
+  refillBag(10);
   spawnPiece();
   syncStats();
   drawBoard();
@@ -1064,8 +1293,13 @@ function triggerGameOver() {
   activeBgm.pause();
   standbyBgm.pause();
   bgmWasPlayingBeforePause = false;
-  drawTextOverlay("GAME OVER");
   requestSfx("gameover");
+  const showGameOver = () => drawTextOverlay("GAME OVER");
+  if (isRankInScore(score)) {
+    openRankInPrompt(showGameOver);
+    return;
+  }
+  showGameOver();
 }
 
 function performAction(action) {
@@ -1084,7 +1318,7 @@ function performAction(action) {
       break;
     case "down":
       if (tryMove(0, 1, true)) {
-        score += SOFT_DROP_SCORE;
+        score += Math.round(SOFT_DROP_SCORE * getPieceScoreMultiplier(currentPiece));
         syncStats();
       }
       break;
@@ -1150,15 +1384,27 @@ function startGame() {
 }
 
 function restartGame() {
-  const wasRunning = running;
-  startMusic();
-  resetGame();
-  if (!wasRunning) {
-    requestAnimationFrame(gameLoop);
-  }
+  returnToStartScreen();
 }
 
 document.addEventListener("keydown", (e) => {
+  if (rankInPromptActive && e.code === "Enter") {
+    e.preventDefault();
+    submitRankIn();
+    return;
+  }
+  if (clearPromptActive) {
+    if (e.code === "KeyY" || e.code === "Enter") {
+      e.preventDefault();
+      resolveGameClear(true);
+      return;
+    }
+    if (e.code === "KeyN" || e.code === "Escape") {
+      e.preventDefault();
+      resolveGameClear(false);
+      return;
+    }
+  }
   primeSfxIfNeeded();
   if (e.code === "KeyR") {
     e.preventDefault();
@@ -1189,7 +1435,7 @@ document.addEventListener("keydown", (e) => {
     case "ArrowDown":
       e.preventDefault();
       if (tryMove(0, 1, true)) {
-        score += SOFT_DROP_SCORE;
+        score += Math.round(SOFT_DROP_SCORE * getPieceScoreMultiplier(currentPiece));
         syncStats();
       }
       break;
@@ -1220,6 +1466,18 @@ restartBtn.addEventListener("click", restartGame);
 pauseBtn.addEventListener("click", togglePause);
 boardWrapEl.addEventListener("click", () => {
   if (!running) startGame();
+});
+overlayEl.addEventListener("click", (e) => {
+  const target = e.target;
+  if (!(target instanceof HTMLElement)) return;
+  if (target.hasAttribute("data-rank-submit")) {
+    submitRankIn();
+    return;
+  }
+  if (!clearPromptActive) return;
+  const action = target.dataset.clearAction;
+  if (action === "yes") resolveGameClear(true);
+  if (action === "no") resolveGameClear(false);
 });
 for (const btn of bgmButtons) {
   btn.addEventListener("click", () => {
@@ -1255,14 +1513,17 @@ document.body.addEventListener(
   { once: true },
 );
 
-function init() {
+async function init() {
   buildShapeSets();
+  lines = 0;
+  level = 1 + Math.floor(lines / 10);
+  rankingTop = await fetchRankingTop3();
   syncStats();
   setActiveBgmButton(activeBgm.getAttribute("src"));
   drawBoard();
   drawNext();
   drawHold();
-  drawTextOverlay("PRESS START");
+  drawStartOverlay();
 }
 
 init();
