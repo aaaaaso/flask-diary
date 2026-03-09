@@ -443,9 +443,8 @@ async function submitRankIn() {
   rankingTop = await fetchRankingTop3();
   rankInSubmitting = false;
   rankInPromptActive = false;
-  const action = rankInPendingAction;
   rankInPendingAction = null;
-  if (typeof action === "function") action();
+  returnToStartScreen();
 }
 
 function drawGameClearOverlay() {
@@ -520,15 +519,8 @@ function triggerGameClear() {
     sfxBell.currentTime = 0;
     sfxBell.play().catch(() => {});
   }
-  const showClearPrompt = () => {
-    clearPromptActive = true;
-    drawGameClearOverlay();
-  };
-  if (isRankInScore(score)) {
-    openRankInPrompt(showClearPrompt);
-    return;
-  }
-  showClearPrompt();
+  clearPromptActive = true;
+  drawGameClearOverlay();
 }
 
 function resolveGameClear(shouldContinue) {
@@ -543,6 +535,10 @@ function resolveGameClear(shouldContinue) {
     }
     shouldResumeMusicAfterClear = false;
     requestAnimationFrame(gameLoop);
+    return;
+  }
+  if (isRankInScore(score)) {
+    openRankInPrompt(returnToStartScreen);
     return;
   }
   shouldResumeMusicAfterClear = false;
