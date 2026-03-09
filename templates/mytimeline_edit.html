@@ -51,6 +51,11 @@
                   aria-expanded="false"
                 >⋯</button>
                 <div class="timeline-menu">
+                  <button
+                    type="button"
+                    class="timeline-edit-btn"
+                    data-edit-toggle="{{ post.id }}"
+                  >編集</button>
                   <form method="post" action="{{ url_for('mytimeline_delete', token=token, post_id=post.id, q=search_query or None) }}">
                     <button type="submit" class="timeline-delete-btn">削除</button>
                   </form>
@@ -85,6 +90,27 @@
                 {% endfor %}
               </div>
             {% endif %}
+            <form
+              method="post"
+              action="{{ url_for('mytimeline_update', token=token, post_id=post.id, q=search_query or None) }}"
+              class="timeline-inline-edit"
+              data-edit-form="{{ post.id }}"
+            >
+              <textarea
+                name="content"
+                maxlength="100"
+                required
+              >{{ post.content }}</textarea>
+              <div class="timeline-inline-edit-actions">
+                <input
+                  type="datetime-local"
+                  name="created_at_local"
+                  value="{{ post.edit_datetime_local }}"
+                  required
+                >
+                <button type="submit" class="timeline-inline-save-btn">保存</button>
+              </div>
+            </form>
           </article>
         {% endfor %}
       {% else %}
@@ -128,6 +154,9 @@
       easing: 'ease-in-out',
       once: false
     });
+    window.addEventListener('load', () => {
+      AOS.refreshHard();
+    });
 
     const contentEl = document.getElementById('content');
     const charCountEl = document.getElementById('timeline-char-count');
@@ -151,6 +180,41 @@
     }
 
     const menuToggles = document.querySelectorAll('.timeline-menu-toggle');
+    const editToggleButtons = document.querySelectorAll('[data-edit-toggle]');
+    const editForms = document.querySelectorAll('[data-edit-form]');
+
+    const closeEditForms = () => {
+      editForms.forEach((form) => form.classList.remove('is-open'));
+    };
+
+    editForms.forEach((form) => {
+      form.addEventListener('click', (event) => {
+        event.stopPropagation();
+      });
+    });
+
+    editToggleButtons.forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const postId = button.getAttribute('data-edit-toggle');
+        if (!postId) return;
+        const targetForm = document.querySelector(`[data-edit-form="${postId}"]`);
+        if (!targetForm) return;
+        const willOpen = !targetForm.classList.contains('is-open');
+        closeEditForms();
+        if (willOpen) {
+          targetForm.classList.add('is-open');
+          const textarea = targetForm.querySelector('textarea');
+          if (textarea) textarea.focus();
+        }
+        document.querySelectorAll('.timeline-menu-wrap.is-open').forEach((openWrap) => {
+          openWrap.classList.remove('is-open');
+          const btn = openWrap.querySelector('.timeline-menu-toggle');
+          if (btn) btn.setAttribute('aria-expanded', 'false');
+        });
+      });
+    });
+
     menuToggles.forEach((toggle) => {
       toggle.addEventListener('click', (event) => {
         event.stopPropagation();
@@ -175,6 +239,7 @@
         const btn = openWrap.querySelector('.timeline-menu-toggle');
         if (btn) btn.setAttribute('aria-expanded', 'false');
       });
+      closeEditForms();
     });
 
     const searchToggleBtn = document.getElementById('search-toggle-btn');

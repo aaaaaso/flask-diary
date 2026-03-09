@@ -91,6 +91,9 @@
       easing: 'ease-in-out',
       once: false
     });
+    window.addEventListener('load', () => {
+      AOS.refreshHard();
+    });
 
     const searchToggleBtn = document.getElementById('search-toggle-btn');
     const searchShell = document.getElementById('timeline-search-shell');

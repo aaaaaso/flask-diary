@@ -499,9 +499,11 @@ def _timeline_prepare_posts(posts):
                 display_dt = created_at.astimezone(TOKYO_TZ)
             date_label = f"{display_dt.month}/{display_dt.day}"
             time_label = f"{display_dt.hour:02d}:{display_dt.minute:02d}"
+            edit_datetime_local = display_dt.strftime("%Y-%m-%dT%H:%M")
         else:
             date_label = ""
             time_label = str(created_at)
+            edit_datetime_local = ""
 
         content = post.get("content", "")
         urls = _extract_urls(content)
@@ -524,6 +526,7 @@ def _timeline_prepare_posts(posts):
         item["show_date_divider"] = bool(date_label) and (date_label != prev_date_label)
         item["content_html"] = _linkify_content(display_content)
         item["link_previews"] = link_previews
+        item["edit_datetime_local"] = edit_datetime_local
         prepared.append(item)
 
         if date_label:
@@ -661,6 +664,46 @@ def _timeline_insert_post(content: str, tags) -> None:
             VALUES (?, ?)
             """,
             (content, tags_json),
+        )
+        conn.commit()
+
+
+def _parse_timeline_local_datetime(value: str):
+    if not value:
+        return None
+    try:
+        local_dt = datetime.strptime(value, "%Y-%m-%dT%H:%M")
+    except ValueError:
+        return None
+    return local_dt.replace(tzinfo=TOKYO_TZ).astimezone(timezone.utc)
+
+
+def _timeline_update_post(post_id: int, content: str, tags, created_at_utc: datetime) -> None:
+    tags_json = json.dumps(tags, ensure_ascii=False)
+    _init_timeline_table()
+    if _timeline_db_kind() == "postgres":
+        with _open_timeline_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE mytimeline_posts
+                    SET content = %s, tags = %s, created_at = %s
+                    WHERE id = %s
+                    """,
+                    (content, tags_json, created_at_utc, post_id),
+                )
+            conn.commit()
+        return
+
+    created_at_str = created_at_utc.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    with _open_timeline_db() as conn:
+        conn.execute(
+            """
+            UPDATE mytimeline_posts
+            SET content = ?, tags = ?, created_at = ?
+            WHERE id = ?
+            """,
+            (content, tags_json, created_at_str, post_id),
         )
         conn.commit()
 
@@ -830,7 +873,7 @@ def mytimeline_edit(token: str):
     if not expected_token or token != expected_token:
         abort(404)
 
-    error_message = ""
+    error_message = request.args.get("error", "").strip()
     search_query = request.args.get("q", "").strip()
     if request.method == "POST":
         raw_content = request.form.get("content", "").strip()
@@ -858,6 +901,33 @@ def mytimeline_edit(token: str):
         posted=posted,
         error_message=error_message,
     )
+
+
+@app.route("/mytimeline/edit/<token>/update/<int:post_id>", methods=["POST"])
+def mytimeline_update(token: str, post_id: int):
+    expected_token = _timeline_edit_token()
+    if not expected_token or token != expected_token:
+        abort(404)
+
+    search_query = request.args.get("q", "").strip()
+    raw_content = request.form.get("content", "").strip()
+    raw_datetime = request.form.get("created_at_local", "").strip()
+
+    tags = _extract_tags(raw_content)
+    content = _strip_tags_from_content(raw_content)
+    created_at_utc = _parse_timeline_local_datetime(raw_datetime)
+
+    if not content:
+        return redirect(url_for("mytimeline_edit", token=token, q=search_query or None, error="投稿内容が空です。"))
+    if len(content) > 100:
+        return redirect(url_for("mytimeline_edit", token=token, q=search_query or None, error="投稿内容は100文字以内にしてください。"))
+    if len(tags) > 3:
+        return redirect(url_for("mytimeline_edit", token=token, q=search_query or None, error="タグは最大3つまでです。"))
+    if not created_at_utc:
+        return redirect(url_for("mytimeline_edit", token=token, q=search_query or None, error="日時の形式が不正です。"))
+
+    _timeline_update_post(post_id, content, tags, created_at_utc)
+    return redirect(url_for("mytimeline_edit", token=token, q=search_query or None))
 
 
 @app.route("/mytimeline/edit/<token>/delete/<int:post_id>", methods=["POST"])
