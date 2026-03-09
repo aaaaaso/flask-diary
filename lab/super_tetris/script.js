@@ -363,8 +363,10 @@ function hideOverlay() {
 }
 
 async function fetchRankingTop3() {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 3000);
   try {
-    const res = await fetch(RANKING_API, { cache: "no-store" });
+    const res = await fetch(RANKING_API, { cache: "no-store", signal: controller.signal });
     if (!res.ok) return [];
     const data = await res.json();
     if (!Array.isArray(data)) return [];
@@ -374,6 +376,8 @@ async function fetchRankingTop3() {
     }));
   } catch {
     return [];
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -1513,17 +1517,23 @@ document.body.addEventListener(
   { once: true },
 );
 
-async function init() {
+function init() {
   buildShapeSets();
   lines = 0;
   level = 1 + Math.floor(lines / 10);
-  rankingTop = await fetchRankingTop3();
+  rankingTop = [];
   syncStats();
   setActiveBgmButton(activeBgm.getAttribute("src"));
   drawBoard();
   drawNext();
   drawHold();
   drawStartOverlay();
+  fetchRankingTop3().then((rows) => {
+    rankingTop = rows;
+    if (!running && !gameOver && !clearPromptActive && !rankInPromptActive) {
+      drawStartOverlay();
+    }
+  });
 }
 
 init();
