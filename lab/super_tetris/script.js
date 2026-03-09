@@ -27,6 +27,7 @@ const sfx2DanClear = document.getElementById("sfx2danClear");
 const sfxClear = document.getElementById("sfxClear");
 const sfxClearBig = document.getElementById("sfxClearBig");
 const sfxGameOver = document.getElementById("sfxGameOver");
+const sfxGameClear = document.getElementById("sfxGameClear");
 const sfxBell = document.getElementById("sfxBell");
 const RANKING_API = "api/ranking";
 
@@ -100,6 +101,8 @@ let tSpinFxTimer = null;
 let activeBgm = bgm;
 let standbyBgm = bgmAlt;
 let bgmFadeRaf = null;
+let bgmLoopRaf = null;
+let bgmLooping = false;
 let sfxReady = false;
 let clearPromptActive = false;
 let gameClearReached = false;
@@ -115,10 +118,10 @@ const SFX_PRIORITY = {
   rot: 2,
   drop: 3,
   clear: 4,
-  two_line: 4,
   clear_big: 5,
   special_clear: 6,
   gameover: 7,
+  gameclear: 8,
 };
 
 const SFX_AUDIO = {
@@ -127,11 +130,15 @@ const SFX_AUDIO = {
   rot: sfxRotate,
   drop: sfxDrop,
   clear: sfxClear,
-  two_line: sfx2Dan,
   clear_big: sfxClearBig,
   special_clear: sfx2DanClear,
   gameover: sfxGameOver,
+  gameclear: sfxGameClear,
 };
+
+const BGM_TARGET_VOLUME = 0.35;
+const BGM_PLAYBACK_RATE = 1.3;
+const BGM_LOOP_CROSSFADE_MS = 2000;
 
 function primeSfxIfNeeded() {
   if (sfxReady) return;
@@ -462,7 +469,7 @@ function drawGameClearOverlay() {
   overlayEl.classList.add("overlay-game-clear");
   overlayEl.innerHTML = `
     <div class="overlay-card">
-      <div class="overlay-title">GAME CLEAR</div>
+      <div class="overlay-title">CLEAR 30 LINES</div>
       <div class="overlay-score">SCORE: ${score}</div>
       <div class="overlay-divider"></div>
       <div class="overlay-subtitle">つづけますか？</div>
@@ -529,6 +536,7 @@ function triggerGameClear() {
     sfxBell.currentTime = 0;
     sfxBell.play().catch(() => {});
   }
+  requestSfx("gameclear");
   clearPromptActive = true;
   drawGameClearOverlay();
 }
@@ -647,7 +655,6 @@ function spawnPiece(resetHold = true) {
   if (currentPiece?.shape?.isSpecialBar) {
     specialPieceQueued = false;
     specialPieceUsed = true;
-    requestSfx("two_line");
   }
   queue.push(makeRandomPiece());
   lastMoveWasRotation = false;
@@ -1182,17 +1189,83 @@ function gameLoop(ts) {
 }
 
 function startMusic() {
-  activeBgm.volume = 0.35;
-  activeBgm.playbackRate = 1.3;
+  activeBgm.loop = false;
+  standbyBgm.loop = false;
+  activeBgm.volume = BGM_TARGET_VOLUME;
+  activeBgm.playbackRate = BGM_PLAYBACK_RATE;
   if (musicReady) {
     if (activeBgm.paused) {
       activeBgm.play().catch(() => {});
+      ensureBgmLoopMonitor();
     }
     return;
   }
   musicReady = true;
   activeBgm.play().catch(() => {
     musicReady = false;
+  }).then(() => {
+    ensureBgmLoopMonitor();
+  });
+}
+
+function ensureBgmLoopMonitor() {
+  if (bgmLoopRaf) return;
+  const tick = () => {
+    bgmLoopRaf = requestAnimationFrame(tick);
+    if (!musicReady || paused || gameOver) return;
+    if (!activeBgm || activeBgm.paused) return;
+    if (bgmLooping) return;
+    const duration = activeBgm.duration;
+    if (!Number.isFinite(duration) || duration <= 0) return;
+    const remain = duration - activeBgm.currentTime;
+    if (remain <= BGM_LOOP_CROSSFADE_MS / 1000 + 0.05) {
+      startBgmLoopCrossfade();
+    }
+  };
+  bgmLoopRaf = requestAnimationFrame(tick);
+}
+
+function stopBgmLoopMonitor() {
+  if (!bgmLoopRaf) return;
+  cancelAnimationFrame(bgmLoopRaf);
+  bgmLoopRaf = null;
+}
+
+function startBgmLoopCrossfade() {
+  if (bgmLooping) return;
+  bgmLooping = true;
+  const from = activeBgm;
+  const to = standbyBgm;
+  to.pause();
+  to.currentTime = 0;
+  to.setAttribute("src", from.getAttribute("src"));
+  to.load();
+  to.loop = false;
+  to.playbackRate = BGM_PLAYBACK_RATE;
+  to.volume = 0;
+  to.play().then(() => {
+    const startedAt = performance.now();
+    const step = (now) => {
+      const t = Math.min(1, (now - startedAt) / BGM_LOOP_CROSSFADE_MS);
+      from.volume = BGM_TARGET_VOLUME * (1 - t);
+      to.volume = BGM_TARGET_VOLUME * t;
+      if (t < 1) {
+        bgmFadeRaf = requestAnimationFrame(step);
+        return;
+      }
+      from.pause();
+      from.currentTime = 0;
+      from.volume = BGM_TARGET_VOLUME;
+      to.volume = BGM_TARGET_VOLUME;
+      activeBgm = to;
+      standbyBgm = from;
+      bgmFadeRaf = null;
+      bgmLooping = false;
+    };
+    if (bgmFadeRaf) cancelAnimationFrame(bgmFadeRaf);
+    bgmFadeRaf = requestAnimationFrame(step);
+  }).catch(() => {
+    bgmLooping = false;
   });
 }
 
@@ -1209,6 +1282,7 @@ function switchBgm(nextSrc) {
     setActiveBgmButton(nextSrc || currentSrc);
     return;
   }
+  bgmLooping = false;
   if (bgmFadeRaf) {
     cancelAnimationFrame(bgmFadeRaf);
     bgmFadeRaf = null;
@@ -1219,10 +1293,12 @@ function switchBgm(nextSrc) {
     activeBgm.currentTime = 0;
     activeBgm.setAttribute("src", nextSrc);
     activeBgm.load();
-    activeBgm.playbackRate = 1.3;
-    activeBgm.volume = 0.35;
+    activeBgm.loop = false;
+    activeBgm.playbackRate = BGM_PLAYBACK_RATE;
+    activeBgm.volume = BGM_TARGET_VOLUME;
     if (musicReady && !paused && !gameOver) {
       activeBgm.play().catch(() => {});
+      ensureBgmLoopMonitor();
     }
     setActiveBgmButton(nextSrc);
     return;
@@ -1231,12 +1307,13 @@ function switchBgm(nextSrc) {
   standbyBgm.currentTime = 0;
   standbyBgm.setAttribute("src", nextSrc);
   standbyBgm.load();
-  standbyBgm.playbackRate = 1.3;
+  standbyBgm.loop = false;
+  standbyBgm.playbackRate = BGM_PLAYBACK_RATE;
   standbyBgm.volume = 0;
   standbyBgm.play().then(() => {
     const from = activeBgm;
     const to = standbyBgm;
-    const targetVolume = 0.35;
+    const targetVolume = BGM_TARGET_VOLUME;
     const durationMs = 450;
     const startedAt = performance.now();
     const tick = (now) => {
@@ -1254,6 +1331,7 @@ function switchBgm(nextSrc) {
       activeBgm = to;
       standbyBgm = from;
       bgmFadeRaf = null;
+      ensureBgmLoopMonitor();
     };
     bgmFadeRaf = requestAnimationFrame(tick);
   }).catch(() => {
@@ -1261,9 +1339,11 @@ function switchBgm(nextSrc) {
     activeBgm.currentTime = 0;
     activeBgm.setAttribute("src", nextSrc);
     activeBgm.load();
-    activeBgm.playbackRate = 1.3;
-    activeBgm.volume = 0.35;
+    activeBgm.loop = false;
+    activeBgm.playbackRate = BGM_PLAYBACK_RATE;
+    activeBgm.volume = BGM_TARGET_VOLUME;
     activeBgm.play().catch(() => {});
+    ensureBgmLoopMonitor();
   });
   setActiveBgmButton(nextSrc);
 }
@@ -1302,6 +1382,8 @@ function triggerGameOver() {
   gameOver = true;
   activeBgm.pause();
   standbyBgm.pause();
+  stopBgmLoopMonitor();
+  bgmLooping = false;
   bgmWasPlayingBeforePause = false;
   requestSfx("gameover");
   const showGameOver = () => drawTextOverlay("GAME OVER");
@@ -1356,11 +1438,13 @@ function pauseMusic() {
   bgmWasPlayingBeforePause = !activeBgm.paused;
   activeBgm.pause();
   standbyBgm.pause();
+  bgmLooping = false;
 }
 
 function resumeMusic() {
   if (!musicReady || !bgmWasPlayingBeforePause) return;
   activeBgm.play().catch(() => {});
+  ensureBgmLoopMonitor();
   bgmWasPlayingBeforePause = false;
 }
 
