@@ -911,10 +911,11 @@ def mytimeline_update(token: str, post_id: int):
 
     search_query = request.args.get("q", "").strip()
     raw_content = request.form.get("content", "").strip()
+    raw_tags = request.form.get("tags", "").strip()
     raw_datetime = request.form.get("created_at_local", "").strip()
 
-    tags = _extract_tags(raw_content)
-    content = _strip_tags_from_content(raw_content)
+    tags = _extract_tags(raw_tags)
+    content = raw_content
     created_at_utc = _parse_timeline_local_datetime(raw_datetime)
 
     if not content:

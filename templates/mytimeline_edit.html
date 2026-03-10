@@ -105,6 +105,14 @@
                 maxlength="100"
                 required
               >{{ post.content }}</textarea>
+              <input
+                type="text"
+                name="tags"
+                class="timeline-inline-tags-input"
+                maxlength="60"
+                placeholder="#tag #tag2"
+                value="{% for tag in post.tags %}#{{ tag }}{% if not loop.last %} {% endif %}{% endfor %}"
+              >
               <div class="timeline-inline-edit-actions">
                 <input
                   type="datetime-local"
