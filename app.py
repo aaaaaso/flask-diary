@@ -876,17 +876,35 @@ def mytimeline_edit(token: str):
     error_message = request.args.get("error", "").strip()
     search_query = request.args.get("q", "").strip()
     if request.method == "POST":
+        is_ajax = request.headers.get("X-Requested-With", "").lower() == "xmlhttprequest"
         raw_content = request.form.get("content", "").strip()
         tags = _extract_tags(raw_content)
         content = _strip_tags_from_content(raw_content)
+        validation_error = ""
         if not content:
-            error_message = "投稿内容が空です。"
+            validation_error = "投稿内容が空です。"
         elif len(content) > 100:
-            error_message = "投稿内容は100文字以内にしてください。"
+            validation_error = "投稿内容は100文字以内にしてください。"
         elif len(tags) > 3:
-            error_message = "タグは最大3つまでです。"
+            validation_error = "タグは最大3つまでです。"
+
+        if validation_error:
+            if is_ajax:
+                return jsonify({"ok": False, "error": validation_error}), 400
+            error_message = validation_error
         else:
             _timeline_insert_post(content, tags)
+            if is_ajax:
+                latest_posts = _timeline_prepare_posts(_timeline_list_posts(limit=1))
+                post_html = ""
+                if latest_posts:
+                    post_html = render_template(
+                        "_mytimeline_edit_item.html",
+                        post=latest_posts[0],
+                        token=token,
+                        search_query=search_query,
+                    )
+                return jsonify({"ok": True, "post_html": post_html})
             return redirect(url_for("mytimeline_edit", token=token, posted=1, q=search_query or None))
 
     all_posts = _timeline_list_posts()

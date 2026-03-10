@@ -14,7 +14,7 @@
       {% if error_message %}
         <p class="timeline-error">{{ error_message }}</p>
       {% endif %}
-      <form method="post" class="timeline-form">
+      <form method="post" class="timeline-form" id="timeline-compose-form" action="{{ url_for('mytimeline_edit', token=token, q=search_query or None) }}">
         <div class="timeline-composer">
           <textarea
             id="content"
@@ -38,95 +38,13 @@
       <a class="timeline-editor-link" href="{{ url_for('mytimeline', q=search_query or None) }}">閲覧ページをみる</a>
     </div>
 
-    <main class="timeline-list">
+    <main class="timeline-list" id="timeline-list">
       {% if posts %}
         {% for post in posts %}
-          <article class="timeline-item" data-aos="fade-up">
-            <div class="timeline-item-top">
-              <div class="timeline-meta">
-                <span class="timeline-date-slot">{% if post.show_date_divider %}{{ post.date_label }}{% endif %}</span>
-                <span class="timeline-time">{{ post.time_label }}</span>
-              </div>
-              <div class="timeline-menu-wrap">
-                <button
-                  type="button"
-                  class="timeline-menu-toggle"
-                  aria-label="投稿メニュー"
-                  aria-expanded="false"
-                >⋯</button>
-                <div class="timeline-menu">
-                  <button
-                    type="button"
-                    class="timeline-edit-btn"
-                    data-edit-toggle="{{ post.id }}"
-                  >編集</button>
-                  <form method="post" action="{{ url_for('mytimeline_delete', token=token, post_id=post.id, q=search_query or None) }}">
-                    <button type="submit" class="timeline-delete-btn">削除</button>
-                  </form>
-                </div>
-              </div>
-            </div>
-            <p class="timeline-content">{{ post.content_html | safe }}</p>
-            {% if post.link_previews %}
-              <div class="timeline-link-previews">
-                {% for preview in post.link_previews %}
-                  <a class="timeline-link-card" href="{{ preview.url }}" target="_blank" rel="noopener noreferrer nofollow ugc">
-                    {% if preview.image_url %}
-                      <img class="timeline-link-image" src="{{ preview.image_url }}" alt="">
-                    {% endif %}
-                    <span class="timeline-link-texts">
-                      <span class="timeline-link-title">{{ preview.title }}</span>
-                      {% if preview.description %}
-                        <span class="timeline-link-desc">{{ preview.description }}</span>
-                      {% endif %}
-                      {% if preview.site_name %}
-                        <span class="timeline-link-site">{{ preview.site_name }}</span>
-                      {% endif %}
-                    </span>
-                  </a>
-                {% endfor %}
-              </div>
-            {% endif %}
-            {% if post.tags %}
-              <div class="timeline-chip-row">
-                {% for tag in post.tags %}
-                  <a class="timeline-chip timeline-chip-inline" href="{{ url_for('mytimeline_edit', token=token, q='#' ~ tag) }}">#{{ tag }}</a>
-                {% endfor %}
-              </div>
-            {% endif %}
-            <form
-              method="post"
-              action="{{ url_for('mytimeline_update', token=token, post_id=post.id, q=search_query or None) }}"
-              class="timeline-inline-edit"
-              data-edit-form="{{ post.id }}"
-            >
-              <textarea
-                name="content"
-                maxlength="100"
-                required
-              >{{ post.content }}</textarea>
-              <input
-                type="text"
-                name="tags"
-                class="timeline-inline-tags-input"
-                maxlength="60"
-                placeholder="#tag #tag2"
-                value="{% for tag in post.tags %}#{{ tag }}{% if not loop.last %} {% endif %}{% endfor %}"
-              >
-              <div class="timeline-inline-edit-actions">
-                <input
-                  type="datetime-local"
-                  name="created_at_local"
-                  value="{{ post.edit_datetime_local }}"
-                  required
-                >
-                <button type="submit" class="timeline-inline-save-btn">保存</button>
-              </div>
-            </form>
-          </article>
+          {% include "_mytimeline_edit_item.html" %}
         {% endfor %}
       {% else %}
-        <p class="timeline-empty" data-aos="fade-up">そんなことあったっけ？<br>書き忘れたか、あるいは夢じゃないかな。</p>
+        <p id="timeline-empty-message" class="timeline-empty" data-aos="fade-up">そんなことあったっけ？<br>書き忘れたか、あるいは夢じゃないかな。</p>
       {% endif %}
     </main>
   </div>
@@ -170,89 +88,144 @@
       AOS.refreshHard();
     });
 
+    const composeForm = document.getElementById('timeline-compose-form');
     const contentEl = document.getElementById('content');
     const charCountEl = document.getElementById('timeline-char-count');
-    if (contentEl) {
-      const updateCharCount = () => {
-        if (!charCountEl) return;
-        charCountEl.textContent = `${contentEl.value.length}/100`;
-      };
-      updateCharCount();
-      contentEl.addEventListener('input', updateCharCount);
+    const timelineList = document.getElementById('timeline-list');
+    const composeSubmitBtn = composeForm ? composeForm.querySelector('.timeline-submit-btn') : null;
+    let isSubmitting = false;
 
+    const updateCharCount = () => {
+      if (!contentEl || !charCountEl) return;
+      charCountEl.textContent = `${contentEl.value.length}/100`;
+    };
+    updateCharCount();
+
+    if (contentEl) {
+      contentEl.addEventListener('input', updateCharCount);
       contentEl.addEventListener('keydown', (event) => {
         if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
           event.preventDefault();
-          const form = contentEl.closest('form');
-          if (form) {
-            form.requestSubmit();
-          }
+          if (composeForm) composeForm.requestSubmit();
         }
       });
     }
 
-    const menuToggles = document.querySelectorAll('.timeline-menu-toggle');
-    const editToggleButtons = document.querySelectorAll('[data-edit-toggle]');
-    const editForms = document.querySelectorAll('[data-edit-form]');
-
-    const closeEditForms = () => {
-      editForms.forEach((form) => form.classList.remove('is-open'));
-    };
-
-    editForms.forEach((form) => {
-      form.addEventListener('click', (event) => {
-        event.stopPropagation();
-      });
-    });
-
-    editToggleButtons.forEach((button) => {
-      button.addEventListener('click', (event) => {
-        event.stopPropagation();
-        const postId = button.getAttribute('data-edit-toggle');
-        if (!postId) return;
-        const targetForm = document.querySelector(`[data-edit-form="${postId}"]`);
-        if (!targetForm) return;
-        const willOpen = !targetForm.classList.contains('is-open');
-        closeEditForms();
-        if (willOpen) {
-          targetForm.classList.add('is-open');
-          const textarea = targetForm.querySelector('textarea');
-          if (textarea) textarea.focus();
-        }
-        document.querySelectorAll('.timeline-menu-wrap.is-open').forEach((openWrap) => {
-          openWrap.classList.remove('is-open');
-          const btn = openWrap.querySelector('.timeline-menu-toggle');
-          if (btn) btn.setAttribute('aria-expanded', 'false');
-        });
-      });
-    });
-
-    menuToggles.forEach((toggle) => {
-      toggle.addEventListener('click', (event) => {
-        event.stopPropagation();
-        const wrap = toggle.closest('.timeline-menu-wrap');
-        if (!wrap) return;
-        const isOpen = wrap.classList.contains('is-open');
-        document.querySelectorAll('.timeline-menu-wrap.is-open').forEach((openWrap) => {
-          openWrap.classList.remove('is-open');
-          const btn = openWrap.querySelector('.timeline-menu-toggle');
-          if (btn) btn.setAttribute('aria-expanded', 'false');
-        });
-        if (!isOpen) {
-          wrap.classList.add('is-open');
-          toggle.setAttribute('aria-expanded', 'true');
-        }
-      });
-    });
-
-    document.addEventListener('click', () => {
+    const closeAllMenus = () => {
       document.querySelectorAll('.timeline-menu-wrap.is-open').forEach((openWrap) => {
         openWrap.classList.remove('is-open');
         const btn = openWrap.querySelector('.timeline-menu-toggle');
         if (btn) btn.setAttribute('aria-expanded', 'false');
       });
+    };
+
+    const closeEditForms = () => {
+      document.querySelectorAll('[data-edit-form].is-open').forEach((form) => {
+        form.classList.remove('is-open');
+      });
+    };
+
+    const bindItemInteractions = (root = document) => {
+      root.querySelectorAll('[data-edit-form]').forEach((form) => {
+        if (form.dataset.bound === '1') return;
+        form.dataset.bound = '1';
+        form.addEventListener('click', (event) => {
+          event.stopPropagation();
+        });
+      });
+
+      root.querySelectorAll('.timeline-menu-toggle').forEach((toggle) => {
+        if (toggle.dataset.bound === '1') return;
+        toggle.dataset.bound = '1';
+        toggle.addEventListener('click', (event) => {
+          event.stopPropagation();
+          const wrap = toggle.closest('.timeline-menu-wrap');
+          if (!wrap) return;
+          const isOpen = wrap.classList.contains('is-open');
+          closeAllMenus();
+          if (!isOpen) {
+            wrap.classList.add('is-open');
+            toggle.setAttribute('aria-expanded', 'true');
+          }
+        });
+      });
+
+      root.querySelectorAll('[data-edit-toggle]').forEach((button) => {
+        if (button.dataset.bound === '1') return;
+        button.dataset.bound = '1';
+        button.addEventListener('click', (event) => {
+          event.stopPropagation();
+          const postId = button.getAttribute('data-edit-toggle');
+          if (!postId) return;
+          const targetForm = document.querySelector(`[data-edit-form="${postId}"]`);
+          if (!targetForm) return;
+          const willOpen = !targetForm.classList.contains('is-open');
+          closeEditForms();
+          if (willOpen) {
+            targetForm.classList.add('is-open');
+            const textarea = targetForm.querySelector('textarea');
+            if (textarea) textarea.focus();
+          }
+          closeAllMenus();
+        });
+      });
+    };
+
+    bindItemInteractions();
+
+    document.addEventListener('click', () => {
+      closeAllMenus();
       closeEditForms();
     });
+
+    if (composeForm && timelineList && composeSubmitBtn) {
+      composeForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (isSubmitting) return;
+
+        const currentContent = contentEl ? contentEl.value.trim() : '';
+        if (!currentContent) return;
+
+        isSubmitting = true;
+        composeSubmitBtn.disabled = true;
+        composeSubmitBtn.setAttribute('aria-disabled', 'true');
+
+        try {
+          const response = await fetch(composeForm.action, {
+            method: 'POST',
+            body: new FormData(composeForm),
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+          });
+          const payload = await response.json();
+          if (!response.ok || !payload.ok) {
+            throw new Error(payload.error || '投稿に失敗しました。');
+          }
+
+          if (payload.post_html) {
+            const temp = document.createElement('div');
+            temp.innerHTML = payload.post_html.trim();
+            const newItem = temp.firstElementChild;
+            if (newItem) {
+              const emptyMessage = document.getElementById('timeline-empty-message');
+              if (emptyMessage) emptyMessage.remove();
+              timelineList.prepend(newItem);
+              bindItemInteractions(newItem);
+              AOS.refreshHard();
+            }
+          }
+
+          composeForm.reset();
+          updateCharCount();
+          if (contentEl) contentEl.focus();
+        } catch (err) {
+          alert(err instanceof Error ? err.message : '投稿に失敗しました。');
+        } finally {
+          isSubmitting = false;
+          composeSubmitBtn.disabled = false;
+          composeSubmitBtn.removeAttribute('aria-disabled');
+        }
+      });
+    }
 
     const searchToggleBtn = document.getElementById('search-toggle-btn');
     const searchShell = document.getElementById('timeline-search-shell');

@@ -704,6 +704,11 @@ h2 {
   opacity: 0.75;
 }
 
+.timeline-submit-btn[disabled] {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
 .timeline-menu-wrap {
   position: relative;
 }

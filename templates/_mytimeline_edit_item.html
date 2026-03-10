@@ -1,0 +1,83 @@
+<article class="timeline-item" data-aos="fade-up">
+  <div class="timeline-item-top">
+    <div class="timeline-meta">
+      <span class="timeline-date-slot">{% if post.show_date_divider %}{{ post.date_label }}{% endif %}</span>
+      <span class="timeline-time">{{ post.time_label }}</span>
+    </div>
+    <div class="timeline-menu-wrap">
+      <button
+        type="button"
+        class="timeline-menu-toggle"
+        aria-label="投稿メニュー"
+        aria-expanded="false"
+      >⋯</button>
+      <div class="timeline-menu">
+        <button
+          type="button"
+          class="timeline-edit-btn"
+          data-edit-toggle="{{ post.id }}"
+        >編集</button>
+        <form method="post" action="{{ url_for('mytimeline_delete', token=token, post_id=post.id, q=search_query or None) }}">
+          <button type="submit" class="timeline-delete-btn">削除</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <p class="timeline-content">{{ post.content_html | safe }}</p>
+  {% if post.link_previews %}
+    <div class="timeline-link-previews">
+      {% for preview in post.link_previews %}
+        <a class="timeline-link-card" href="{{ preview.url }}" target="_blank" rel="noopener noreferrer nofollow ugc">
+          {% if preview.image_url %}
+            <img class="timeline-link-image" src="{{ preview.image_url }}" alt="">
+          {% endif %}
+          <span class="timeline-link-texts">
+            <span class="timeline-link-title">{{ preview.title }}</span>
+            {% if preview.description %}
+              <span class="timeline-link-desc">{{ preview.description }}</span>
+            {% endif %}
+            {% if preview.site_name %}
+              <span class="timeline-link-site">{{ preview.site_name }}</span>
+            {% endif %}
+          </span>
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+  {% if post.tags %}
+    <div class="timeline-chip-row">
+      {% for tag in post.tags %}
+        <a class="timeline-chip timeline-chip-inline" href="{{ url_for('mytimeline_edit', token=token, q='#' ~ tag) }}">#{{ tag }}</a>
+      {% endfor %}
+    </div>
+  {% endif %}
+  <form
+    method="post"
+    action="{{ url_for('mytimeline_update', token=token, post_id=post.id, q=search_query or None) }}"
+    class="timeline-inline-edit"
+    data-edit-form="{{ post.id }}"
+  >
+    <textarea
+      name="content"
+      maxlength="100"
+      required
+    >{{ post.content }}</textarea>
+    <input
+      type="text"
+      name="tags"
+      class="timeline-inline-tags-input"
+      maxlength="60"
+      placeholder="#tag #tag2"
+      value="{% for tag in post.tags %}#{{ tag }}{% if not loop.last %} {% endif %}{% endfor %}"
+    >
+    <div class="timeline-inline-edit-actions">
+      <input
+        type="datetime-local"
+        name="created_at_local"
+        value="{{ post.edit_datetime_local }}"
+        required
+      >
+      <button type="submit" class="timeline-inline-save-btn">保存</button>
+    </div>
+  </form>
+</article>
