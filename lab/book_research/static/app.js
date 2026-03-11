@@ -348,9 +348,11 @@ async function runSearch(keyword) {
     renderYearOptions(rows);
 
     if (rows.length) {
+      stopLoadingStatus();
       setStatus("");
       await loadYearBooks(Number(yearSelect.value), 1);
     } else {
+      stopLoadingStatus();
       booksList.innerHTML = "";
       yearSelect.innerHTML = "";
       booksPageLabel.textContent = "";
@@ -359,6 +361,7 @@ async function runSearch(keyword) {
       setBooksStatus("年次データがないため一覧は表示できません。", true);
     }
   } catch (error) {
+    stopLoadingStatus();
     resultPanel.classList.add("hidden");
     booksPanel.classList.add("hidden");
     setStatus(error.message, true);
