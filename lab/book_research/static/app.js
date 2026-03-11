@@ -152,7 +152,7 @@ function renderChart(rows) {
   }).join("");
 
   const xTicks = rows
-    .filter((row) => row.year % 5 === 0 || row.year === minYear || row.year === maxYear)
+    .filter((row) => row.year % 5 === 0)
     .map((row) => `
       <text x="${x(row.year)}" y="${height - 16}" text-anchor="middle" fill="#707984" font-size="12">${row.year}</text>
     `)
