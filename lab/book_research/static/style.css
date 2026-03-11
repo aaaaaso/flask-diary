@@ -440,6 +440,19 @@ tbody tr:nth-child(even) {
     padding-top: 24px;
   }
 
+  .panel {
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .search-panel,
+  .result-panel,
+  .books-panel {
+    padding: 0;
+  }
+
   .search-form {
     grid-template-columns: minmax(0, 1fr) 46px;
   }

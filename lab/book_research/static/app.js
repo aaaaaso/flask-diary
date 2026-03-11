@@ -48,7 +48,7 @@ function setStatus(message, isError = false) {
 }
 
 function startLoadingStatus() {
-  const frames = ["集計中.", "集計中..", "集計中..."];
+  const frames = ["集計中", "集計中.", "集計中..", "集計中..."];
   let index = 0;
   stopLoadingStatus();
   setStatus(frames[index]);
@@ -66,7 +66,7 @@ function stopLoadingStatus() {
 }
 
 function startFiltersLoadingStatus() {
-  const frames = ["更新中.", "更新中..", "更新中..."];
+  const frames = ["更新中", "更新中.", "更新中..", "更新中..."];
   let index = 0;
   stopFiltersLoadingStatus();
   setFiltersStatus(frames[index]);
