@@ -272,6 +272,30 @@ button:disabled {
   display: block;
 }
 
+.chart-wrap {
+  position: relative;
+  margin-top: 14px;
+}
+
+.chart-wrap .chart {
+  margin-top: 0;
+}
+
+.chart-tooltip {
+  position: absolute;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 10px));
+  padding: 8px 10px;
+  color: #f7f9fb;
+  background: rgba(67, 75, 85, 0.92);
+  border-radius: 12px;
+  font-size: 0.8rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 3px 3px 8px rgba(152, 160, 170, 0.24);
+  z-index: 2;
+}
+
 .table-wrap {
   margin-top: 14px;
   max-height: 420px;

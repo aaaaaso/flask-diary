@@ -14,6 +14,7 @@ const chartRange = document.getElementById("chart-range");
 const tableSummary = document.getElementById("table-summary");
 const resultsBody = document.getElementById("results-body");
 const chart = document.getElementById("chart");
+const chartTooltip = document.getElementById("chart-tooltip");
 const booksPanel = document.getElementById("books-panel");
 const booksMeta = document.getElementById("books-meta");
 const booksStatus = document.getElementById("books-status");
@@ -71,6 +72,41 @@ function renderEmptyChart() {
   `;
 }
 
+function getNiceStep(maxValue, tickCount) {
+  if (maxValue <= 0) {
+    return 1;
+  }
+  const roughStep = maxValue / tickCount;
+  const magnitude = 10 ** Math.floor(Math.log10(roughStep));
+  const residual = roughStep / magnitude;
+  if (residual <= 1) {
+    return magnitude;
+  }
+  if (residual <= 2) {
+    return 2 * magnitude;
+  }
+  if (residual <= 5) {
+    return 5 * magnitude;
+  }
+  return 10 * magnitude;
+}
+
+function hideChartTooltip() {
+  chartTooltip.classList.add("hidden");
+}
+
+function updateChartTooltip(target) {
+  const bounds = chart.getBoundingClientRect();
+  const scaleX = bounds.width / 920;
+  const scaleY = bounds.height / 380;
+  const x = Number(target.dataset.x) * scaleX;
+  const y = Number(target.dataset.y) * scaleY;
+  chartTooltip.textContent = `${target.dataset.year}年: ${Number(target.dataset.count).toLocaleString("ja-JP")}件`;
+  chartTooltip.style.left = `${x}px`;
+  chartTooltip.style.top = `${y}px`;
+  chartTooltip.classList.remove("hidden");
+}
+
 function renderChart(rows) {
   if (!rows.length) {
     renderEmptyChart();
@@ -85,6 +121,8 @@ function renderChart(rows) {
   const years = rows.map((row) => row.year);
   const counts = rows.map((row) => row.count);
   const maxCount = Math.max(...counts);
+  const niceStep = getNiceStep(maxCount, 4);
+  const niceMax = Math.max(niceStep, Math.ceil(maxCount / niceStep) * niceStep);
   const minYear = Math.min(...years);
   const maxYear = Math.max(...years);
 
@@ -96,19 +134,18 @@ function renderChart(rows) {
   };
 
   const y = (count) => {
-    if (maxCount === 0) {
+    if (niceMax === 0) {
       return margin.top + innerHeight;
     }
-    return margin.top + innerHeight - (count / maxCount) * innerHeight;
+    return margin.top + innerHeight - (count / niceMax) * innerHeight;
   };
 
   const path = rows
     .map((row, index) => `${index === 0 ? "M" : "L"} ${x(row.year).toFixed(2)} ${y(row.count).toFixed(2)}`)
     .join(" ");
 
-  const yTicks = 4;
-  const grid = Array.from({ length: yTicks + 1 }, (_, index) => {
-    const value = Math.round((maxCount / yTicks) * index);
+  const grid = Array.from({ length: Math.floor(niceMax / niceStep) + 1 }, (_, index) => {
+    const value = niceStep * index;
     const py = y(value);
     return `
       <line x1="${margin.left}" y1="${py}" x2="${width - margin.right}" y2="${py}" stroke="rgba(67, 75, 85, 0.08)" />
@@ -126,10 +163,18 @@ function renderChart(rows) {
   const points = rows
     .map(
       (row) => `
-        <circle cx="${x(row.year)}" cy="${y(row.count)}" r="12" fill="transparent">
-          <title>${row.year}年: ${row.count.toLocaleString("ja-JP")}件</title>
-        </circle>
         <circle cx="${x(row.year)}" cy="${y(row.count)}" r="4.5" fill="#5c6672"></circle>
+        <circle
+          class="chart-hit-area"
+          cx="${x(row.year)}"
+          cy="${y(row.count)}"
+          r="16"
+          fill="transparent"
+          data-year="${row.year}"
+          data-count="${row.count}"
+          data-x="${x(row.year)}"
+          data-y="${y(row.count)}"
+        ></circle>
       `
     )
     .join("");
@@ -143,6 +188,12 @@ function renderChart(rows) {
     ${points}
     ${xTicks}
   `;
+
+  chart.querySelectorAll(".chart-hit-area").forEach((node) => {
+    node.addEventListener("mouseenter", () => updateChartTooltip(node));
+    node.addEventListener("mousemove", () => updateChartTooltip(node));
+    node.addEventListener("mouseleave", hideChartTooltip);
+  });
 }
 
 function renderYearOptions(rows) {
