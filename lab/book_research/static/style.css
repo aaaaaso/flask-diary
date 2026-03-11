@@ -79,7 +79,7 @@ body {
 
 .search-form {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 64px;
+  grid-template-columns: minmax(0, 1fr) 58px;
   gap: 14px;
   align-items: center;
 }
@@ -158,8 +158,8 @@ button {
 }
 
 .search-icon-button {
-  width: 56px;
-  height: 56px;
+  width: 50px;
+  height: 50px;
   padding: 0;
   display: grid;
   place-items: center;
@@ -167,8 +167,8 @@ button {
 }
 
 .search-icon-button img {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   display: block;
   filter: brightness(0) invert(1);
 }
@@ -352,7 +352,7 @@ tbody tr:nth-child(even) {
   }
 
   .search-form {
-    grid-template-columns: minmax(0, 1fr) 56px;
+    grid-template-columns: minmax(0, 1fr) 50px;
   }
 
   .filters-grid {
