@@ -352,13 +352,28 @@ tbody tr:nth-child(even) {
 
 .books-list {
   margin: 0;
-  padding-left: 22px;
+  padding-left: 0;
+  list-style: none;
   display: grid;
-  gap: 12px;
+  gap: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: var(--inner-shadow-soft);
 }
 
 .book-item {
+  padding: 14px 16px;
   line-height: 1.6;
+  border-bottom: 1px solid var(--line);
+}
+
+.book-item:nth-child(even) {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.book-item:last-child {
+  border-bottom: 0;
 }
 
 .book-item.empty {

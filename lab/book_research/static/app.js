@@ -247,6 +247,7 @@ async function loadYearBooks(year, page = 1) {
     state.totalPages = data.totalPages;
     yearSelect.value = String(data.year);
     booksMeta.textContent = `「${data.keyword}」の ${data.year}年: ${data.totalCount.toLocaleString("ja-JP")}件`;
+    setBooksStatus("");
     booksPager.classList.toggle("hidden", data.totalPages <= 1);
     booksPageLabel.textContent = data.totalPages > 1 ? `${data.page} / ${data.totalPages} ページ` : "";
     prevPageButton.disabled = data.page <= 1;
@@ -311,7 +312,7 @@ async function runSearch(keyword) {
       yearSelect.innerHTML = "";
       booksPageLabel.textContent = "";
       booksPager.classList.add("hidden");
-      booksMeta.textContent = "年次データがないため一覧は表示できません。";
+      booksMeta.textContent = "";
       setStatus("検索結果はありましたが、出版年ファセットに年次データがありませんでした。");
       setBooksStatus("年次データがないため一覧は表示できません。", true);
     }
