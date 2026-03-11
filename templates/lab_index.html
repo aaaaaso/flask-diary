@@ -8,22 +8,22 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <style>
     :root {
-      --bg: #d8dde1;
-      --bg-deep: #cfd5da;
-      --panel: #dbe0e5;
-      --panel-strong: #d3d9de;
+      --bg: #e7ebef;
+      --bg-deep: #dfe4e9;
+      --panel: #eef2f5;
+      --panel-strong: #e8edf1;
       --ink: #434b55;
       --muted: #707984;
       --ring: rgba(67, 75, 85, 0.08);
       --outer-shadow:
-        6px 6px 12px rgba(152, 160, 170, 0.38),
-        -6px -6px 12px rgba(241, 249, 249, 0.56);
+        6px 6px 12px rgba(170, 178, 186, 0.26),
+        -6px -6px 12px rgba(255, 255, 255, 0.74);
       --outer-shadow-soft:
-        3px 3px 8px rgba(152, 160, 170, 0.28),
-        -3px -3px 8px rgba(241, 249, 249, 0.5);
+        3px 3px 8px rgba(170, 178, 186, 0.2),
+        -3px -3px 8px rgba(255, 255, 255, 0.68);
       --inner-shadow:
-        inset 6px 6px 12px rgba(166, 173, 181, 0.32),
-        inset -1px -1px 2px rgba(241, 249, 249, 0.6);
+        inset 6px 6px 12px rgba(183, 190, 198, 0.22),
+        inset -1px -1px 2px rgba(255, 255, 255, 0.74);
     }
 
     * { box-sizing: border-box; }
@@ -66,14 +66,6 @@
       gap: 18px;
     }
 
-    .panel {
-      background: var(--panel);
-      border-radius: 24px;
-      padding: 20px;
-      border: 1px solid var(--ring);
-      box-shadow: var(--outer-shadow);
-    }
-
     .grid {
       display: grid;
       gap: 14px;
@@ -85,7 +77,7 @@
       text-decoration: none;
       color: inherit;
       border: 1px solid var(--ring);
-      border-radius: 20px;
+      border-radius: 14px;
       padding: 16px 18px;
       background: var(--panel-strong);
       box-shadow: var(--outer-shadow-soft);
@@ -101,7 +93,7 @@
     }
 
     .card-title {
-      font-weight: 600;
+      font-weight: 500;
       letter-spacing: 0.02em;
       margin: 0 0 8px;
       font-size: 1.02rem;
@@ -138,20 +130,20 @@
   </header>
 
   <main>
-    <section class="panel">
-      {% if experiments %}
-        <div class="grid">
-          {% for exp in experiments %}
-            <a class="card" href="/lab/{{ exp.name }}/">
-              <div class="card-title">{{ exp.title }}</div>
-              <p class="card-desc">{{ exp.desc }}</p>
-            </a>
-          {% endfor %}
-        </div>
-      {% else %}
+    {% if experiments %}
+      <section class="grid">
+        {% for exp in experiments %}
+          <a class="card" href="/lab/{{ exp.name }}/">
+            <div class="card-title">{{ exp.title }}</div>
+            <p class="card-desc">{{ exp.desc }}</p>
+          </a>
+        {% endfor %}
+      </section>
+    {% else %}
+      <section>
         <p class="note">まだ実験がありません（lab/&lt;name&gt;/index.html を追加してください）。</p>
-      {% endif %}
-    </section>
+      </section>
+    {% endif %}
   </main>
 
 </body>
