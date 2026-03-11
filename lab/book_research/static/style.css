@@ -31,7 +31,7 @@ body {
   min-height: 100vh;
   margin: 0;
   color: var(--text);
-  font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
+  font-family: "Futura", "Avenir Next", "Avenir", "Century Gothic", sans-serif;
   background:
     radial-gradient(circle at 18% 14%, rgba(241, 249, 249, 0.82), transparent 28%),
     radial-gradient(circle at 82% 18%, rgba(255, 255, 255, 0.34), transparent 22%),
@@ -48,15 +48,6 @@ body {
 
 .hero {
   margin-bottom: 24px;
-}
-
-.eyebrow {
-  margin: 0 0 10px;
-  color: var(--brand);
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
 }
 
 .hero h1 {
@@ -101,6 +92,31 @@ body {
 .field span {
   font-size: 0.9rem;
   font-weight: 700;
+}
+
+.search-toggle-row {
+  margin-top: 14px;
+}
+
+.toggle-button {
+  padding: 12px 16px;
+  color: var(--text);
+  background: var(--panel-strong);
+}
+
+.filters-panel {
+  margin-top: 16px;
+  padding: 18px;
+  background: var(--panel-strong);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: var(--inner-shadow-soft);
+}
+
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
 }
 
 input,
@@ -197,15 +213,10 @@ button:disabled {
 }
 
 .result-meta,
-.source-link,
 #chart-range,
 #table-summary {
   color: var(--muted);
   font-size: 0.92rem;
-}
-
-.source-link {
-  text-decoration: none;
 }
 
 .chart-card,
@@ -307,6 +318,15 @@ tbody tr:nth-child(even) {
   min-width: 88px;
 }
 
+.data-source {
+  margin-top: 26px;
+  padding: 0 8px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.6;
+  text-align: center;
+}
+
 @media (max-width: 760px) {
   .page {
     width: min(100% - 20px, 1120px);
@@ -314,6 +334,10 @@ tbody tr:nth-child(even) {
   }
 
   .search-form {
+    grid-template-columns: 1fr;
+  }
+
+  .filters-grid {
     grid-template-columns: 1fr;
   }
 

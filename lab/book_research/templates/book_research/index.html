@@ -4,16 +4,15 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>BOOK TREND RESEARCH</title>
-    <meta name="description" content="指定したキーワードを含む書籍の出版数を年推移で見る。" />
+    <meta name="description" content="キーワードを含む書籍の出版数推移を調べます。" />
     <link rel="stylesheet" href="./static/style.css" />
   </head>
   <body>
     <main class="page">
       <section class="hero">
-        <p class="eyebrow">NDL Search SRU</p>
         <h1>BOOK TREND RESEARCH</h1>
         <p class="lead">
-          指定したキーワードを含む書籍の出版数を年推移で見る。
+          キーワードを含む書籍の出版数推移を調べます。
         </p>
       </section>
 
@@ -32,6 +31,23 @@
           </label>
           <button id="search-button" type="submit">集計する</button>
         </form>
+        <div class="search-toggle-row">
+          <button id="filters-toggle" class="toggle-button" type="button" aria-expanded="false" aria-controls="filters-panel">
+            条件を絞る
+          </button>
+        </div>
+        <div id="filters-panel" class="filters-panel hidden">
+          <div class="filters-grid">
+            <label class="field">
+              <span>年範囲の始点</span>
+              <input id="start-year-input" name="startYear" type="number" min="1000" step="1" value="1950" />
+            </label>
+            <label class="field">
+              <span>年範囲の終点</span>
+              <input id="end-year-input" name="endYear" type="number" min="1000" step="1" />
+            </label>
+          </div>
+        </div>
         <div id="status" class="status" aria-live="polite">
           キーワードを入力すると、年次推移グラフと件数表を表示します。
         </div>
@@ -43,15 +59,6 @@
             <p id="result-keyword" class="result-keyword"></p>
             <p id="result-meta" class="result-meta"></p>
           </div>
-          <a
-            id="source-link"
-            class="source-link"
-            href="https://ndlsearch.ndl.go.jp/api/sru"
-            target="_blank"
-            rel="noreferrer"
-          >
-            API仕様
-          </a>
         </div>
 
         <div class="chart-card">
@@ -111,6 +118,10 @@
           <button id="next-page-button" type="button">次へ</button>
         </div>
       </section>
+
+      <footer class="data-source">
+        データソースとして国立国会図書館サーチ（NDL Search）SRU API を使用しています。
+      </footer>
     </main>
 
     <script src="./static/app.js"></script>

@@ -19,6 +19,7 @@ MAX_KEYWORD_LENGTH = 120
 FACET_BUCKET_LIMIT = 50
 MIN_YEAR = 1000
 BOOKS_PER_PAGE = 20
+DEFAULT_START_YEAR = 1950
 LAB_TITLE = "BOOK TREND RESEARCH"
 LAB_DESCRIPTION = "指定したキーワードを含む書籍の出版数を年推移で見る。"
 
@@ -57,6 +58,10 @@ def _build_year_range(keyword: str, start_year: int | None = None, end_year: int
     if end_year is not None:
         parts.append(f'until="{end_year}"')
     return " AND ".join(parts)
+
+
+def _build_cache_key(keyword: str, start_year: int, end_year: int) -> str:
+    return f"{keyword}\0{start_year}\0{end_year}"
 
 
 def _fetch_ndl_xml_with_options(
@@ -186,8 +191,8 @@ def _collect_year_counts(
     return left_counts | right_counts
 
 
-def _search_keyword(keyword: str) -> dict:
-    base_query = _build_cql_query(keyword)
+def _search_keyword(keyword: str, start_year: int, end_year: int) -> dict:
+    base_query = _build_year_range(keyword, start_year, end_year)
     xml_bytes = _fetch_ndl_xml(base_query)
     total_count, base_year_counts = _parse_year_facets(xml_bytes)
     request_count = 1
@@ -196,8 +201,9 @@ def _search_keyword(keyword: str) -> dict:
         year_counts = base_year_counts
     else:
         stats = {"requestCount": 0}
-        current_year = time.localtime().tm_year
-        year_counts = _collect_year_counts(keyword, MIN_YEAR, current_year, stats)
+        bounded_start = max(MIN_YEAR, start_year)
+        bounded_end = max(bounded_start, end_year)
+        year_counts = _collect_year_counts(keyword, bounded_start, bounded_end, stats)
         request_count += stats["requestCount"]
 
     series = [
@@ -212,6 +218,8 @@ def _search_keyword(keyword: str) -> dict:
         "yearCounts": series,
         "requestCount": request_count,
         "cached": False,
+        "startYear": start_year,
+        "endYear": end_year,
     }
 
 
@@ -260,17 +268,27 @@ def index():
 
 def handle_search_request():
     keyword = (request.args.get("keyword") or "").strip()
+    start_year_text = (request.args.get("startYear") or "").strip()
+    end_year_text = (request.args.get("endYear") or "").strip()
+    current_year = time.localtime().tm_year
     if not keyword:
         return jsonify({"error": "keyword is required"}), 400
     if len(keyword) > MAX_KEYWORD_LENGTH:
         return jsonify({"error": f"keyword must be {MAX_KEYWORD_LENGTH} characters or fewer"}), 400
+    start_year = int(start_year_text) if start_year_text.isdigit() else DEFAULT_START_YEAR
+    end_year = int(end_year_text) if end_year_text.isdigit() else current_year
+    if start_year < MIN_YEAR or end_year < MIN_YEAR:
+        return jsonify({"error": f"year must be {MIN_YEAR} or later"}), 400
+    if start_year > end_year:
+        return jsonify({"error": "startYear must be less than or equal to endYear"}), 400
 
-    cached = _get_cached(keyword)
+    cache_key = _build_cache_key(keyword, start_year, end_year)
+    cached = _get_cached(cache_key)
     if cached:
         return jsonify({**cached, "cached": True})
 
     try:
-        payload = _search_keyword(keyword)
+        payload = _search_keyword(keyword, start_year, end_year)
     except urllib.error.HTTPError as exc:
         return jsonify({"error": f"NDL Search returned HTTP {exc.code}"}), 502
     except urllib.error.URLError:
@@ -282,7 +300,7 @@ def handle_search_request():
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 502
 
-    _set_cached(keyword, payload)
+    _set_cached(cache_key, payload)
     return jsonify(payload)
 
 

@@ -2,10 +2,13 @@ const form = document.getElementById("search-form");
 const keywordInput = document.getElementById("keyword-input");
 const searchButton = document.getElementById("search-button");
 const statusEl = document.getElementById("status");
+const filtersToggle = document.getElementById("filters-toggle");
+const filtersPanel = document.getElementById("filters-panel");
+const startYearInput = document.getElementById("start-year-input");
+const endYearInput = document.getElementById("end-year-input");
 const resultPanel = document.getElementById("result-panel");
 const resultKeyword = document.getElementById("result-keyword");
 const resultMeta = document.getElementById("result-meta");
-const sourceLink = document.getElementById("source-link");
 const chartRange = document.getElementById("chart-range");
 const tableSummary = document.getElementById("table-summary");
 const resultsBody = document.getElementById("results-body");
@@ -28,7 +31,11 @@ const state = {
   selectedYear: null,
   page: 1,
   totalPages: 1,
+  startYear: 1950,
+  endYear: new Date().getFullYear(),
 };
+
+endYearInput.value = String(state.endYear);
 
 function setStatus(message, isError = false) {
   statusEl.textContent = message;
@@ -203,10 +210,16 @@ async function loadYearBooks(year, page = 1) {
 
 async function runSearch(keyword) {
   searchButton.disabled = true;
-  setStatus("NDL Search から集計中です...");
+  setStatus("集計中...");
 
   try {
-    searchApiUrl.search = new URLSearchParams({ keyword }).toString();
+    const startYear = Number.parseInt(startYearInput.value, 10) || 1950;
+    const endYear = Number.parseInt(endYearInput.value, 10) || new Date().getFullYear();
+    searchApiUrl.search = new URLSearchParams({
+      keyword,
+      startYear: String(startYear),
+      endYear: String(endYear),
+    }).toString();
     const response = await fetch(searchApiUrl.toString());
     const data = await response.json();
 
@@ -216,6 +229,10 @@ async function runSearch(keyword) {
 
     const rows = data.yearCounts || [];
     state.keyword = data.keyword;
+    state.startYear = data.startYear;
+    state.endYear = data.endYear;
+    startYearInput.value = String(data.startYear);
+    endYearInput.value = String(data.endYear);
     state.selectedYear = rows.length ? rows[rows.length - 1].year : null;
     state.page = 1;
     state.totalPages = 1;
@@ -226,15 +243,13 @@ async function runSearch(keyword) {
     resultMeta.textContent = "";
     chartRange.textContent = rows.length ? `${rows[0].year}年 - ${rows[rows.length - 1].year}年` : "出版年なし";
     tableSummary.textContent = `${rows.length.toLocaleString("ja-JP")}年分`;
-    sourceLink.href = data.source;
-    sourceLink.textContent = "SRU エンドポイント";
 
     renderChart(rows);
     renderTable(rows);
     renderYearOptions(rows);
 
     if (rows.length) {
-      setStatus("年次集計を更新しました。");
+      setStatus("");
       await loadYearBooks(Number(yearSelect.value), 1);
     } else {
       booksList.innerHTML = "";
@@ -252,6 +267,11 @@ async function runSearch(keyword) {
     searchButton.disabled = false;
   }
 }
+
+filtersToggle.addEventListener("click", () => {
+  const isHidden = filtersPanel.classList.toggle("hidden");
+  filtersToggle.setAttribute("aria-expanded", String(!isHidden));
+});
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
