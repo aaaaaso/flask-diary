@@ -10,27 +10,42 @@ const chartRange = document.getElementById("chart-range");
 const tableSummary = document.getElementById("table-summary");
 const resultsBody = document.getElementById("results-body");
 const chart = document.getElementById("chart");
+const booksPanel = document.getElementById("books-panel");
+const booksMeta = document.getElementById("books-meta");
+const booksStatus = document.getElementById("books-status");
+const yearSelect = document.getElementById("year-select");
+const loadBooksButton = document.getElementById("load-books-button");
+const booksList = document.getElementById("books-list");
+const prevPageButton = document.getElementById("prev-page-button");
+const nextPageButton = document.getElementById("next-page-button");
+const booksPageLabel = document.getElementById("books-page-label");
 const searchApiUrl = new URL("./api/search", window.location.href);
+const yearBooksApiUrl = new URL("./api/year-books", window.location.href);
+
+const state = {
+  keyword: "",
+  years: [],
+  selectedYear: null,
+  page: 1,
+  totalPages: 1,
+};
 
 function setStatus(message, isError = false) {
   statusEl.textContent = message;
   statusEl.classList.toggle("error", isError);
 }
 
-function escapeHtml(text) {
-  return text
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+function setBooksStatus(message, isError = false) {
+  booksStatus.textContent = message;
+  booksStatus.classList.toggle("error", isError);
 }
 
 function renderTable(rows) {
   resultsBody.innerHTML = rows
     .map(
       (row) => `
-        <tr>
-          <td>${row.year}</td>
+        <tr class="year-row" data-year="${row.year}">
+          <td><button type="button" class="year-link" data-year="${row.year}">${row.year}</button></td>
           <td>${row.count.toLocaleString("ja-JP")}</td>
         </tr>
       `
@@ -40,8 +55,8 @@ function renderTable(rows) {
 
 function renderEmptyChart() {
   chart.innerHTML = `
-    <rect x="0" y="0" width="920" height="380" rx="24" fill="rgba(14, 109, 104, 0.05)"></rect>
-    <text x="460" y="190" text-anchor="middle" fill="#5e6775" font-size="22">
+    <rect x="0" y="0" width="920" height="380" rx="24" fill="rgba(92, 102, 114, 0.05)"></rect>
+    <text x="460" y="190" text-anchor="middle" fill="#707984" font-size="22">
       出版年ファセットの対象データがありません
     </text>
   `;
@@ -87,36 +102,103 @@ function renderChart(rows) {
     const value = Math.round((maxCount / yTicks) * index);
     const py = y(value);
     return `
-      <line x1="${margin.left}" y1="${py}" x2="${width - margin.right}" y2="${py}" stroke="rgba(28, 36, 48, 0.1)" />
-      <text x="${margin.left - 12}" y="${py + 5}" text-anchor="end" fill="#5e6775" font-size="12">${value.toLocaleString("ja-JP")}</text>
+      <line x1="${margin.left}" y1="${py}" x2="${width - margin.right}" y2="${py}" stroke="rgba(67, 75, 85, 0.08)" />
+      <text x="${margin.left - 12}" y="${py + 5}" text-anchor="end" fill="#707984" font-size="12">${value.toLocaleString("ja-JP")}</text>
     `;
   }).join("");
 
   const xTicks = rows
     .filter((_, index) => rows.length <= 12 || index === 0 || index === rows.length - 1 || index % Math.ceil(rows.length / 6) === 0)
     .map((row) => `
-      <text x="${x(row.year)}" y="${height - 16}" text-anchor="middle" fill="#5e6775" font-size="12">${row.year}</text>
+      <text x="${x(row.year)}" y="${height - 16}" text-anchor="middle" fill="#707984" font-size="12">${row.year}</text>
     `)
     .join("");
 
   const points = rows
     .map(
       (row) => `
-        <circle cx="${x(row.year)}" cy="${y(row.count)}" r="4.5" fill="#0e6d68"></circle>
+        <circle cx="${x(row.year)}" cy="${y(row.count)}" r="4.5" fill="#5c6672"></circle>
         <title>${row.year}年: ${row.count.toLocaleString("ja-JP")}件</title>
       `
     )
     .join("");
 
   chart.innerHTML = `
-    <rect x="0" y="0" width="${width}" height="${height}" rx="24" fill="rgba(14, 109, 104, 0.04)"></rect>
+    <rect x="0" y="0" width="${width}" height="${height}" rx="24" fill="rgba(92, 102, 114, 0.03)"></rect>
     ${grid}
-    <line x1="${margin.left}" y1="${height - margin.bottom}" x2="${width - margin.right}" y2="${height - margin.bottom}" stroke="rgba(28, 36, 48, 0.18)" />
-    <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${height - margin.bottom}" stroke="rgba(28, 36, 48, 0.18)" />
-    <path d="${path}" fill="none" stroke="#0e6d68" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path>
+    <line x1="${margin.left}" y1="${height - margin.bottom}" x2="${width - margin.right}" y2="${height - margin.bottom}" stroke="rgba(67, 75, 85, 0.14)" />
+    <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${height - margin.bottom}" stroke="rgba(67, 75, 85, 0.14)" />
+    <path d="${path}" fill="none" stroke="#5c6672" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path>
     ${points}
     ${xTicks}
   `;
+}
+
+function renderYearOptions(rows) {
+  const years = [...rows].sort((a, b) => b.year - a.year);
+  state.years = years.map((row) => row.year);
+  yearSelect.innerHTML = years
+    .map((row) => `<option value="${row.year}">${row.year}年</option>`)
+    .join("");
+}
+
+function renderBooks(items) {
+  if (!items.length) {
+    booksList.innerHTML = '<li class="book-item empty">該当年の書誌が取得できませんでした。</li>';
+    return;
+  }
+
+  booksList.innerHTML = items
+    .map(
+      (item) => `
+        <li class="book-item">
+          <span class="book-title">${item.title}</span>
+        </li>
+      `
+    )
+    .join("");
+}
+
+async function loadYearBooks(year, page = 1) {
+  if (!state.keyword || !year) {
+    return;
+  }
+
+  loadBooksButton.disabled = true;
+  prevPageButton.disabled = true;
+  nextPageButton.disabled = true;
+  setBooksStatus(`${year}年の書誌一覧を取得中です...`);
+
+  try {
+    yearBooksApiUrl.search = new URLSearchParams({
+      keyword: state.keyword,
+      year: String(year),
+      page: String(page),
+    }).toString();
+    const response = await fetch(yearBooksApiUrl.toString());
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "年別一覧の取得に失敗しました");
+    }
+
+    state.selectedYear = data.year;
+    state.page = data.page;
+    state.totalPages = data.totalPages;
+    yearSelect.value = String(data.year);
+    booksMeta.textContent = `「${data.keyword}」の ${data.year}年: ${data.totalCount.toLocaleString("ja-JP")}件`;
+    booksPageLabel.textContent = `${data.page} / ${data.totalPages} ページ`;
+    prevPageButton.disabled = data.page <= 1;
+    nextPageButton.disabled = data.page >= data.totalPages;
+    renderBooks(data.items || []);
+    setBooksStatus("年別の書誌一覧を更新しました。");
+  } catch (error) {
+    booksList.innerHTML = "";
+    booksPageLabel.textContent = "";
+    setBooksStatus(error.message, true);
+  } finally {
+    loadBooksButton.disabled = false;
+  }
 }
 
 async function runSearch(keyword) {
@@ -133,7 +215,13 @@ async function runSearch(keyword) {
     }
 
     const rows = data.yearCounts || [];
+    state.keyword = data.keyword;
+    state.selectedYear = rows.length ? rows[rows.length - 1].year : null;
+    state.page = 1;
+    state.totalPages = 1;
+
     resultPanel.classList.remove("hidden");
+    booksPanel.classList.remove("hidden");
     resultKeyword.textContent = `「${data.keyword}」`;
     resultMeta.textContent = `${data.totalCount.toLocaleString("ja-JP")}件ヒット / ${data.requestCount.toLocaleString("ja-JP")} APIリクエスト / ${data.cached ? "キャッシュ" : "API"} 応答`;
     chartRange.textContent = rows.length ? `${rows[0].year}年 - ${rows[rows.length - 1].year}年` : "出版年なし";
@@ -143,14 +231,22 @@ async function runSearch(keyword) {
 
     renderChart(rows);
     renderTable(rows);
+    renderYearOptions(rows);
 
     if (rows.length) {
       setStatus(`年次集計を更新しました。クエリ: ${data.query}`);
+      await loadYearBooks(Number(yearSelect.value), 1);
     } else {
+      booksList.innerHTML = "";
+      yearSelect.innerHTML = "";
+      booksPageLabel.textContent = "";
+      booksMeta.textContent = "年次データがないため一覧は表示できません。";
       setStatus("検索結果はありましたが、出版年ファセットに年次データがありませんでした。");
+      setBooksStatus("年次データがないため一覧は表示できません。", true);
     }
   } catch (error) {
     resultPanel.classList.add("hidden");
+    booksPanel.classList.add("hidden");
     setStatus(error.message, true);
   } finally {
     searchButton.disabled = false;
@@ -165,4 +261,33 @@ form.addEventListener("submit", (event) => {
     return;
   }
   runSearch(keyword);
+});
+
+loadBooksButton.addEventListener("click", () => {
+  const year = Number(yearSelect.value);
+  loadYearBooks(year, 1);
+});
+
+resultsBody.addEventListener("click", (event) => {
+  const trigger = event.target.closest("[data-year]");
+  if (!trigger) {
+    return;
+  }
+  const year = Number(trigger.dataset.year);
+  if (!Number.isFinite(year)) {
+    return;
+  }
+  loadYearBooks(year, 1);
+});
+
+prevPageButton.addEventListener("click", () => {
+  if (state.page > 1) {
+    loadYearBooks(state.selectedYear, state.page - 1);
+  }
+});
+
+nextPageButton.addEventListener("click", () => {
+  if (state.page < state.totalPages) {
+    loadYearBooks(state.selectedYear, state.page + 1);
+  }
 });

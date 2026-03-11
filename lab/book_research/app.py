@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import urllib.error
 import urllib.parse
@@ -17,6 +18,7 @@ REQUEST_TIMEOUT_SECONDS = 20
 MAX_KEYWORD_LENGTH = 120
 FACET_BUCKET_LIMIT = 50
 MIN_YEAR = 1000
+BOOKS_PER_PAGE = 20
 LAB_TITLE = "BOOK TREND RESEARCH"
 LAB_DESCRIPTION = "指定したキーワードを含む書籍の出版数を年推移で見る。"
 
@@ -30,6 +32,7 @@ class CacheEntry:
 
 
 _cache: dict[str, CacheEntry] = {}
+TITLE_TAG_RE = re.compile(r"<(?:[A-Za-z0-9_]+:)?title>(.*?)</(?:[A-Za-z0-9_]+:)?title>", re.DOTALL)
 
 
 def _local_name(tag: str) -> str:
@@ -56,19 +59,29 @@ def _build_year_range(keyword: str, start_year: int | None = None, end_year: int
     return " AND ".join(parts)
 
 
-def _fetch_ndl_xml(query_text: str) -> bytes:
+def _fetch_ndl_xml_with_options(
+    query_text: str,
+    maximum_records: int = 1,
+    start_record: int = 1,
+    record_schema: str = "dc",
+) -> bytes:
     query = urllib.parse.urlencode(
         {
             "operation": "searchRetrieve",
             "version": "1.2",
-            "recordSchema": "dc",
-            "maximumRecords": "1",
+            "recordSchema": record_schema,
+            "maximumRecords": str(maximum_records),
+            "startRecord": str(start_record),
             "query": query_text,
         }
     )
     url = f"{NDL_SRU_URL}?{query}"
     with urllib.request.urlopen(url, timeout=REQUEST_TIMEOUT_SECONDS) as response:
         return response.read()
+
+
+def _fetch_ndl_xml(query_text: str) -> bytes:
+    return _fetch_ndl_xml_with_options(query_text)
 
 
 def _parse_year_facets(xml_bytes: bytes) -> tuple[int, dict[int, int]]:
@@ -122,6 +135,30 @@ def _parse_year_facets(xml_bytes: bytes) -> tuple[int, dict[int, int]]:
             break
 
     return number_of_records, year_counts
+
+
+def _parse_title_records(xml_bytes: bytes) -> tuple[int, list[dict[str, str]]]:
+    root = ET.fromstring(xml_bytes)
+    number_of_records = 0
+    items: list[dict[str, str]] = []
+
+    for element in root.iter():
+        name = _local_name(element.tag)
+        text = (element.text or "").strip()
+        if name == "numberOfRecords" and text.isdigit():
+            number_of_records = int(text)
+
+        if name != "recordData" or not text:
+            continue
+
+        title = ""
+        match = TITLE_TAG_RE.search(unescape(text))
+        if match:
+            title = match.group(1).strip()
+        if title:
+            items.append({"title": title})
+
+    return number_of_records, items
 
 
 def _collect_year_counts(
@@ -178,6 +215,27 @@ def _search_keyword(keyword: str) -> dict:
     }
 
 
+def _fetch_year_books(keyword: str, year: int, page: int) -> dict:
+    start_record = ((page - 1) * BOOKS_PER_PAGE) + 1
+    query_text = _build_year_range(keyword, year, year)
+    xml_bytes = _fetch_ndl_xml_with_options(
+        query_text,
+        maximum_records=BOOKS_PER_PAGE,
+        start_record=start_record,
+    )
+    total_count, items = _parse_title_records(xml_bytes)
+    total_pages = max(1, (total_count + BOOKS_PER_PAGE - 1) // BOOKS_PER_PAGE) if total_count else 1
+    return {
+        "keyword": keyword,
+        "year": year,
+        "page": page,
+        "perPage": BOOKS_PER_PAGE,
+        "totalCount": total_count,
+        "totalPages": total_pages,
+        "items": items,
+    }
+
+
 def _get_cached(keyword: str) -> dict | None:
     entry = _cache.get(keyword)
     if not entry:
@@ -198,6 +256,7 @@ def _set_cached(keyword: str, payload: dict) -> None:
 @app.get("/")
 def index():
     return render_template("book_research/index.html")
+
 
 def handle_search_request():
     keyword = (request.args.get("keyword") or "").strip()
@@ -230,6 +289,39 @@ def handle_search_request():
 @app.get("/api/search")
 def search_books():
     return handle_search_request()
+
+
+def handle_year_books_request():
+    keyword = (request.args.get("keyword") or "").strip()
+    year_text = (request.args.get("year") or "").strip()
+    page_text = (request.args.get("page") or "1").strip()
+
+    if not keyword:
+        return jsonify({"error": "keyword is required"}), 400
+    if not year_text.isdigit():
+        return jsonify({"error": "year must be a number"}), 400
+    if not page_text.isdigit() or int(page_text) < 1:
+        return jsonify({"error": "page must be a positive number"}), 400
+
+    try:
+        payload = _fetch_year_books(keyword, int(year_text), int(page_text))
+    except urllib.error.HTTPError as exc:
+        return jsonify({"error": f"NDL Search returned HTTP {exc.code}"}), 502
+    except urllib.error.URLError:
+        return jsonify({"error": "Failed to reach NDL Search"}), 502
+    except TimeoutError:
+        return jsonify({"error": "Request to NDL Search timed out"}), 504
+    except ET.ParseError:
+        return jsonify({"error": "Failed to parse NDL Search response"}), 502
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 502
+
+    return jsonify(payload)
+
+
+@app.get("/api/year-books")
+def year_books():
+    return handle_year_books_request()
 
 
 if __name__ == "__main__":

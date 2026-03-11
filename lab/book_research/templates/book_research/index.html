@@ -80,6 +80,37 @@
           </div>
         </div>
       </section>
+
+      <section id="books-panel" class="panel books-panel hidden">
+        <div class="books-head">
+          <div>
+            <p class="result-keyword">年別の書籍一覧</p>
+            <p id="books-meta" class="result-meta">年を選ぶと、その年のタイトル一覧を表示します。</p>
+          </div>
+        </div>
+
+        <div class="year-picker">
+          <label class="field year-field">
+            <span>対象年</span>
+            <select id="year-select"></select>
+          </label>
+          <button id="load-books-button" type="button">一覧を表示</button>
+        </div>
+
+        <div id="books-status" class="status" aria-live="polite">
+          年次集計のあとに利用できます。
+        </div>
+
+        <div class="books-card">
+          <ol id="books-list" class="books-list"></ol>
+        </div>
+
+        <div class="books-pager">
+          <button id="prev-page-button" type="button">前へ</button>
+          <span id="books-page-label" class="result-meta"></span>
+          <button id="next-page-button" type="button">次へ</button>
+        </div>
+      </section>
     </main>
 
     <script src="./static/app.js"></script>
