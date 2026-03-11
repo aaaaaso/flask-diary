@@ -364,6 +364,7 @@ async function runSearch(keyword) {
     setStatus(error.message, true);
   } finally {
     stopLoadingStatus();
+    setStatus("");
     stopFiltersLoadingStatus();
     searchButton.disabled = false;
     applyFiltersButton.disabled = false;
