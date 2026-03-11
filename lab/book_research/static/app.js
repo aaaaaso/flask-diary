@@ -223,7 +223,7 @@ async function runSearch(keyword) {
     resultPanel.classList.remove("hidden");
     booksPanel.classList.remove("hidden");
     resultKeyword.textContent = `「${data.keyword}」`;
-    resultMeta.textContent = `${data.totalCount.toLocaleString("ja-JP")}件ヒット / ${data.requestCount.toLocaleString("ja-JP")} APIリクエスト / ${data.cached ? "キャッシュ" : "API"} 応答`;
+    resultMeta.textContent = "";
     chartRange.textContent = rows.length ? `${rows[0].year}年 - ${rows[rows.length - 1].year}年` : "出版年なし";
     tableSummary.textContent = `${rows.length.toLocaleString("ja-JP")}年分`;
     sourceLink.href = data.source;
@@ -234,7 +234,7 @@ async function runSearch(keyword) {
     renderYearOptions(rows);
 
     if (rows.length) {
-      setStatus(`年次集計を更新しました。クエリ: ${data.query}`);
+      setStatus("年次集計を更新しました。");
       await loadYearBooks(Number(yearSelect.value), 1);
     } else {
       booksList.innerHTML = "";
