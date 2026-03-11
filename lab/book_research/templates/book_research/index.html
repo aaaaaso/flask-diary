@@ -43,6 +43,14 @@
           </div>
         </div>
 
+        <div class="chart-card">
+          <div class="chart-topline">
+            <strong>出版件数の推移</strong>
+            <span id="chart-range"></span>
+          </div>
+          <svg id="chart" class="chart" viewBox="0 0 920 380" role="img" aria-label="出版件数の推移グラフ"></svg>
+        </div>
+
         <div class="result-filter-bar">
           <div class="result-filter-label">期間フィルタ</div>
           <div class="filters-grid">
@@ -56,14 +64,6 @@
             </label>
           </div>
           <button id="apply-filters-button" class="toggle-button" type="button">期間を更新</button>
-        </div>
-
-        <div class="chart-card">
-          <div class="chart-topline">
-            <strong>出版件数の推移</strong>
-            <span id="chart-range"></span>
-          </div>
-          <svg id="chart" class="chart" viewBox="0 0 920 380" role="img" aria-label="出版件数の推移グラフ"></svg>
         </div>
 
         <div class="table-card">
@@ -89,7 +89,8 @@
         <div class="books-head">
           <div>
             <p class="result-keyword">年別の書籍一覧</p>
-            <p id="books-meta" class="result-meta">年を選ぶと、その年を明示条件として検索できた書誌一覧を表示します。推定年として集計された資料は含まれない場合があります。</p>
+            <p class="result-meta">年次グラフは出版年ファセットによる集計を含みますが、以下の一覧は出版年を明示条件で検索できた書誌のみを表示しています。</p>
+            <p id="books-meta" class="result-meta"></p>
           </div>
         </div>
 

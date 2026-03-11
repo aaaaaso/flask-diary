@@ -123,8 +123,10 @@ function renderChart(rows) {
   const points = rows
     .map(
       (row) => `
+        <circle cx="${x(row.year)}" cy="${y(row.count)}" r="12" fill="transparent">
+          <title>${row.year}年: ${row.count.toLocaleString("ja-JP")}件</title>
+        </circle>
         <circle cx="${x(row.year)}" cy="${y(row.count)}" r="4.5" fill="#5c6672"></circle>
-        <title>${row.year}年: ${row.count.toLocaleString("ja-JP")}件</title>
       `
     )
     .join("");

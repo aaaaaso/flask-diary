@@ -10,11 +10,11 @@
   --brand-soft: rgba(92, 102, 114, 0.14);
   --danger: #8b5c5c;
   --outer-shadow:
-    8px 8px 18px rgba(152, 160, 170, 0.44),
-    -8px -8px 18px rgba(241, 249, 249, 0.62);
+    6px 6px 12px rgba(152, 160, 170, 0.38),
+    -6px -6px 12px rgba(241, 249, 249, 0.56);
   --outer-shadow-soft:
-    5px 5px 12px rgba(152, 160, 170, 0.34),
-    -5px -5px 12px rgba(241, 249, 249, 0.56);
+    3px 3px 8px rgba(152, 160, 170, 0.28),
+    -3px -3px 8px rgba(241, 249, 249, 0.5);
   --inner-shadow:
     inset 6px 6px 12px rgba(166, 173, 181, 0.32),
     inset -1px -1px 2px rgba(241, 249, 249, 0.6);
@@ -212,6 +212,10 @@ button:disabled {
   color: var(--muted);
   font-size: 0.86rem;
   letter-spacing: 0.06em;
+}
+
+.result-filter-bar .toggle-button {
+  margin-top: 14px;
 }
 
 .books-panel {
