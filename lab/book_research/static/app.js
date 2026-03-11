@@ -19,7 +19,6 @@ const booksPanel = document.getElementById("books-panel");
 const booksMeta = document.getElementById("books-meta");
 const booksStatus = document.getElementById("books-status");
 const yearSelect = document.getElementById("year-select");
-const loadBooksButton = document.getElementById("load-books-button");
 const booksList = document.getElementById("books-list");
 const prevPageButton = document.getElementById("prev-page-button");
 const nextPageButton = document.getElementById("next-page-button");
@@ -226,7 +225,6 @@ async function loadYearBooks(year, page = 1) {
     return;
   }
 
-  loadBooksButton.disabled = true;
   prevPageButton.disabled = true;
   nextPageButton.disabled = true;
   setBooksStatus(`${year}年の書誌一覧を取得中です...`);
@@ -262,8 +260,6 @@ async function loadYearBooks(year, page = 1) {
     booksPageLabel.textContent = "";
     booksPager.classList.add("hidden");
     setBooksStatus(error.message, true);
-  } finally {
-    loadBooksButton.disabled = false;
   }
 }
 
@@ -351,7 +347,7 @@ form.addEventListener("submit", (event) => {
   runSearch(keyword);
 });
 
-loadBooksButton.addEventListener("click", () => {
+yearSelect.addEventListener("change", () => {
   const year = Number(yearSelect.value);
   loadYearBooks(year, 1);
 });
