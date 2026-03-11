@@ -218,6 +218,12 @@ button:disabled {
   margin-top: 14px;
 }
 
+.result-toggle-row {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
 .books-panel {
   margin-top: 22px;
   padding: 22px;
