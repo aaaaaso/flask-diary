@@ -441,20 +441,28 @@ tbody tr:nth-child(even) {
   }
 
   .panel {
-    padding: 0;
-    background: transparent;
+    padding: 14px;
+    background: rgba(238, 242, 245, 0.72);
     border: 0;
     box-shadow: none;
+    border-radius: 20px;
   }
 
   .search-panel,
   .result-panel,
   .books-panel {
-    padding: 0;
+    padding: 14px;
   }
 
   .search-form {
     grid-template-columns: minmax(0, 1fr) 46px;
+  }
+
+  .chart-card,
+  .table-card,
+  .books-card,
+  .result-filter-bar {
+    margin-top: 16px;
   }
 
   .filters-grid {
