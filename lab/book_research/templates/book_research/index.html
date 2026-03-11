@@ -56,7 +56,7 @@
 
         <div class="search-toggle-row result-toggle-row">
           <button id="filters-toggle" class="toggle-button" type="button" aria-expanded="false" aria-controls="filters-panel">
-            期間フィルタ
+            期間を変えて調べる
           </button>
         </div>
 
@@ -64,7 +64,7 @@
           <div class="filters-grid">
             <label class="field">
               <span>始点</span>
-              <input id="start-year-input" name="startYear" type="number" min="1000" step="1" value="1950" />
+              <input id="start-year-input" name="startYear" type="number" min="1000" step="1" value="1980" />
             </label>
             <label class="field">
               <span>終点</span>
@@ -98,7 +98,6 @@
           <div>
             <p class="result-keyword">年別の書籍一覧</p>
             <p class="result-meta">年次グラフの出版年は一部推計されたものを含みますが、以下は出版年が検索できた書誌のみを表示しています。</p>
-            <p id="books-meta" class="result-meta"></p>
           </div>
         </div>
 
@@ -109,9 +108,7 @@
           </label>
         </div>
 
-        <div id="books-status" class="status" aria-live="polite">
-          年次集計のあとに利用できます。下部一覧は出版年を明示条件で絞った検索結果です。
-        </div>
+        <div id="books-status" class="status" aria-live="polite"></div>
 
         <div class="books-card">
           <ol id="books-list" class="books-list"></ol>

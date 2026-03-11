@@ -16,7 +16,6 @@ const resultsBody = document.getElementById("results-body");
 const chart = document.getElementById("chart");
 const chartTooltip = document.getElementById("chart-tooltip");
 const booksPanel = document.getElementById("books-panel");
-const booksMeta = document.getElementById("books-meta");
 const booksStatus = document.getElementById("books-status");
 const yearSelect = document.getElementById("year-select");
 const booksList = document.getElementById("books-list");
@@ -33,7 +32,7 @@ const state = {
   selectedYear: null,
   page: 1,
   totalPages: 1,
-  startYear: 1950,
+  startYear: 1980,
   endYear: new Date().getFullYear(),
 };
 
@@ -153,7 +152,7 @@ function renderChart(rows) {
   }).join("");
 
   const xTicks = rows
-    .filter((_, index) => rows.length <= 12 || index === 0 || index === rows.length - 1 || index % Math.ceil(rows.length / 6) === 0)
+    .filter((row) => row.year % 5 === 0 || row.year === minYear || row.year === maxYear)
     .map((row) => `
       <text x="${x(row.year)}" y="${height - 16}" text-anchor="middle" fill="#707984" font-size="12">${row.year}</text>
     `)
@@ -246,8 +245,7 @@ async function loadYearBooks(year, page = 1) {
     state.page = data.page;
     state.totalPages = data.totalPages;
     yearSelect.value = String(data.year);
-    booksMeta.textContent = `「${data.keyword}」の ${data.year}年: ${data.totalCount.toLocaleString("ja-JP")}件`;
-    setBooksStatus("");
+    setBooksStatus(`「${data.keyword}」の ${data.year}年の検索結果: ${data.totalCount.toLocaleString("ja-JP")}件`);
     booksPager.classList.toggle("hidden", data.totalPages <= 1);
     booksPageLabel.textContent = data.totalPages > 1 ? `${data.page} / ${data.totalPages} ページ` : "";
     prevPageButton.disabled = data.page <= 1;
@@ -269,7 +267,7 @@ async function runSearch(keyword) {
   setStatus("集計中...");
 
   try {
-    const startYear = Number.parseInt(startYearInput.value, 10) || 1950;
+    const startYear = Number.parseInt(startYearInput.value, 10) || 1980;
     const endYear = Number.parseInt(endYearInput.value, 10) || new Date().getFullYear();
     searchApiUrl.search = new URLSearchParams({
       keyword,
@@ -312,7 +310,6 @@ async function runSearch(keyword) {
       yearSelect.innerHTML = "";
       booksPageLabel.textContent = "";
       booksPager.classList.add("hidden");
-      booksMeta.textContent = "";
       setStatus("検索結果はありましたが、出版年ファセットに年次データがありませんでした。");
       setBooksStatus("年次データがないため一覧は表示できません。", true);
     }
