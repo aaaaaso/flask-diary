@@ -17,6 +17,8 @@ REQUEST_TIMEOUT_SECONDS = 20
 MAX_KEYWORD_LENGTH = 120
 FACET_BUCKET_LIMIT = 50
 MIN_YEAR = 1000
+LAB_TITLE = "BOOK TREND RESEARCH"
+LAB_DESCRIPTION = "指定したキーワードを含む書籍の出版数を年推移で見る。"
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 
@@ -195,11 +197,9 @@ def _set_cached(keyword: str, payload: dict) -> None:
 
 @app.get("/")
 def index():
-    return render_template("index.html")
+    return render_template("book_research/index.html")
 
-
-@app.get("/api/search")
-def search_books():
+def handle_search_request():
     keyword = (request.args.get("keyword") or "").strip()
     if not keyword:
         return jsonify({"error": "keyword is required"}), 400
@@ -225,6 +225,11 @@ def search_books():
 
     _set_cached(keyword, payload)
     return jsonify(payload)
+
+
+@app.get("/api/search")
+def search_books():
+    return handle_search_request()
 
 
 if __name__ == "__main__":
