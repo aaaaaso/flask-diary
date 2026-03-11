@@ -2,10 +2,9 @@ const form = document.getElementById("search-form");
 const keywordInput = document.getElementById("keyword-input");
 const searchButton = document.getElementById("search-button");
 const statusEl = document.getElementById("status");
-const filtersToggle = document.getElementById("filters-toggle");
-const filtersPanel = document.getElementById("filters-panel");
 const startYearInput = document.getElementById("start-year-input");
 const endYearInput = document.getElementById("end-year-input");
+const applyFiltersButton = document.getElementById("apply-filters-button");
 const resultPanel = document.getElementById("result-panel");
 const resultKeyword = document.getElementById("result-keyword");
 const resultMeta = document.getElementById("result-meta");
@@ -268,9 +267,12 @@ async function runSearch(keyword) {
   }
 }
 
-filtersToggle.addEventListener("click", () => {
-  const isHidden = filtersPanel.classList.toggle("hidden");
-  filtersToggle.setAttribute("aria-expanded", String(!isHidden));
+applyFiltersButton.addEventListener("click", () => {
+  const keyword = state.keyword || keywordInput.value.trim();
+  if (!keyword) {
+    return;
+  }
+  runSearch(keyword);
 });
 
 form.addEventListener("submit", (event) => {

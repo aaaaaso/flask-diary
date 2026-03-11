@@ -32,25 +32,7 @@
             <img src="./static/search_icon.png" alt="" />
           </button>
         </form>
-        <div class="search-toggle-row">
-          <button id="filters-toggle" class="toggle-button" type="button" aria-expanded="false" aria-controls="filters-panel">
-            条件を絞る
-          </button>
-        </div>
-        <div id="filters-panel" class="filters-panel hidden">
-          <div class="filters-grid">
-            <label class="field">
-              <span>年範囲の始点</span>
-              <input id="start-year-input" name="startYear" type="number" min="1000" step="1" value="1950" />
-            </label>
-            <label class="field">
-              <span>年範囲の終点</span>
-              <input id="end-year-input" name="endYear" type="number" min="1000" step="1" />
-            </label>
-          </div>
-        </div>
-        <div id="status" class="status" aria-live="polite">
-        </div>
+        <div id="status" class="status" aria-live="polite"></div>
       </section>
 
       <section id="result-panel" class="panel result-panel hidden">
@@ -59,6 +41,21 @@
             <p id="result-keyword" class="result-keyword"></p>
             <p id="result-meta" class="result-meta"></p>
           </div>
+        </div>
+
+        <div class="result-filter-bar">
+          <div class="result-filter-label">期間フィルタ</div>
+          <div class="filters-grid">
+            <label class="field">
+              <span>始点</span>
+              <input id="start-year-input" name="startYear" type="number" min="1000" step="1" value="1950" />
+            </label>
+            <label class="field">
+              <span>終点</span>
+              <input id="end-year-input" name="endYear" type="number" min="1000" step="1" />
+            </label>
+          </div>
+          <button id="apply-filters-button" class="toggle-button" type="button">期間を更新</button>
         </div>
 
         <div class="chart-card">
