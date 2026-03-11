@@ -108,7 +108,10 @@ def _parse_year_facets(xml_bytes: bytes) -> tuple[int, dict[int, int]]:
                     parts.append(text)
             if parts:
                 details.append(" / ".join(parts))
-        raise ValueError(details[0] if details else "NDL Search returned a diagnostic error.")
+        message = details[0] if details else "NDL Search returned a diagnostic error."
+        if "Record does not exist" in message:
+            return 0, {}
+        raise ValueError(message)
 
     number_of_records = 0
     year_counts: dict[int, int] = {}

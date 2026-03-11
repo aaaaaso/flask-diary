@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>BOOK TREND RESEARCH</title>
-    <meta name="description" content="キーワードを含む書籍の出版数推移を調べます。" />
+    <meta name="description" content="キーワードを含む書籍の出版件数の推移を調べる。" />
     <link rel="stylesheet" href="./static/style.css" />
   </head>
   <body>
@@ -12,7 +12,7 @@
       <section class="hero">
         <h1>BOOK TREND RESEARCH</h1>
         <p class="lead">
-          キーワードを含む書籍の出版数推移を調べます。
+          キーワードを含む書籍の出版件数の推移を調べる。
         </p>
       </section>
 
@@ -24,7 +24,7 @@
               name="keyword"
               type="text"
               maxlength="120"
-              placeholder="調べたいキーワードを入力"
+              placeholder="なに調べる？"
               required
             />
           </label>
@@ -51,8 +51,13 @@
           <svg id="chart" class="chart" viewBox="0 0 920 380" role="img" aria-label="出版件数の推移グラフ"></svg>
         </div>
 
-        <div class="result-filter-bar">
-          <div class="result-filter-label">期間フィルタ</div>
+        <div class="search-toggle-row result-toggle-row">
+          <button id="filters-toggle" class="toggle-button" type="button" aria-expanded="false" aria-controls="filters-panel">
+            期間フィルタ
+          </button>
+        </div>
+
+        <div id="filters-panel" class="result-filter-bar hidden">
           <div class="filters-grid">
             <label class="field">
               <span>始点</span>

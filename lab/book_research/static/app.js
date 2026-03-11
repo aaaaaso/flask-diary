@@ -2,9 +2,11 @@ const form = document.getElementById("search-form");
 const keywordInput = document.getElementById("keyword-input");
 const searchButton = document.getElementById("search-button");
 const statusEl = document.getElementById("status");
+const filtersToggle = document.getElementById("filters-toggle");
 const startYearInput = document.getElementById("start-year-input");
 const endYearInput = document.getElementById("end-year-input");
 const applyFiltersButton = document.getElementById("apply-filters-button");
+const filtersPanel = document.getElementById("filters-panel");
 const resultPanel = document.getElementById("result-panel");
 const resultKeyword = document.getElementById("result-keyword");
 const resultMeta = document.getElementById("result-meta");
@@ -21,6 +23,7 @@ const booksList = document.getElementById("books-list");
 const prevPageButton = document.getElementById("prev-page-button");
 const nextPageButton = document.getElementById("next-page-button");
 const booksPageLabel = document.getElementById("books-page-label");
+const booksPager = document.querySelector(".books-pager");
 const searchApiUrl = new URL("./api/search", window.location.href);
 const yearBooksApiUrl = new URL("./api/year-books", window.location.href);
 
@@ -195,14 +198,18 @@ async function loadYearBooks(year, page = 1) {
     state.totalPages = data.totalPages;
     yearSelect.value = String(data.year);
     booksMeta.textContent = `「${data.keyword}」の ${data.year}年: ${data.totalCount.toLocaleString("ja-JP")}件`;
-    booksPageLabel.textContent = `${data.page} / ${data.totalPages} ページ`;
+    booksPager.classList.toggle("hidden", data.totalPages <= 1);
+    booksPageLabel.textContent = data.totalPages > 1 ? `${data.page} / ${data.totalPages} ページ` : "";
     prevPageButton.disabled = data.page <= 1;
     nextPageButton.disabled = data.page >= data.totalPages;
+    prevPageButton.classList.toggle("hidden", data.page <= 1);
+    nextPageButton.classList.toggle("hidden", data.page >= data.totalPages);
     renderBooks(data.items || []);
     setBooksStatus("年別の書誌一覧を更新しました。");
   } catch (error) {
     booksList.innerHTML = "";
     booksPageLabel.textContent = "";
+    booksPager.classList.add("hidden");
     setBooksStatus(error.message, true);
   } finally {
     loadBooksButton.disabled = false;
@@ -256,6 +263,7 @@ async function runSearch(keyword) {
       booksList.innerHTML = "";
       yearSelect.innerHTML = "";
       booksPageLabel.textContent = "";
+      booksPager.classList.add("hidden");
       booksMeta.textContent = "年次データがないため一覧は表示できません。";
       setStatus("検索結果はありましたが、出版年ファセットに年次データがありませんでした。");
       setBooksStatus("年次データがないため一覧は表示できません。", true);
@@ -275,6 +283,11 @@ applyFiltersButton.addEventListener("click", () => {
     return;
   }
   runSearch(keyword);
+});
+
+filtersToggle.addEventListener("click", () => {
+  const isHidden = filtersPanel.classList.toggle("hidden");
+  filtersToggle.setAttribute("aria-expanded", String(!isHidden));
 });
 
 form.addEventListener("submit", (event) => {
