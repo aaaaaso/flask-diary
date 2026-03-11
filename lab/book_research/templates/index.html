@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BOOK TREND RESEARCH</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <p class="eyebrow">NDL Search SRU</p>
+        <h1>BOOK TREND RESEARCH</h1>
+        <p class="lead">
+          指定したキーワードを含む書籍の出版数を年推移で見る。
+        </p>
+      </section>
+
+      <section class="panel search-panel">
+        <form id="search-form" class="search-form">
+          <label class="field">
+            <span>タイトルに含むキーワード</span>
+            <input
+              id="keyword-input"
+              name="keyword"
+              type="text"
+              maxlength="120"
+              placeholder="例: 生成AI"
+              required
+            />
+          </label>
+          <button id="search-button" type="submit">集計する</button>
+        </form>
+        <div id="status" class="status" aria-live="polite">
+          キーワードを入力すると、年次推移グラフと件数表を表示します。
+        </div>
+      </section>
+
+      <section id="result-panel" class="panel result-panel hidden">
+        <div class="result-head">
+          <div>
+            <p id="result-keyword" class="result-keyword"></p>
+            <p id="result-meta" class="result-meta"></p>
+          </div>
+          <a
+            id="source-link"
+            class="source-link"
+            href="https://ndlsearch.ndl.go.jp/api/sru"
+            target="_blank"
+            rel="noreferrer"
+          >
+            API仕様
+          </a>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-topline">
+            <strong>出版件数の推移</strong>
+            <span id="chart-range"></span>
+          </div>
+          <svg id="chart" class="chart" viewBox="0 0 920 380" role="img" aria-label="出版件数の推移グラフ"></svg>
+        </div>
+
+        <div class="table-card">
+          <div class="table-topline">
+            <strong>年ごとの件数</strong>
+            <span id="table-summary"></span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>出版年</th>
+                  <th>件数</th>
+                </tr>
+              </thead>
+              <tbody id="results-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+  </body>
+</html>
