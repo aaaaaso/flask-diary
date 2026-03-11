@@ -19,17 +19,18 @@
       <section class="panel search-panel">
         <form id="search-form" class="search-form">
           <label class="field">
-            <span>タイトルに含むキーワード</span>
             <input
               id="keyword-input"
               name="keyword"
               type="text"
               maxlength="120"
-              placeholder="例: 生成AI"
+              placeholder="調べたいキーワードを入力"
               required
             />
           </label>
-          <button id="search-button" type="submit">集計する</button>
+          <button id="search-button" class="search-icon-button" type="submit" aria-label="集計する">
+            <img src="./static/search_icon.png" alt="" />
+          </button>
         </form>
         <div class="search-toggle-row">
           <button id="filters-toggle" class="toggle-button" type="button" aria-expanded="false" aria-controls="filters-panel">
@@ -49,7 +50,6 @@
           </div>
         </div>
         <div id="status" class="status" aria-live="polite">
-          キーワードを入力すると、年次推移グラフと件数表を表示します。
         </div>
       </section>
 
