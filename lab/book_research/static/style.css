@@ -81,7 +81,7 @@ body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 64px;
   gap: 14px;
-  align-items: end;
+  align-items: center;
 }
 
 .field {
@@ -95,7 +95,7 @@ body {
 }
 
 .search-toggle-row {
-  margin-top: 14px;
+  margin-top: 10px;
 }
 
 .toggle-button {
@@ -170,6 +170,7 @@ button {
   width: 24px;
   height: 24px;
   display: block;
+  filter: brightness(0) invert(1);
 }
 
 button:hover {
@@ -351,7 +352,7 @@ tbody tr:nth-child(even) {
   }
 
   .search-form {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) 56px;
   }
 
   .filters-grid {
