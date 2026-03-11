@@ -10,6 +10,7 @@ const chartRange = document.getElementById("chart-range");
 const tableSummary = document.getElementById("table-summary");
 const resultsBody = document.getElementById("results-body");
 const chart = document.getElementById("chart");
+const searchApiUrl = new URL("./api/search", window.location.href);
 
 function setStatus(message, isError = false) {
   statusEl.textContent = message;
@@ -123,7 +124,8 @@ async function runSearch(keyword) {
   setStatus("NDL Search から集計中です...");
 
   try {
-    const response = await fetch(`/api/search?keyword=${encodeURIComponent(keyword)}`);
+    searchApiUrl.search = new URLSearchParams({ keyword }).toString();
+    const response = await fetch(searchApiUrl.toString());
     const data = await response.json();
 
     if (!response.ok) {
