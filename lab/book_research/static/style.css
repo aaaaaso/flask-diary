@@ -231,13 +231,29 @@ button:disabled {
 }
 
 .result-filter-bar .toggle-button {
-  margin-top: 14px;
+  margin-top: 0;
 }
 
 .result-toggle-row {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+.filter-actions {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.inline-status {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.inline-status:empty {
+  display: none;
 }
 
 .books-panel {

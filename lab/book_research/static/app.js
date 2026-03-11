@@ -6,6 +6,7 @@ const filtersToggle = document.getElementById("filters-toggle");
 const startYearInput = document.getElementById("start-year-input");
 const endYearInput = document.getElementById("end-year-input");
 const applyFiltersButton = document.getElementById("apply-filters-button");
+const filtersStatus = document.getElementById("filters-status");
 const filtersPanel = document.getElementById("filters-panel");
 const resultPanel = document.getElementById("result-panel");
 const resultKeyword = document.getElementById("result-keyword");
@@ -36,6 +37,9 @@ const state = {
   endYear: new Date().getFullYear(),
 };
 
+let loadingTimer = null;
+let filtersLoadingTimer = null;
+
 endYearInput.value = String(state.endYear);
 
 function setStatus(message, isError = false) {
@@ -43,9 +47,49 @@ function setStatus(message, isError = false) {
   statusEl.classList.toggle("error", isError);
 }
 
+function startLoadingStatus() {
+  const frames = ["集計中.", "集計中..", "集計中..."];
+  let index = 0;
+  stopLoadingStatus();
+  setStatus(frames[index]);
+  loadingTimer = window.setInterval(() => {
+    index = (index + 1) % frames.length;
+    setStatus(frames[index]);
+  }, 360);
+}
+
+function stopLoadingStatus() {
+  if (loadingTimer !== null) {
+    window.clearInterval(loadingTimer);
+    loadingTimer = null;
+  }
+}
+
+function startFiltersLoadingStatus() {
+  const frames = ["更新中.", "更新中..", "更新中..."];
+  let index = 0;
+  stopFiltersLoadingStatus();
+  setFiltersStatus(frames[index]);
+  filtersLoadingTimer = window.setInterval(() => {
+    index = (index + 1) % frames.length;
+    setFiltersStatus(frames[index]);
+  }, 360);
+}
+
+function stopFiltersLoadingStatus() {
+  if (filtersLoadingTimer !== null) {
+    window.clearInterval(filtersLoadingTimer);
+    filtersLoadingTimer = null;
+  }
+}
+
 function setBooksStatus(message, isError = false) {
   booksStatus.textContent = message;
   booksStatus.classList.toggle("error", isError);
+}
+
+function setFiltersStatus(message) {
+  filtersStatus.textContent = message;
 }
 
 function renderTable(rows) {
@@ -253,7 +297,6 @@ async function loadYearBooks(year, page = 1) {
     prevPageButton.classList.toggle("hidden", data.page <= 1);
     nextPageButton.classList.toggle("hidden", data.page >= data.totalPages);
     renderBooks(data.items || []);
-    setBooksStatus("年別の書誌一覧を更新しました。");
   } catch (error) {
     booksList.innerHTML = "";
     booksPageLabel.textContent = "";
@@ -264,7 +307,9 @@ async function loadYearBooks(year, page = 1) {
 
 async function runSearch(keyword) {
   searchButton.disabled = true;
-  setStatus("集計中...");
+  applyFiltersButton.disabled = true;
+  startFiltersLoadingStatus();
+  startLoadingStatus();
 
   try {
     const startYear = Number.parseInt(startYearInput.value, 10) || 1980;
@@ -318,7 +363,11 @@ async function runSearch(keyword) {
     booksPanel.classList.add("hidden");
     setStatus(error.message, true);
   } finally {
+    stopLoadingStatus();
+    stopFiltersLoadingStatus();
     searchButton.disabled = false;
+    applyFiltersButton.disabled = false;
+    setFiltersStatus("");
   }
 }
 
@@ -328,6 +377,20 @@ applyFiltersButton.addEventListener("click", () => {
     return;
   }
   runSearch(keyword);
+});
+
+[startYearInput, endYearInput].forEach((input) => {
+  input.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") {
+      return;
+    }
+    event.preventDefault();
+    const keyword = state.keyword || keywordInput.value.trim();
+    if (!keyword) {
+      return;
+    }
+    runSearch(keyword);
+  });
 });
 
 filtersToggle.addEventListener("click", () => {

@@ -34,6 +34,13 @@ class CacheEntry:
 
 _cache: dict[str, CacheEntry] = {}
 TITLE_TAG_RE = re.compile(r"<(?:[A-Za-z0-9_]+:)?title>(.*?)</(?:[A-Za-z0-9_]+:)?title>", re.DOTALL)
+ISSUED_DATE_FACET_RE = re.compile(
+    r'<lst name="ISSUED_DATE">(.*?)</lst>',
+    re.DOTALL,
+)
+FACET_INT_RE = re.compile(
+    r'<int name="(\d+)">(\d+)</int>'
+)
 
 
 def _local_name(tag: str) -> str:
@@ -128,19 +135,10 @@ def _parse_year_facets(xml_bytes: bytes) -> tuple[int, dict[int, int]]:
             facets_xml = text
 
     if facets_xml:
-        facets_root = ET.fromstring(unescape(facets_xml))
-        for element in facets_root.iter():
-            if _local_name(element.tag) != "lst" or element.attrib.get("name") != "ISSUED_DATE":
-                continue
-            for child in element:
-                if _local_name(child.tag) != "int":
-                    continue
-                year_text = (child.attrib.get("name") or "").strip()
-                count_text = (child.text or "").strip()
-                if not (year_text.isdigit() and count_text.isdigit()):
-                    continue
+        match = ISSUED_DATE_FACET_RE.search(facets_xml)
+        if match:
+            for year_text, count_text in FACET_INT_RE.findall(match.group(1)):
                 year_counts[int(year_text)] = int(count_text)
-            break
 
     return number_of_records, year_counts
 

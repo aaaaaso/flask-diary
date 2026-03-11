@@ -71,7 +71,10 @@
               <input id="end-year-input" name="endYear" type="number" min="1000" step="1" />
             </label>
           </div>
-          <button id="apply-filters-button" class="toggle-button" type="button">期間を更新</button>
+          <div class="filter-actions">
+            <button id="apply-filters-button" class="toggle-button" type="button">期間を更新</button>
+            <span id="filters-status" class="inline-status" aria-live="polite"></span>
+          </div>
         </div>
 
         <div class="table-card">
