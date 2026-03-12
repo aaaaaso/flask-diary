@@ -179,6 +179,39 @@
       display: block;
     }
 
+    .settings-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .setting-label {
+      margin: 0 0 6px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .setting-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      align-items: end;
+    }
+
+    .setting-section-title {
+      margin: 10px 0 0;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .advanced-settings {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px 10px;
+      align-items: start;
+    }
+
     .scatter-tooltip {
       position: absolute;
       z-index: 2;
@@ -248,66 +281,96 @@
 
     <section class="panel fade-in">
       <div class="chart-box">
-        <div class="chart-title">Scatter</div>
+        <div class="chart-title" id="chartTitle">Scatter</div>
         <div id="scatterChart"></div>
       </div>
     </section>
 
     <section class="panel fade-in">
-      <div class="grid">
+      <div class="settings-stack">
         <div>
-          <div style="margin-bottom: 10px;">
-            <label for="xColumn">x列</label>
-            <select id="xColumn"></select>
+          <label for="plotTitle">title</label>
+          <input type="text" id="plotTitle" placeholder="入れるとグラフの上部に反映" />
+        </div>
+        <div>
+          <div class="setting-label">x列:</div>
+          <div class="setting-row">
+            <div>
+              <label for="xColumn">column</label>
+              <select id="xColumn"></select>
+            </div>
+            <div>
+              <label for="xAxisName">name</label>
+              <input type="text" id="xAxisName" placeholder="空欄なら列名を使用" />
+            </div>
+            <div>
+              <label for="xUpper">upper</label>
+              <input type="number" id="xUpper" step="any" placeholder="例: 30" />
+            </div>
           </div>
-          <div style="margin-bottom: 10px;">
-            <label for="xAxisName">x name</label>
-            <input type="text" id="xAxisName" placeholder="空欄なら列名を使用" />
+        </div>
+        <div>
+          <div class="setting-label">y列:</div>
+          <div class="setting-row">
+            <div>
+              <label for="yColumn">column</label>
+              <select id="yColumn"></select>
+            </div>
+            <div>
+              <label for="yAxisName">name</label>
+              <input type="text" id="yAxisName" placeholder="空欄なら列名を使用" />
+            </div>
+            <div>
+              <label for="yUpper">upper</label>
+              <input type="number" id="yUpper" step="any" placeholder="例: 20" />
+            </div>
           </div>
-          <div style="margin-bottom: 10px;">
-            <label for="yColumn">y列</label>
-            <select id="yColumn"></select>
+        </div>
+        <div>
+          <div class="setting-label">label列</div>
+          <div class="setting-row">
+            <div>
+              <label for="labelColumn">column</label>
+              <select id="labelColumn">
+                <option value="">なし</option>
+              </select>
+            </div>
+            <div></div>
+            <div></div>
           </div>
-          <div style="margin-bottom: 10px;">
-            <label for="yAxisName">y name</label>
-            <input type="text" id="yAxisName" placeholder="空欄なら列名を使用" />
+        </div>
+        <div class="setting-section-title">高度な設定</div>
+        <div class="advanced-settings">
+          <div>
+            <label for="figsize">figsize</label>
+            <input type="text" id="figsize" value="1:1" placeholder="例: 1:1, 2:1, 1:2" />
           </div>
-          <label class="toggle">
-            <input type="checkbox" id="swapAxes" />
-            x軸 / y軸を入れ替える
-          </label>
-          <label class="toggle">
-            <input type="checkbox" id="jitter" />
-            ジッターを有効化
-          </label>
-          <label class="toggle">
-            <input type="checkbox" id="showTrendline" />
-            トレンドラインを表示
-          </label>
-          <div style="margin-top: 10px;">
-            <label for="labelColumn">label列</label>
-            <select id="labelColumn">
-              <option value="">なし</option>
-            </select>
+          <div>
+            <label for="lineFormula">参照線</label>
+            <input type="text" id="lineFormula" placeholder="例: y=x/2+5" />
           </div>
-          <div style="margin-top: 10px;">
+          <div>
+            <label for="highlightExpr">条件に当てはまるplotを強調</label>
+            <input type="text" id="highlightExpr" placeholder="例: y>x" />
+          </div>
+          <div>
             <label for="filterExpr">filter条件</label>
             <input type="text" id="filterExpr" placeholder="例: a > 0 & b <= 100" />
             <div class="muted" style="margin-top: 6px;" id="detectedColumns"></div>
           </div>
-        </div>
-        <div>
-          <div style="margin-bottom: 12px;">
-            <label for="lineFormula">参照線</label>
-            <input type="text" id="lineFormula" placeholder="例: y=x/2+5" />
-          </div>
-          <div style="margin-bottom: 12px;">
-            <label for="xUpper">x upper</label>
-            <input type="number" id="xUpper" step="any" placeholder="例: 30" />
-          </div>
           <div>
-            <label for="yUpper">y upper</label>
-            <input type="number" id="yUpper" step="any" placeholder="例: 20" />
+            <label class="toggle">
+              <input type="checkbox" id="swapAxes" />
+              x軸 / y軸を入れ替える
+            </label>
+            <label class="toggle">
+              <input type="checkbox" id="jitter" />
+              ジッターを有効化
+            </label>
+            <label class="toggle">
+              <input type="checkbox" id="showTrendline" />
+              トレンドラインを表示
+            </label>
           </div>
         </div>
       </div>
@@ -316,7 +379,8 @@
   </main>
 
   <script>
-    const MAX_COLUMNS = 10;
+    const MAX_COLUMNS = 30;
+    let hasShownTooManyColumnsAlert = false;
 
     const formatNum = (v) => {
       if (!Number.isFinite(v)) return "-";
@@ -490,6 +554,28 @@
       };
     };
 
+    const buildHighlightEvaluator = (rawExpr) => {
+      if (!rawExpr || rawExpr.trim() === "") return null;
+      const expr = normalizeFilterExpr(rawExpr.trim());
+      const allowedChars = /^[\w\s<>=!&|().,+\-*/%"'[\]]+$/;
+      if (!allowedChars.test(expr)) {
+        throw new Error("強調条件に使えない文字が含まれています。");
+      }
+      if (/\b(this|Function|constructor|globalThis|window|document|eval)\b/.test(expr)) {
+        throw new Error("強調条件に使えないキーワードが含まれています。");
+      }
+      const tokens = expr.match(/[A-Za-z_][A-Za-z0-9_]*/g) || [];
+      const allowedNames = new Set(["x", "y", "true", "false", "null"]);
+      for (const t of tokens) {
+        if (!allowedNames.has(t)) {
+          throw new Error(`強調条件の変数 "${t}" を解釈できません。x と y を使ってください。`);
+        }
+      }
+      // eslint-disable-next-line no-new-func
+      const fn = new Function("x", "y", `return (${expr});`);
+      return (x, y) => Boolean(fn(x, y));
+    };
+
     const niceStep = (maxValue, targetTicks = 6) => {
       if (!Number.isFinite(maxValue) || maxValue <= 0) return 1;
       const raw = maxValue / Math.max(targetTicks, 2);
@@ -563,7 +649,22 @@
       return selectEl.value;
     };
 
-    const renderScatter = (points, xLabel, yLabel, jitterOn, lineEval, labelHeader, showTrendline) => {
+    const parseFigureSize = (raw) => {
+      const text = String(raw || "").trim();
+      if (text === "") return { widthRatio: 1, heightRatio: 1 };
+      const match = text.match(/^(\d+(?:\.\d+)?)\s*:\s*(\d+(?:\.\d+)?)$/);
+      if (!match) {
+        throw new Error("figsize は 1:1 や 2:1 の形式で入力してください。");
+      }
+      const widthRatio = Number(match[1]);
+      const heightRatio = Number(match[2]);
+      if (!Number.isFinite(widthRatio) || !Number.isFinite(heightRatio) || widthRatio <= 0 || heightRatio <= 0) {
+        throw new Error("figsize には正の数を指定してください。");
+      }
+      return { widthRatio, heightRatio };
+    };
+
+    const renderScatter = (points, xLabel, yLabel, jitterOn, lineEval, labelHeader, showTrendline, figureSize) => {
       const container = document.getElementById("scatterChart");
       if (points.length === 0) {
         container.innerHTML = '<div class="muted">描写できる点がありません。</div>';
@@ -571,7 +672,7 @@
       }
 
       const width = 640;
-      const height = 640;
+      const height = Math.max(220, Math.round(width * (figureSize.heightRatio / figureSize.widthRatio)));
       const pad = { top: 24, right: 24, bottom: 56, left: 60 };
       const innerW = width - pad.left - pad.right;
       const innerH = height - pad.top - pad.bottom;
@@ -616,7 +717,8 @@
           const cy = yFor(p.y + jy);
           const labelText = labelHeader && p.label ? `${p.label} ` : "";
           const title = `${labelText}(${formatNum(p.x)}, ${formatNum(p.y)})`;
-          return `<circle class="scatter-point" cx="${cx}" cy="${cy}" r="4" fill="#3b3f45" opacity="0.78" data-tip="${escapeXml(title)}"><title>${escapeXml(title)}</title></circle>`;
+          const fill = p.highlight ? "#44A194" : "#3b3f45";
+          return `<circle class="scatter-point" cx="${cx}" cy="${cy}" r="4" fill="${fill}" opacity="0.78" data-tip="${escapeXml(title)}"><title>${escapeXml(title)}</title></circle>`;
         })
         .join("");
 
@@ -691,6 +793,9 @@
 
     const build = () => {
       const raw = document.getElementById("dataInput").value;
+      const plotTitle = document.getElementById("plotTitle").value.trim();
+      const figsizeRaw = document.getElementById("figsize").value.trim();
+      const highlightExpr = document.getElementById("highlightExpr").value.trim();
       const hasHeader = document.getElementById("hasHeader").checked;
       const swapAxes = document.getElementById("swapAxes").checked;
       const jitterOn = document.getElementById("jitter").checked;
@@ -705,9 +810,23 @@
       const mainDataErrorEl = document.getElementById("mainDataError");
       const detectedColumnsEl = document.getElementById("detectedColumns");
       const noteEl = document.getElementById("delimiterNote");
+      const chartTitleEl = document.getElementById("chartTitle");
+      const scatterChartEl = document.getElementById("scatterChart");
 
       errorEl.textContent = "";
       if (mainDataErrorEl) mainDataErrorEl.textContent = "";
+      if (chartTitleEl) chartTitleEl.textContent = plotTitle || "Scatter";
+      let figureSize = { widthRatio: 1, heightRatio: 1 };
+      try {
+        figureSize = parseFigureSize(figsizeRaw || "1:1");
+      } catch (e) {
+        errorEl.textContent = e instanceof Error ? e.message : "figsize の解釈に失敗しました。";
+        if (scatterChartEl) scatterChartEl.innerHTML = "";
+        return;
+      }
+      if (scatterChartEl) {
+        scatterChartEl.style.aspectRatio = `${figureSize.widthRatio} / ${figureSize.heightRatio}`;
+      }
       const hasTab = raw.includes("\t");
       const hasComma = raw.includes(",");
       const hasPercent = /(^|[\s,\t])[-+]?\d[\d,]*(\.\d+)?\s*%/.test(raw);
@@ -753,12 +872,28 @@
         if (detectedColumnsEl) detectedColumnsEl.textContent = "";
         const skipNoticeEl = document.getElementById("skipNotice");
         if (skipNoticeEl) skipNoticeEl.textContent = "";
-        document.getElementById("scatterChart").innerHTML = "";
+        if (scatterChartEl) scatterChartEl.innerHTML = "";
         return;
       }
+      const normalizedLines = raw
+        .replace(/\r\n?/g, "\n")
+        .split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0);
+      const tooManyColumns = normalizedLines.some((line) => splitRow(line).length > MAX_COLUMNS);
+      if (tooManyColumns) {
+        if (mainDataErrorEl) mainDataErrorEl.textContent = `30列を超えています。`;
+        if (scatterChartEl) scatterChartEl.innerHTML = "";
+        if (!hasShownTooManyColumnsAlert) {
+          window.alert("30列を超えています");
+          hasShownTooManyColumnsAlert = true;
+        }
+        return;
+      }
+      hasShownTooManyColumnsAlert = false;
       if (parsed.maxCols < 2) {
         if (mainDataErrorEl) mainDataErrorEl.textContent = "2列以上のデータを貼り付けてください。";
-        document.getElementById("scatterChart").innerHTML = "";
+        if (scatterChartEl) scatterChartEl.innerHTML = "";
         return;
       }
       const mergedHeaders = parsed.headers.slice(0, MAX_COLUMNS);
@@ -784,12 +919,12 @@
 
       if (!Number.isInteger(selectedXCol) || !Number.isInteger(selectedYCol)) {
         if (mainDataErrorEl) mainDataErrorEl.textContent = "x列 / y列 を選択してください。";
-        document.getElementById("scatterChart").innerHTML = "";
+        if (scatterChartEl) scatterChartEl.innerHTML = "";
         return;
       }
       if (selectedXCol === selectedYCol) {
         if (mainDataErrorEl) mainDataErrorEl.textContent = "x列 と y列 は別のカラムを選択してください。";
-        document.getElementById("scatterChart").innerHTML = "";
+        if (scatterChartEl) scatterChartEl.innerHTML = "";
         return;
       }
 
@@ -803,6 +938,13 @@
         filterEval = buildFilterEvaluator(filterExpr, mergedHeaders, mergedMaxCols);
       } catch (e) {
         errorEl.textContent = e instanceof Error ? e.message : "filter条件の解釈に失敗しました。";
+        return;
+      }
+      let highlightEval = null;
+      try {
+        highlightEval = buildHighlightEvaluator(highlightExpr);
+      } catch (e) {
+        errorEl.textContent = e instanceof Error ? e.message : "強調条件の解釈に失敗しました。";
         return;
       }
       const skipNoticeEl = document.getElementById("skipNotice");
@@ -841,9 +983,10 @@
         if (Number.isFinite(yUpper) && r.y > yUpper) return false;
         return true;
       }).map((r) => {
-        if (selectedLabelCol < 0 || !Number.isInteger(selectedLabelCol)) return { ...r, label: "" };
+        const highlight = highlightEval ? highlightEval(r.x, r.y) : false;
+        if (selectedLabelCol < 0 || !Number.isInteger(selectedLabelCol)) return { ...r, label: "", highlight };
         const rawLabel = r.cells[selectedLabelCol] ?? "";
-        return { ...r, label: rawLabel };
+        return { ...r, label: rawLabel, highlight };
       });
 
       setText("parsedRows", parsed.rows.length);
@@ -855,7 +998,7 @@
           : "";
       }
 
-      renderScatter(plotted, xLabel, yLabel, jitterOn, lineEval, labelHeader, showTrendline);
+      renderScatter(plotted, xLabel, yLabel, jitterOn, lineEval, labelHeader, showTrendline, figureSize);
     };
 
     const debounce = (fn, wait = 180) => {
@@ -870,6 +1013,8 @@
 
     document.getElementById("dataInput").addEventListener("input", debouncedBuild);
     document.getElementById("hasHeader").addEventListener("change", build);
+    document.getElementById("plotTitle").addEventListener("input", debouncedBuild);
+    document.getElementById("figsize").addEventListener("input", debouncedBuild);
     document.getElementById("xColumn").addEventListener("change", build);
     document.getElementById("xAxisName").addEventListener("input", debouncedBuild);
     document.getElementById("yColumn").addEventListener("change", build);
@@ -878,6 +1023,7 @@
     document.getElementById("jitter").addEventListener("change", build);
     document.getElementById("showTrendline").addEventListener("change", build);
     document.getElementById("labelColumn").addEventListener("change", build);
+    document.getElementById("highlightExpr").addEventListener("input", debouncedBuild);
     document.getElementById("filterExpr").addEventListener("input", debouncedBuild);
     document.getElementById("lineFormula").addEventListener("input", debouncedBuild);
     document.getElementById("xUpper").addEventListener("input", debouncedBuild);
