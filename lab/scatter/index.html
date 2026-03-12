@@ -195,7 +195,7 @@
       margin: 0 0 6px;
       font-size: 13px;
       font-weight: 700;
-      color: var(--ink);
+      color: var(--muted);
     }
 
     .setting-row {
@@ -260,8 +260,8 @@
     <section class="panel fade-in">
       <div class="grid">
         <div>
-          <label for="dataInput">データ（タブ/カンマ/空白区切り）</label>
-          <textarea id="dataInput" placeholder="表データを貼り付け&#10;&#10;例:&#10;site_id	before_sessions	before_ratio	after_sessions	after_ratio&#10;1	134	0.0895	170	0.0588&#10;2	264	0.1212	268	0.1268"></textarea>
+          <label for="dataInput">データ</label>
+          <textarea id="dataInput" placeholder="表形式データを貼り付けてね（カンマ or タブ or 空白区切り）"></textarea>
           <label class="toggle" style="margin-top: 8px;">
             <input type="checkbox" id="hasHeader" checked />
             1行目をheaderとして扱う
@@ -336,7 +336,6 @@
           <div class="setting-label">label列</div>
           <div class="setting-row">
             <div>
-              <label for="labelColumn">column</label>
               <select id="labelColumn">
                 <option value="">なし</option>
               </select>
@@ -349,7 +348,6 @@
           <div class="setting-label">size列</div>
           <div class="setting-row">
             <div>
-              <label for="sizeColumn">column</label>
               <select id="sizeColumn">
                 <option value="">なし</option>
               </select>
