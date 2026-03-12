@@ -170,11 +170,12 @@
 
     #scatterChart {
       position: relative;
+      aspect-ratio: 1 / 1;
     }
 
     #scatterChart svg {
       width: 100%;
-      height: auto;
+      height: 100%;
       display: block;
     }
 
@@ -260,8 +261,16 @@
             <select id="xColumn"></select>
           </div>
           <div style="margin-bottom: 10px;">
+            <label for="xAxisName">x name</label>
+            <input type="text" id="xAxisName" placeholder="空欄なら列名を使用" />
+          </div>
+          <div style="margin-bottom: 10px;">
             <label for="yColumn">y列</label>
             <select id="yColumn"></select>
+          </div>
+          <div style="margin-bottom: 10px;">
+            <label for="yAxisName">y name</label>
+            <input type="text" id="yAxisName" placeholder="空欄なら列名を使用" />
           </div>
           <label class="toggle">
             <input type="checkbox" id="swapAxes" />
@@ -515,13 +524,23 @@
       return (x) => slope * x + intercept;
     };
 
-    const findDefaultColumnIndex = (headers, candidates, fallback) => {
-      const normalized = headers.map((h) => String(h || "").trim().toLowerCase());
-      for (const candidate of candidates) {
-        const idx = normalized.findIndex((h) => h === candidate || h.includes(candidate));
-        if (idx >= 0) return idx;
+    const findNumericColumnIndexes = (rows, maxCols, removeComma) => {
+      const numericIndexes = [];
+      for (let col = 0; col < Math.min(maxCols, MAX_COLUMNS); col += 1) {
+        let hasValue = false;
+        let allNumeric = true;
+        for (const row of rows) {
+          const raw = (row[col] ?? "").trim();
+          if (raw === "") continue;
+          hasValue = true;
+          if (!Number.isFinite(parseCellNumber(raw, removeComma))) {
+            allNumeric = false;
+            break;
+          }
+        }
+        if (hasValue && allNumeric) numericIndexes.push(col);
       }
-      return Math.min(fallback, Math.max(headers.length - 1, 0));
+      return numericIndexes;
     };
 
     const updateColumnSelectOptions = (selectId, headers, preferredIndex = 0, allowEmpty = false) => {
@@ -551,8 +570,8 @@
         return;
       }
 
-      const width = 760;
-      const height = 420;
+      const width = 640;
+      const height = 640;
       const pad = { top: 24, right: 24, bottom: 56, left: 60 };
       const innerW = width - pad.left - pad.right;
       const innerH = height - pad.top - pad.bottom;
@@ -680,6 +699,8 @@
       const lineFormula = document.getElementById("lineFormula").value;
       const xUpperRaw = document.getElementById("xUpper").value.trim();
       const yUpperRaw = document.getElementById("yUpper").value.trim();
+      const xAxisName = document.getElementById("xAxisName").value.trim();
+      const yAxisName = document.getElementById("yAxisName").value.trim();
       const errorEl = document.getElementById("error");
       const mainDataErrorEl = document.getElementById("mainDataError");
       const detectedColumnsEl = document.getElementById("detectedColumns");
@@ -748,8 +769,9 @@
           : "";
       }
       const mergedMaxCols = Math.min(MAX_COLUMNS, Math.max(2, mergedHeaders.length));
-      const defaultX = findDefaultColumnIndex(mergedHeaders, ["x", "before_ratio", "before", "sessions"], 0);
-      let defaultY = findDefaultColumnIndex(mergedHeaders, ["y", "after_ratio", "after", "timeline"], mergedHeaders.length > 1 ? 1 : 0);
+      const numericIndexes = findNumericColumnIndexes(parsed.rows, mergedMaxCols, parsed.removeComma);
+      const defaultX = numericIndexes[0] ?? 0;
+      let defaultY = numericIndexes[1] ?? (mergedHeaders.length > 1 ? 1 : 0);
       if (defaultY === defaultX && mergedHeaders.length > 1) {
         defaultY = defaultX === 0 ? 1 : 0;
       }
@@ -785,8 +807,8 @@
       }
       const skipNoticeEl = document.getElementById("skipNotice");
       const labelHeader = selectedLabelCol >= 0 ? (mergedHeaders[selectedLabelCol] || `col${selectedLabelCol + 1}`) : "";
-      let xLabel = mergedHeaders[selectedXCol] || `col${selectedXCol + 1}`;
-      let yLabel = mergedHeaders[selectedYCol] || `col${selectedYCol + 1}`;
+      let xLabel = xAxisName || mergedHeaders[selectedXCol] || `col${selectedXCol + 1}`;
+      let yLabel = yAxisName || mergedHeaders[selectedYCol] || `col${selectedYCol + 1}`;
 
       const filteredRows = filterEval
         ? rows.filter((r) => filterEval(r.filterValues))
@@ -849,7 +871,9 @@
     document.getElementById("dataInput").addEventListener("input", debouncedBuild);
     document.getElementById("hasHeader").addEventListener("change", build);
     document.getElementById("xColumn").addEventListener("change", build);
+    document.getElementById("xAxisName").addEventListener("input", debouncedBuild);
     document.getElementById("yColumn").addEventListener("change", build);
+    document.getElementById("yAxisName").addEventListener("input", debouncedBuild);
     document.getElementById("swapAxes").addEventListener("change", build);
     document.getElementById("jitter").addEventListener("change", build);
     document.getElementById("showTrendline").addEventListener("change", build);
