@@ -168,6 +168,13 @@
       text-transform: uppercase;
     }
 
+    .chart-title.is-custom {
+      font-size: 18px;
+      color: var(--ink);
+      letter-spacing: 0.01em;
+      text-transform: none;
+    }
+
     #scatterChart {
       position: relative;
       aspect-ratio: 1 / 1;
@@ -271,8 +278,7 @@
             </thead>
             <tbody>
               <tr><td>行数</td><td id="parsedRows">-</td></tr>
-              <tr><td>filtered</td><td id="filteredRows">-</td></tr>
-              <tr><td>plotted</td><td id="plottedRows">-</td></tr>
+              <tr><td>列数</td><td id="parsedCols">-</td></tr>
             </tbody>
           </table>
         </div>
@@ -339,11 +345,24 @@
             <div></div>
           </div>
         </div>
+        <div>
+          <div class="setting-label">size列</div>
+          <div class="setting-row">
+            <div>
+              <label for="sizeColumn">column</label>
+              <select id="sizeColumn">
+                <option value="">なし</option>
+              </select>
+            </div>
+            <div></div>
+            <div></div>
+          </div>
+        </div>
         <div class="setting-section-title">高度な設定</div>
         <div class="advanced-settings">
           <div>
             <label for="figsize">figsize</label>
-            <input type="text" id="figsize" value="1:1" placeholder="例: 1:1, 2:1, 1:2" />
+            <input type="text" id="figsize" value="2:1" placeholder="例: 1:1, 2:1, 1:2" />
           </div>
           <div>
             <label for="lineFormula">参照線</label>
@@ -471,6 +490,11 @@
       .replace(/__AND__/g, "&&")
       .replace(/__OR__/g, "||");
 
+    const normalizeImplicitMultiplication = (rawExpr) => String(rawExpr || "")
+      .replace(/(\d)\s*([A-Za-z(])/g, "$1*$2")
+      .replace(/([A-Za-z)])\s*(\d)/g, "$1*$2")
+      .replace(/([xy)])\s*([xy(])/gi, "$1*$2");
+
     const buildFilterEvaluator = (rawExpr, headers, maxCols) => {
       if (!rawExpr || rawExpr.trim() === "") return null;
       const expr = normalizeFilterExpr(rawExpr.trim());
@@ -556,7 +580,7 @@
 
     const buildHighlightEvaluator = (rawExpr) => {
       if (!rawExpr || rawExpr.trim() === "") return null;
-      const expr = normalizeFilterExpr(rawExpr.trim());
+      const expr = normalizeImplicitMultiplication(normalizeFilterExpr(rawExpr.trim()));
       const allowedChars = /^[\w\s<>=!&|().,+\-*/%"'[\]]+$/;
       if (!allowedChars.test(expr)) {
         throw new Error("強調条件に使えない文字が含まれています。");
@@ -664,6 +688,29 @@
       return { widthRatio, heightRatio };
     };
 
+    const buildBubbleRadiusAccessor = (points) => {
+      const sized = points
+        .map((p) => p.sizeValue)
+        .filter((v) => Number.isFinite(v) && v > 0);
+      if (sized.length === 0) {
+        return () => 4;
+      }
+      const minRadius = 4;
+      const maxRadius = 18;
+      const minValue = Math.min(...sized);
+      const maxValue = Math.max(...sized);
+      if (Math.abs(maxValue - minValue) < 1e-12) {
+        return (p) => (Number.isFinite(p.sizeValue) && p.sizeValue > 0 ? 10 : minRadius);
+      }
+      const minRoot = Math.sqrt(minValue);
+      const maxRoot = Math.sqrt(maxValue);
+      return (p) => {
+        if (!Number.isFinite(p.sizeValue) || p.sizeValue <= 0) return minRadius;
+        const scaled = (Math.sqrt(p.sizeValue) - minRoot) / (maxRoot - minRoot);
+        return minRadius + scaled * (maxRadius - minRadius);
+      };
+    };
+
     const renderScatter = (points, xLabel, yLabel, jitterOn, lineEval, labelHeader, showTrendline, figureSize) => {
       const container = document.getElementById("scatterChart");
       if (points.length === 0) {
@@ -709,16 +756,19 @@
         );
       }
 
+      const radiusFor = buildBubbleRadiusAccessor(points);
       const dots = points
         .map((p, idx) => {
           const jx = jitterOffset(idx, jitterX);
           const jy = jitterOffset(idx + 999, jitterY);
           const cx = xFor(p.x + jx);
           const cy = yFor(p.y + jy);
+          const radius = radiusFor(p);
           const labelText = labelHeader && p.label ? `${p.label} ` : "";
-          const title = `${labelText}(${formatNum(p.x)}, ${formatNum(p.y)})`;
+          const sizeText = Number.isFinite(p.sizeValue) && p.sizeValue > 0 ? ` size=${formatNum(p.sizeValue)}` : "";
+          const title = `${labelText}(${formatNum(p.x)}, ${formatNum(p.y)})${sizeText}`;
           const fill = p.highlight ? "#44A194" : "#3b3f45";
-          return `<circle class="scatter-point" cx="${cx}" cy="${cy}" r="4" fill="${fill}" opacity="0.78" data-tip="${escapeXml(title)}"><title>${escapeXml(title)}</title></circle>`;
+          return `<circle class="scatter-point" cx="${cx}" cy="${cy}" r="${radius}" fill="${fill}" opacity="0.78" data-tip="${escapeXml(title)}"><title>${escapeXml(title)}</title></circle>`;
         })
         .join("");
 
@@ -815,7 +865,10 @@
 
       errorEl.textContent = "";
       if (mainDataErrorEl) mainDataErrorEl.textContent = "";
-      if (chartTitleEl) chartTitleEl.textContent = plotTitle || "Scatter";
+      if (chartTitleEl) {
+        chartTitleEl.textContent = plotTitle || "Scatter";
+        chartTitleEl.classList.toggle("is-custom", plotTitle !== "");
+      }
       let figureSize = { widthRatio: 1, heightRatio: 1 };
       try {
         figureSize = parseFigureSize(figsizeRaw || "1:1");
@@ -866,9 +919,9 @@
         updateColumnSelectOptions("xColumn", [], 0, false);
         updateColumnSelectOptions("yColumn", [], 0, false);
         updateColumnSelectOptions("labelColumn", [], "", true);
+        updateColumnSelectOptions("sizeColumn", [], "", true);
         setText("parsedRows", "-");
-        setText("filteredRows", "-");
-        setText("plottedRows", "-");
+        setText("parsedCols", "-");
         if (detectedColumnsEl) detectedColumnsEl.textContent = "";
         const skipNoticeEl = document.getElementById("skipNotice");
         if (skipNoticeEl) skipNoticeEl.textContent = "";
@@ -913,9 +966,11 @@
       const selectedXColRaw = updateColumnSelectOptions("xColumn", mergedHeaders, defaultX, false);
       const selectedYColRaw = updateColumnSelectOptions("yColumn", mergedHeaders, defaultY, false);
       const selectedLabelColRaw = updateColumnSelectOptions("labelColumn", mergedHeaders, "", true);
+      const selectedSizeColRaw = updateColumnSelectOptions("sizeColumn", mergedHeaders, "", true);
       const selectedXCol = Number(selectedXColRaw);
       const selectedYCol = Number(selectedYColRaw);
       const selectedLabelCol = selectedLabelColRaw === "" ? -1 : Number(selectedLabelColRaw);
+      const selectedSizeCol = selectedSizeColRaw === "" ? -1 : Number(selectedSizeColRaw);
 
       if (!Number.isInteger(selectedXCol) || !Number.isInteger(selectedYCol)) {
         if (mainDataErrorEl) mainDataErrorEl.textContent = "x列 / y列 を選択してください。";
@@ -968,6 +1023,7 @@
           ...r,
           x,
           y,
+          sizeValue: selectedSizeCol >= 0 ? parseCellNumber(r.cells[selectedSizeCol] ?? "", parsed.removeComma) : NaN,
         };
       }).filter(Boolean);
 
@@ -990,8 +1046,7 @@
       });
 
       setText("parsedRows", parsed.rows.length);
-      setText("filteredRows", filteredRows.length);
-      setText("plottedRows", plotted.length);
+      setText("parsedCols", mergedHeaders.length);
       if (skipNoticeEl) {
         skipNoticeEl.textContent = skipped > 0
           ? `選択した x列 / y列 を数値として読めなかったデータはスキップしました（${skipped}件）`
@@ -1023,6 +1078,7 @@
     document.getElementById("jitter").addEventListener("change", build);
     document.getElementById("showTrendline").addEventListener("change", build);
     document.getElementById("labelColumn").addEventListener("change", build);
+    document.getElementById("sizeColumn").addEventListener("change", build);
     document.getElementById("highlightExpr").addEventListener("input", debouncedBuild);
     document.getElementById("filterExpr").addEventListener("input", debouncedBuild);
     document.getElementById("lineFormula").addEventListener("input", debouncedBuild);
