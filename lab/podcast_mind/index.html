@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>podcast_mind</title>
+    <title>podcast_mind player</title>
     <meta
       name="description"
-      content="Spotify ログイン / podcast 再生 / 文字起こしコピーの実現可否を整理した検討ページ"
+      content="Spotify podcast episode を試しに再生するための実験ページ"
     />
     <style>
       :root {
@@ -52,6 +52,13 @@
 
       .hero {
         padding: 32px;
+      }
+
+      .hero-grid {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 18px;
+        align-items: start;
       }
 
       .eyebrow {
@@ -197,7 +204,58 @@
         line-height: 1.8;
       }
 
+      .player-shell {
+        padding: 18px;
+        border-radius: 20px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.58);
+      }
+
+      .player-shell iframe {
+        width: 100%;
+        min-height: 352px;
+        border: 0;
+        border-radius: 18px;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      a.button {
+        text-decoration: none;
+      }
+
+      .episode-meta {
+        display: grid;
+        gap: 12px;
+      }
+
+      .meta-box {
+        padding: 16px;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.44);
+      }
+
+      .meta-label {
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        text-transform: uppercase;
+      }
+
+      .meta-value {
+        margin-top: 6px;
+        font-size: 16px;
+        line-height: 1.7;
+      }
+
       @media (max-width: 820px) {
+        .hero-grid,
         .grid,
         .detail {
           grid-template-columns: 1fr;
@@ -208,106 +266,139 @@
   <body>
     <main class="wrap">
       <section class="hero">
-        <span class="eyebrow">LAB / podcast_mind</span>
-        <h1>Spotify podcast 向けの小さな Web アプリは作れる。</h1>
-        <p class="lead">
-          ただし、3つの要件のうち
-          <strong>Spotify ログイン</strong> と <strong>podcast 再生</strong> は公式手段で進めやすく、
-          <strong>Spotify が表示している文字起こしの取得・コピー</strong> は公式 API の公開範囲次第で止まる可能性が高いです。
-        </p>
-
-        <div class="grid">
-          <article class="card">
-            <span class="status ok">実装しやすい</span>
-            <h2>Spotify ログイン</h2>
-            <p>
-              OAuth でログイン可能。Flask 側で callback を受ける形か、フロント側 PKCE のどちらでも組めます。
+        <span class="eyebrow">LAB / podcast_mind player</span>
+        <div class="hero-grid">
+          <div>
+            <h1>Spotify podcast の再生ページを試作。</h1>
+            <p class="lead">
+              指定された episode URL をそのまま使って、まずは
+              <strong>このサイト内で再生できる状態</strong> にしています。
+              transcript はまだサイト内取得しておらず、Spotify 側の表示へ寄せる段階です。
             </p>
-          </article>
+            <div class="actions">
+              <a
+                class="button"
+                href="https://open.spotify.com/episode/61mXRbPxEyI8JV7pfJxdA3"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Spotifyで開く
+              </a>
+              <a
+                class="button subtle"
+                href="https://open.spotify.com/episode/61mXRbPxEyI8JV7pfJxdA3"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Transcript表示ページへ
+              </a>
+            </div>
+          </div>
 
-          <article class="card">
-            <span class="status ok">実装しやすい</span>
-            <h2>podcast 再生</h2>
-            <p>
-              episode embed を使えば再生 UI は作れます。Premium 前提まで広げるなら Web Playback SDK の検討が必要です。
-            </p>
-          </article>
-
-          <article class="card">
-            <span class="status bad">要確認</span>
-            <h2>文字起こしコピー</h2>
-            <p>
-              Spotify の transcript を API で取れないなら、サイト内でコピー機能を提供する実装は難しいです。
-            </p>
-          </article>
+          <div class="episode-meta">
+            <div class="meta-box">
+              <div class="meta-label">Episode URL</div>
+              <div class="meta-value">https://open.spotify.com/episode/61mXRbPxEyI8JV7pfJxdA3</div>
+            </div>
+            <div class="meta-box">
+              <div class="meta-label">Current Scope</div>
+              <div class="meta-value">
+                いまは埋め込み再生まで。transcript コピーは Chrome 拡張か別経路の統合が必要です。
+              </div>
+            </div>
+          </div>
         </div>
+      </section>
+
+      <section class="card" style="margin-top: 16px;">
+        <h2>Player</h2>
+        <p>
+          下の埋め込みプレイヤーで episode を再生できます。まずはこの形で、サイト内再生の感触を確認する段階です。
+        </p>
+        <div class="player-shell" style="margin-top: 16px;">
+          <iframe
+            src="https://open.spotify.com/embed/episode/61mXRbPxEyI8JV7pfJxdA3?utm_source=generator"
+            loading="lazy"
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            title="Spotify episode player"
+          ></iframe>
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <span class="status ok">いまできる</span>
+          <h2>再生</h2>
+          <p>
+            episode の埋め込み再生はすぐ可能です。まずはログインなしでも触れる UI にしています。
+          </p>
+        </article>
+
+        <article class="card">
+          <span class="status warn">次の段階</span>
+          <h2>Spotify ログイン</h2>
+          <p>
+            あとから OAuth を足して、ユーザーごとの状態や保存処理を追加できます。
+          </p>
+        </article>
+
+        <article class="card">
+          <span class="status bad">別実装が必要</span>
+          <h2>Transcript コピー</h2>
+          <p>
+            transcript 本文はこの埋め込み iframe から直接は読めません。既存の Chrome 拡張をつなぐ方が現実的です。
+          </p>
+        </article>
       </section>
 
       <section class="detail">
         <article class="card">
-          <h2>現実的な構成</h2>
+          <h2>次に足すなら</h2>
           <div class="stack">
             <div>
-              <h3>1. ログイン</h3>
+              <h3>1. Spotify ログイン</h3>
               <ul>
-                <li>Spotify App を developer dashboard で作成</li>
-                <li>redirect URI をこの Flask サイトに登録</li>
-                <li>認証後に access token を保持してユーザー情報を取得</li>
+                <li>Flask に callback route を追加</li>
+                <li>Spotify App の client id / secret を env に保持</li>
+                <li>ユーザー情報やプレイ対象の保存を可能にする</li>
               </ul>
             </div>
             <div>
-              <h3>2. episode 再生</h3>
+              <h3>2. transcript 補助</h3>
               <ul>
-                <li>まずは Spotify Embed / iFrame API で始めるのが安全</li>
-                <li>再生開始、停止、episode 切り替え程度なら十分狙える</li>
-                <li>独自プレイヤー化したいなら Premium 条件を含め再検討</li>
-              </ul>
-            </div>
-            <div>
-              <h3>3. transcript</h3>
-              <ul>
-                <li>API で transcript 本文が返るならコピー機能を追加可能</li>
-                <li>返らない場合、iframe 内 DOM を外から読む実装は前提にしない方がよい</li>
-                <li>代替案は「手入力」「別ソース」「Spotify へ遷移してユーザー自身がコピー」</li>
+                <li>別タブで open.spotify.com の episode ページを開く</li>
+                <li>Chrome 拡張で transcript を抽出</li>
+                <li>必要ならこのサイトに貼り戻して copy UI を出す</li>
               </ul>
             </div>
           </div>
         </article>
 
         <article class="card">
-          <h2>イメージ</h2>
+          <h2>試作メモ</h2>
           <div class="mock">
-            <div class="button">Spotify でログイン</div>
             <div class="transcript">
-              podcast player
-              <br />
-              Spotify episode embed をここに表示
+              transcript をこのサイトに出すには、
+              open.spotify.com 上の DOM を読む経路を別途つなぐ必要があります。
             </div>
-            <div class="transcript">
-              transcript
-              <br />
-              取得できた場合のみ表示
-            </div>
-            <div class="button subtle">文字起こしをコピー</div>
+            <div class="button subtle">将来: 文字起こしをコピー</div>
           </div>
           <p class="small" style="margin-top: 14px;">
-            このページは実装検討用です。まだ Spotify API 連携自体は入れていません。
+            いまは「再生できる」ことを優先した試作です。
           </p>
         </article>
       </section>
 
       <section class="card" style="margin-top: 16px;">
-        <h2>次の判断</h2>
+        <h2>判断</h2>
         <ul>
-          <li>まずは transcript を除いた 2 要件で MVP を切る</li>
-          <li>その後 transcript 取得の公式手段があるかを episode 単位で再確認する</li>
-          <li>もし transcript API が無ければ、要件自体を少し変える方が早いです</li>
+          <li>指定 episode の再生ページはこのまま立てられる</li>
+          <li>transcript コピーは Web サイト単体ではなく拡張連携前提で考える方が速い</li>
+          <li>次は Spotify ログインを足すか、拡張との受け渡しを作るかの二択です</li>
         </ul>
         <div class="note">
-          現時点の結論は、
-          <strong>「ログイン」と「再生」は高確率で可能</strong>、
-          <strong>「Spotify が既に持っている文字起こしをこのサイトでコピー」は公式公開 API 次第で不可の可能性あり</strong>
-          です。
+          現在の `/lab/podcast_mind/` は
+          <strong>再生できる試作ページ</strong> に更新済みです。
         </div>
       </section>
     </main>
