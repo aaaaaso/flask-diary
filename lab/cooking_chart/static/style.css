@@ -986,6 +986,15 @@ button.active {
   line-height: 1;
 }
 
+.timer-adjust-btn-plus {
+  opacity: 0.42;
+}
+
+.timer-adjust-btn-plus:hover,
+.timer-adjust-btn-plus:focus-visible {
+  opacity: 0.62;
+}
+
 .timer-time {
   min-width: 110px;
   text-align: center;

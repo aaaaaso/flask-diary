@@ -186,6 +186,9 @@ function toggleNodeCompleted(nodeId, el) {
     collectAncestorNodeIds(nodeId).forEach((id) => completedNodeIds.add(id));
   }
   syncCompletedNodeIdsWithState();
+  if (state.nodes.length > 0 && completedNodeIds.size === state.nodes.length) {
+    completedNodeIds.clear();
+  }
   persistCompletedNodeIds();
   if (el) el.classList.toggle("is-complete", completedNodeIds.has(nodeId));
   board.querySelectorAll(".card").forEach((cardEl) => {
@@ -446,7 +449,7 @@ function renderTimers() {
 
       const plusBtn = document.createElement("button");
       plusBtn.type = "button";
-      plusBtn.className = "timer-adjust-btn";
+      plusBtn.className = "timer-adjust-btn timer-adjust-btn-plus";
       plusBtn.textContent = "+";
       plusBtn.addEventListener("click", () => adjustTimer(timer.id, TIMER_MINUTES_STEP));
       adjustGroup.appendChild(plusBtn);
