@@ -295,8 +295,8 @@
     <section class="panel fade-in">
       <div class="settings-stack">
         <div>
-          <label for="plotTitle">title</label>
-          <input type="text" id="plotTitle" placeholder="入れるとグラフの上部に反映" />
+          <label for="plotTitle">タイトル</label>
+          <input type="text" id="plotTitle" placeholder="グラフ上部に表示" />
         </div>
         <div>
           <div class="setting-label">x列:</div>
@@ -307,7 +307,7 @@
             </div>
             <div>
               <label for="xAxisName">name</label>
-              <input type="text" id="xAxisName" placeholder="空欄なら列名を使用" />
+              <input type="text" id="xAxisName" placeholder="空欄なら列名そのまま" />
             </div>
             <div>
               <label for="xUpper">upper</label>
@@ -324,7 +324,7 @@
             </div>
             <div>
               <label for="yAxisName">name</label>
-              <input type="text" id="yAxisName" placeholder="空欄なら列名を使用" />
+              <input type="text" id="yAxisName" placeholder="空欄なら列名そのまま" />
             </div>
             <div>
               <label for="yUpper">upper</label>
@@ -359,19 +359,19 @@
         <div class="setting-section-title">高度な設定</div>
         <div class="advanced-settings">
           <div>
-            <label for="figsize">figsize</label>
-            <input type="text" id="figsize" value="2:1" placeholder="例: 1:1, 2:1, 1:2" />
+            <label for="figsize">縦横比を変更</label>
+            <input type="text" id="figsize" value="2:1" placeholder="例: 2:1" />
           </div>
           <div>
-            <label for="lineFormula">参照線</label>
+            <label for="lineFormula">参照線を追加</label>
             <input type="text" id="lineFormula" placeholder="例: y=x/2+5" />
           </div>
           <div>
-            <label for="highlightExpr">条件に当てはまるplotを強調</label>
+            <label for="highlightExpr">条件にあてはまるデータを強調</label>
             <input type="text" id="highlightExpr" placeholder="例: y>x" />
           </div>
           <div>
-            <label for="filterExpr">filter条件</label>
+            <label for="filterExpr">条件でフィルタ</label>
             <input type="text" id="filterExpr" placeholder="例: a > 0 & b <= 100" />
             <div class="muted" style="margin-top: 6px;" id="detectedColumns"></div>
           </div>
