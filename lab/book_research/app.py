@@ -20,7 +20,7 @@ FACET_BUCKET_LIMIT = 50
 MIN_YEAR = 1000
 BOOKS_PER_PAGE = 20
 DEFAULT_START_YEAR = 1980
-LAB_TITLE = "BOOK TREND RESEARCH"
+LAB_TITLE = "Book Trend Research"
 LAB_DESCRIPTION = "指定したキーワードを含む書籍の出版数を年推移で見る。"
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
