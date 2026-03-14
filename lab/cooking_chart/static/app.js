@@ -447,16 +447,26 @@ function renderTimers() {
       const startBtn = document.createElement("button");
       startBtn.type = "button";
       startBtn.className = "icon-btn timer-action-btn";
-      startBtn.textContent = timer.isRunning ? "一時停止" : "開始";
+      startBtn.title = timer.isRunning ? "一時停止" : "開始";
+      startBtn.setAttribute("aria-label", timer.isRunning ? "一時停止" : "開始");
       startBtn.disabled = !timer.isRunning && timer.remainingSec === 0;
+      const startIcon = document.createElement("img");
+      startIcon.src = timer.isRunning ? "static/pause_icon.png" : "static/start_icon.png";
+      startIcon.alt = "";
+      startBtn.appendChild(startIcon);
       startBtn.addEventListener("click", () => startOrPauseTimer(timer.id));
       actions.appendChild(startBtn);
 
       const resetBtn = document.createElement("button");
       resetBtn.type = "button";
       resetBtn.className = "icon-btn timer-action-btn";
-      resetBtn.textContent = "リセット";
+      resetBtn.title = "リセット";
+      resetBtn.setAttribute("aria-label", "リセット");
       resetBtn.disabled = timer.durationSec === 0 && timer.remainingSec === 0 && !timer.finished;
+      const resetIcon = document.createElement("img");
+      resetIcon.src = "static/reset_icon.png";
+      resetIcon.alt = "";
+      resetBtn.appendChild(resetIcon);
       resetBtn.addEventListener("click", () => resetTimer(timer.id));
       actions.appendChild(resetBtn);
 
