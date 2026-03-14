@@ -881,7 +881,15 @@ h2 {
   }
 
   .timeline-item-top {
+    align-items: flex-start;
     margin-bottom: 14px;
+  }
+
+  .timeline-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
   }
 
   .timeline-date-slot,
@@ -889,9 +897,25 @@ h2 {
     font-size: 0.9rem;
   }
 
+  .timeline-date-slot {
+    min-width: 0;
+    padding-left: 0;
+  }
+
+  .timeline-date-slot:empty {
+    display: none;
+  }
+
   .timeline-content {
     font-size: 0.76rem;
     line-height: 1.95;
+    margin-left: 0;
+  }
+
+  .timeline-link-previews,
+  .timeline-chip-row,
+  .timeline-inline-edit {
+    margin-left: 0;
   }
 
   .timeline-link-card {
@@ -948,7 +972,7 @@ h2 {
   }
 
   .timeline-inline-edit {
-    margin-left: calc(var(--timeline-date-col) + var(--timeline-meta-gap));
+    width: 100%;
   }
 
   .timeline-inline-edit textarea {
