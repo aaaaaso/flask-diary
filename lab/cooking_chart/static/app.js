@@ -68,6 +68,9 @@ const recipeItemsEl = document.getElementById("recipe-items");
 const recipeDropIndicator = document.getElementById("recipe-drop-indicator");
 const addStepLineBtn = document.getElementById("add-step-line");
 const exportImageButtons = Array.from(document.querySelectorAll("[data-export-image]"));
+const timerPanelEl = document.getElementById("timer-panel");
+const timerListEl = document.getElementById("timer-list");
+const addTimerBtn = document.getElementById("add-timer");
 const isEditable = document.body?.dataset?.mode === "edit";
 const pageParams = new URLSearchParams(window.location.search);
 const editorKey = (pageParams.get("key") || "").trim();
@@ -97,6 +100,15 @@ let clipboardPasteCount = 0;
 let viewScale = 1;
 let gestureStartScale = 1;
 let completedNodeIds = new Set();
+let timerAudioContext = null;
+let timerIntervalId = null;
+
+const TIMER_MINUTES_STEP = 60;
+const TIMER_MAX_COUNT = 3;
+const timerState = {
+  timers: [],
+  nextSlot: 1,
+};
 
 function completedNodesStorageKey() {
   const recipeKey = currentRecipeId ? `id:${currentRecipeId}` : `name:${currentRecipeName || ""}`;
@@ -146,15 +158,323 @@ function syncCompletedNodeIdsWithState() {
   completedNodeIds = new Set(Array.from(completedNodeIds).filter((id) => validIds.has(id)));
 }
 
+function collectAncestorNodeIds(nodeId) {
+  const startId = Number(nodeId);
+  if (!Number.isInteger(startId) || startId <= 0) return [];
+  const visited = new Set([startId]);
+  const queue = [startId];
+
+  while (queue.length) {
+    const currentId = queue.shift();
+    state.edges.forEach((edge) => {
+      if (Number(edge.to) !== currentId) return;
+      const parentId = Number(edge.from);
+      if (!Number.isInteger(parentId) || visited.has(parentId)) return;
+      visited.add(parentId);
+      queue.push(parentId);
+    });
+  }
+
+  return Array.from(visited);
+}
+
 function toggleNodeCompleted(nodeId, el) {
   if (isEditable) return;
-  if (completedNodeIds.has(nodeId)) completedNodeIds.delete(nodeId);
-  else completedNodeIds.add(nodeId);
+  if (completedNodeIds.has(nodeId)) {
+    completedNodeIds.delete(nodeId);
+  } else {
+    collectAncestorNodeIds(nodeId).forEach((id) => completedNodeIds.add(id));
+  }
   syncCompletedNodeIdsWithState();
   persistCompletedNodeIds();
-  if (el) {
-    el.classList.toggle("is-complete", completedNodeIds.has(nodeId));
+  if (el) el.classList.toggle("is-complete", completedNodeIds.has(nodeId));
+  board.querySelectorAll(".card").forEach((cardEl) => {
+    const id = Number(cardEl.dataset.id);
+    cardEl.classList.toggle("is-complete", completedNodeIds.has(id));
+  });
+}
+
+function defaultTimerTitle(slot) {
+  return `タイマー${slot}`;
+}
+
+function createTimer(slot = timerState.nextSlot) {
+  const safeSlot = Math.max(1, Math.min(TIMER_MAX_COUNT, Number(slot) || 1));
+  return {
+    id: `timer-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    slot: safeSlot,
+    title: defaultTimerTitle(safeSlot),
+    durationSec: 0,
+    remainingSec: 0,
+    isRunning: false,
+    endAt: null,
+    finished: false,
+  };
+}
+
+function formatTimerTime(totalSeconds) {
+  const safe = Math.max(0, Math.round(Number(totalSeconds) || 0));
+  const minutes = Math.floor(safe / 60);
+  const seconds = safe % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function getRunningTimers() {
+  return timerState.timers.filter((timer) => timer.isRunning);
+}
+
+function stopTimerIntervalIfIdle() {
+  if (getRunningTimers().length > 0) return;
+  if (timerIntervalId) {
+    clearInterval(timerIntervalId);
+    timerIntervalId = null;
   }
+}
+
+function ensureTimerAudioContext() {
+  if (isEditable) return null;
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtx) return null;
+  if (!timerAudioContext) timerAudioContext = new AudioCtx();
+  if (timerAudioContext.state === "suspended") {
+    timerAudioContext.resume().catch(() => {});
+  }
+  return timerAudioContext;
+}
+
+function playTimerAlarm() {
+  const ctx = ensureTimerAudioContext();
+  if (!ctx) return;
+  const start = ctx.currentTime;
+  [0, 0.22, 0.44].forEach((offset, index) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = index === 1 ? 880 : 660;
+    gain.gain.setValueAtTime(0.0001, start + offset);
+    gain.gain.exponentialRampToValueAtTime(0.16, start + offset + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + offset + 0.18);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(start + offset);
+    osc.stop(start + offset + 0.2);
+  });
+}
+
+function syncRunningTimer(timer) {
+  if (!timer.isRunning || !timer.endAt) return false;
+  const nextRemaining = Math.max(0, Math.ceil((timer.endAt - Date.now()) / 1000));
+  if (nextRemaining === timer.remainingSec) return false;
+  timer.remainingSec = nextRemaining;
+  if (nextRemaining === 0) {
+    timer.isRunning = false;
+    timer.endAt = null;
+    timer.finished = true;
+    playTimerAlarm();
+  }
+  return true;
+}
+
+function tickTimers() {
+  if (isEditable) return;
+  const changed = timerState.timers.some((timer) => syncRunningTimer(timer));
+  if (changed) renderTimers();
+  stopTimerIntervalIfIdle();
+}
+
+function ensureTimerInterval() {
+  if (isEditable) return;
+  if (!getRunningTimers().length) {
+    stopTimerIntervalIfIdle();
+    return;
+  }
+  if (timerIntervalId) return;
+  timerIntervalId = window.setInterval(tickTimers, 250);
+}
+
+function normalizeTimerAmount(seconds) {
+  return Math.max(0, Math.round(Number(seconds) || 0));
+}
+
+function adjustTimer(timerId, deltaSeconds) {
+  const timer = timerState.timers.find((item) => item.id === timerId);
+  if (!timer) return;
+  const nextValue = normalizeTimerAmount(timer.remainingSec + deltaSeconds);
+  timer.durationSec = nextValue;
+  timer.remainingSec = nextValue;
+  timer.finished = false;
+  if (timer.isRunning) {
+    timer.endAt = Date.now() + nextValue * 1000;
+    if (nextValue === 0) {
+      timer.isRunning = false;
+      timer.endAt = null;
+    }
+  }
+  renderTimers();
+  ensureTimerInterval();
+}
+
+function startOrPauseTimer(timerId) {
+  const timer = timerState.timers.find((item) => item.id === timerId);
+  if (!timer) return;
+  ensureTimerAudioContext();
+  if (timer.isRunning) {
+    syncRunningTimer(timer);
+    timer.isRunning = false;
+    timer.endAt = null;
+  } else if (timer.remainingSec > 0) {
+    timer.finished = false;
+    timer.isRunning = true;
+    timer.endAt = Date.now() + timer.remainingSec * 1000;
+  }
+  renderTimers();
+  ensureTimerInterval();
+}
+
+function resetTimer(timerId) {
+  const timer = timerState.timers.find((item) => item.id === timerId);
+  if (!timer) return;
+  timer.isRunning = false;
+  timer.endAt = null;
+  timer.remainingSec = timer.durationSec;
+  timer.finished = false;
+  renderTimers();
+  ensureTimerInterval();
+}
+
+function nextAvailableTimerSlot() {
+  for (let slot = 1; slot <= TIMER_MAX_COUNT; slot += 1) {
+    if (!timerState.timers.some((timer) => timer.slot === slot)) return slot;
+  }
+  return null;
+}
+
+function addTimer() {
+  if (isEditable || timerState.timers.length >= TIMER_MAX_COUNT) return;
+  const slot = nextAvailableTimerSlot();
+  if (!slot) return;
+  timerState.timers.push(createTimer(slot));
+  timerState.nextSlot = nextAvailableTimerSlot() || TIMER_MAX_COUNT;
+  renderTimers();
+}
+
+function removeTimer(timerId) {
+  if (isEditable || timerState.timers.length <= 1) return;
+  timerState.timers = timerState.timers.filter((timer) => timer.id !== timerId);
+  timerState.nextSlot = nextAvailableTimerSlot() || TIMER_MAX_COUNT;
+  renderTimers();
+  ensureTimerInterval();
+}
+
+function initializeTimers() {
+  if (isEditable) return;
+  if (timerState.timers.length > 0) return;
+  timerState.timers = [createTimer(1)];
+  timerState.nextSlot = 2;
+}
+
+function renderTimers() {
+  if (!timerPanelEl || !timerListEl) return;
+  if (isEditable) {
+    timerPanelEl.classList.add("hidden");
+    return;
+  }
+  initializeTimers();
+  timerPanelEl.classList.remove("hidden");
+  timerListEl.innerHTML = "";
+  timerState.timers
+    .slice()
+    .sort((a, b) => a.slot - b.slot)
+    .forEach((timer) => {
+      const item = document.createElement("section");
+      item.className = "timer-item";
+      if (timer.finished) item.classList.add("is-finished");
+
+      const topRow = document.createElement("div");
+      topRow.className = "timer-top-row";
+
+      const titleInput = document.createElement("input");
+      titleInput.type = "text";
+      titleInput.className = "timer-title-input";
+      titleInput.value = timer.title;
+      titleInput.setAttribute("aria-label", `タイマー${timer.slot}のタイトル`);
+      titleInput.addEventListener("input", () => {
+        timer.title = titleInput.value;
+      });
+      titleInput.addEventListener("focus", ensureTimerAudioContext);
+      topRow.appendChild(titleInput);
+
+      if (timerState.timers.length > 1) {
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.className = "timer-remove-btn";
+        removeBtn.textContent = "×";
+        removeBtn.setAttribute("aria-label", `${timer.title || defaultTimerTitle(timer.slot)}を削除`);
+        removeBtn.addEventListener("click", () => removeTimer(timer.id));
+        topRow.appendChild(removeBtn);
+      }
+
+      const mainRow = document.createElement("div");
+      mainRow.className = "timer-main-row";
+
+      const adjustGroup = document.createElement("div");
+      adjustGroup.className = "timer-adjust-group";
+
+      const minusBtn = document.createElement("button");
+      minusBtn.type = "button";
+      minusBtn.className = "timer-adjust-btn";
+      minusBtn.textContent = "-";
+      minusBtn.addEventListener("click", () => adjustTimer(timer.id, -TIMER_MINUTES_STEP));
+      adjustGroup.appendChild(minusBtn);
+
+      const timeEl = document.createElement("div");
+      timeEl.className = "timer-time";
+      timeEl.textContent = formatTimerTime(timer.remainingSec);
+      adjustGroup.appendChild(timeEl);
+
+      const plusBtn = document.createElement("button");
+      plusBtn.type = "button";
+      plusBtn.className = "timer-adjust-btn";
+      plusBtn.textContent = "+";
+      plusBtn.addEventListener("click", () => adjustTimer(timer.id, TIMER_MINUTES_STEP));
+      adjustGroup.appendChild(plusBtn);
+
+      mainRow.appendChild(adjustGroup);
+
+      const actions = document.createElement("div");
+      actions.className = "timer-actions";
+
+      const startBtn = document.createElement("button");
+      startBtn.type = "button";
+      startBtn.className = "icon-btn timer-action-btn";
+      startBtn.textContent = timer.isRunning ? "一時停止" : "開始";
+      startBtn.disabled = !timer.isRunning && timer.remainingSec === 0;
+      startBtn.addEventListener("click", () => startOrPauseTimer(timer.id));
+      actions.appendChild(startBtn);
+
+      const resetBtn = document.createElement("button");
+      resetBtn.type = "button";
+      resetBtn.className = "icon-btn timer-action-btn";
+      resetBtn.textContent = "リセット";
+      resetBtn.disabled = timer.durationSec === 0 && timer.remainingSec === 0 && !timer.finished;
+      resetBtn.addEventListener("click", () => resetTimer(timer.id));
+      actions.appendChild(resetBtn);
+
+      mainRow.appendChild(actions);
+      item.appendChild(topRow);
+      item.appendChild(mainRow);
+
+      if (timer.finished) {
+        const note = document.createElement("p");
+        note.className = "timer-note";
+        note.textContent = "時間になりました";
+        item.appendChild(note);
+      }
+
+      timerListEl.appendChild(item);
+    });
+
+  if (addTimerBtn) addTimerBtn.disabled = timerState.timers.length >= TIMER_MAX_COUNT;
 }
 
 function withEditorKey(path) {
@@ -2003,6 +2323,7 @@ function render() {
   renderTexts();
   renderNodes();
   renderEdges();
+  renderTimers();
   refreshJsonText();
   refreshSelectionUI();
   refreshLinkTargetUI();
@@ -3131,6 +3452,13 @@ if (toggleJsonBtn && jsonPanel) {
 exportImageButtons.forEach((btn) => {
   btn.addEventListener("click", exportBoardAsImage);
 });
+
+if (!isEditable && addTimerBtn) {
+  addTimerBtn.addEventListener("click", () => {
+    ensureTimerAudioContext();
+    addTimer();
+  });
+}
 
 if (jsonOutput) {
   jsonOutput.addEventListener("focus", () => {

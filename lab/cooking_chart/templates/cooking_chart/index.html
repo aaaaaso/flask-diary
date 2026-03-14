@@ -68,6 +68,14 @@
           </button>
         </div>
 
+        <section class="timer-panel" id="timer-panel" aria-label="タイマー">
+          <div class="timer-panel-header">
+            <h2>Timer</h2>
+            <button id="add-timer" class="icon-btn timer-add-btn" type="button">タイマー追加</button>
+          </div>
+          <div id="timer-list" class="timer-list"></div>
+        </section>
+
         {% if editable %}
         <div class="json-toggle-wrap">
           <button id="toggle-json" class="json-toggle-btn">JSON表示/非表示</button>
