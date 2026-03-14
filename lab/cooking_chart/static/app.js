@@ -96,6 +96,66 @@ let selectionClipboard = null;
 let clipboardPasteCount = 0;
 let viewScale = 1;
 let gestureStartScale = 1;
+let completedNodeIds = new Set();
+
+function completedNodesStorageKey() {
+  const recipeKey = currentRecipeId ? `id:${currentRecipeId}` : `name:${currentRecipeName || ""}`;
+  return `cooking-chart:completed-nodes:${recipeKey}`;
+}
+
+function loadCompletedNodeIds() {
+  if (isEditable) return;
+  const key = completedNodesStorageKey();
+  if (!key) {
+    completedNodeIds = new Set();
+    return;
+  }
+  try {
+    const raw = window.localStorage.getItem(key);
+    const parsed = raw ? JSON.parse(raw) : [];
+    completedNodeIds = new Set(
+      Array.isArray(parsed)
+        ? parsed.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0)
+        : []
+    );
+  } catch {
+    completedNodeIds = new Set();
+  }
+}
+
+function persistCompletedNodeIds() {
+  if (isEditable) return;
+  const key = completedNodesStorageKey();
+  if (!key) return;
+  const validIds = new Set(state.nodes.map((node) => node.id));
+  const savedIds = Array.from(completedNodeIds).filter((id) => validIds.has(id));
+  try {
+    if (savedIds.length === 0) {
+      window.localStorage.removeItem(key);
+      return;
+    }
+    window.localStorage.setItem(key, JSON.stringify(savedIds));
+  } catch {
+    // Ignore storage failures and keep the UI responsive.
+  }
+}
+
+function syncCompletedNodeIdsWithState() {
+  if (isEditable) return;
+  const validIds = new Set(state.nodes.map((node) => node.id));
+  completedNodeIds = new Set(Array.from(completedNodeIds).filter((id) => validIds.has(id)));
+}
+
+function toggleNodeCompleted(nodeId, el) {
+  if (isEditable) return;
+  if (completedNodeIds.has(nodeId)) completedNodeIds.delete(nodeId);
+  else completedNodeIds.add(nodeId);
+  syncCompletedNodeIdsWithState();
+  persistCompletedNodeIds();
+  if (el) {
+    el.classList.toggle("is-complete", completedNodeIds.has(nodeId));
+  }
+}
 
 function withEditorKey(path) {
   if (!isEditable || !editorKey) return path;
@@ -1355,6 +1415,10 @@ function buildNodeElement(node) {
     el.classList.toggle("tone-3", node.color === NODE_COLOR_TONE3);
   };
 
+  const renderCompletedUI = () => {
+    el.classList.toggle("is-complete", completedNodeIds.has(node.id));
+  };
+
   const renderMetaStateUI = () => {
     el.classList.toggle("meta-empty", node.tags.length === 0 && node.memos.length === 0);
   };
@@ -1426,6 +1490,7 @@ function buildNodeElement(node) {
 
   renderModeUI();
   renderColorUI();
+  renderCompletedUI();
   renderTimeUI();
   renderTagList();
   renderMemoList();
@@ -1442,6 +1507,10 @@ function buildNodeElement(node) {
     bottomConnector.classList.add("hidden");
     el.querySelector(".node-side-actions")?.classList.add("hidden");
     timeInputEl.classList.add("hidden");
+    el.addEventListener("click", (e) => {
+      if (e.target.closest("button,input,textarea")) return;
+      toggleNodeCompleted(node.id, el);
+    });
     board.appendChild(el);
     return;
   }
@@ -2288,6 +2357,7 @@ function applyNormalizedContent(normalized) {
   state.selectedStepLineIds = [];
   state.selectedTextIds = [];
   historyStack.length = 0;
+  syncCompletedNodeIdsWithState();
   render();
 }
 
@@ -2431,12 +2501,14 @@ async function loadRecipe(name) {
   }
 
   const payload = await res.json();
-  const normalized = convertLegacyContent(payload.content || {});
-  applyNormalizedContent(normalized);
   currentRecipeName = payload.name;
   currentRecipeId = Number.isFinite(Number(payload.id)) ? Number(payload.id) : (recipeIdByName.get(payload.name) ?? null);
   currentRecipeLabel = payload.name;
   syncRecipeQueryParam(currentRecipeId);
+  loadCompletedNodeIds();
+  const normalized = convertLegacyContent(payload.content || {});
+  applyNormalizedContent(normalized);
+  syncCompletedNodeIdsWithState();
   refreshRecipeTitle();
   editingRecipeKey = null;
   hasDraftRecipe = false;
@@ -2459,6 +2531,7 @@ function clearEditorToEmpty() {
   currentRecipeName = "";
   currentRecipeId = null;
   currentRecipeLabel = "タイトルなし";
+  completedNodeIds = new Set();
   syncRecipeQueryParam(null);
   refreshRecipeTitle();
   editingRecipeKey = null;
@@ -3098,5 +3171,10 @@ markSavedNow();
       || (recipeNames.includes(requestedRecipeFromQuery) ? requestedRecipeFromQuery : recipeNames[0]);
     await loadRecipe(initialName);
     await refreshRecipeList(initialName);
+  }
+  if (!isEditable && !currentRecipeName) {
+    loadCompletedNodeIds();
+    syncCompletedNodeIdsWithState();
+    render();
   }
 })();

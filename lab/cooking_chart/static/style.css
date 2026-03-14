@@ -455,6 +455,12 @@ button.active {
     0 2px 0 #ded6b5,
     0 8px 14px rgba(17, 24, 39, 0.08);
   z-index: 2;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    color 0.18s ease,
+    opacity 0.18s ease;
 }
 
 .card::after {
@@ -547,6 +553,44 @@ button.active {
 .card.tone-3.link-target {
   border-color: #41431b;
   box-shadow: 0 0 0 2px rgba(65, 67, 27, 0.24);
+}
+
+.card.is-complete {
+  background: #e5e7eb;
+  border-color: #cbd5e1;
+  box-shadow:
+    0 2px 0 #d1d5db,
+    0 6px 12px rgba(107, 114, 128, 0.14);
+}
+
+.card.is-complete.tone-1,
+.card.is-complete.tone-2,
+.card.is-complete.tone-3 {
+  background: #e5e7eb;
+  border-color: #cbd5e1;
+}
+
+.card.is-complete .title,
+.card.is-complete .memo-item,
+.card.is-complete .tag-chip,
+.card.is-complete .time-badge {
+  color: #6b7280;
+}
+
+.card.is-complete .tag-chip {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.card.is-complete .time-badge {
+  background: #9ca3af;
+  border-color: #9ca3af;
+}
+
+.card.is-complete .title,
+.card.is-complete .memo-list,
+.card.is-complete .tag-list {
+  opacity: 0.75;
 }
 
 .card.tone-1 .title:focus,

@@ -429,11 +429,12 @@
       }
 
       const maxCount = Math.max(...dataBins.map((b) => b.count), 1);
+      const yAxis = computeNiceYAxis(maxCount);
       const barGap = 6;
       const barW = (innerW - barGap * (dataBins.length - 1)) / dataBins.length;
 
       const xFor = (i) => pad.left + i * (barW + barGap);
-      const yFor = (v) => pad.top + innerH - (v / maxCount) * innerH;
+      const yFor = (v) => pad.top + innerH - (v / yAxis.max) * innerH;
 
       const svg = [
         `<svg viewBox="0 0 ${chartWidth} ${chartHeight}" role="img" aria-label="Histogram">`,
@@ -441,6 +442,14 @@
         `<line x1="${pad.left}" y1="${pad.top + innerH}" x2="${pad.left + innerW}" y2="${pad.top + innerH}" stroke="rgba(31,35,40,0.2)" />`,
         `<line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${pad.top + innerH}" stroke="rgba(31,35,40,0.2)" />`,
       ];
+
+      yAxis.ticks.forEach((tick) => {
+        const y = yFor(tick);
+        svg.push(
+          `<line x1="${pad.left}" y1="${y}" x2="${pad.left + innerW}" y2="${y}" stroke="rgba(31,35,40,0.08)" />`,
+          `<text x="${pad.left - 10}" y="${y + 4}" text-anchor="end" font-size="11" fill="#6b7280">${tick}</text>`
+        );
+      });
 
       const rotateLabels = dataBins.length >= 11;
       dataBins.forEach((b, i) => {
@@ -485,11 +494,6 @@
           );
         }
       });
-
-      svg.push(
-        `<text x="${pad.left - 10}" y="${pad.top + 4}" text-anchor="end" font-size="11" fill="#6b7280">${maxCount}</text>`,
-        `<text x="${pad.left - 10}" y="${pad.top + innerH}" text-anchor="end" font-size="11" fill="#6b7280">0</text>`
-      );
 
       svg.push(`</svg>`);
       container.innerHTML = svg.join("");
@@ -646,6 +650,33 @@
       else if (scaled <= 7) niceScaled = 5;
       else niceScaled = 10;
       return niceScaled * order;
+    };
+
+    const niceCeil = (value) => {
+      if (!Number.isFinite(value) || value <= 0) return 1;
+      const order = Math.pow(10, Math.floor(Math.log10(value)));
+      const scaled = value / order;
+      if (scaled <= 1) return 1 * order;
+      if (scaled <= 2) return 2 * order;
+      if (scaled <= 5) return 5 * order;
+      return 10 * order;
+    };
+
+    const computeNiceYAxis = (maxValue, targetTicks = 5) => {
+      if (!Number.isFinite(maxValue) || maxValue <= 0) {
+        return { max: 1, ticks: [0, 1] };
+      }
+
+      const roughStep = maxValue / Math.max(targetTicks - 1, 1);
+      const step = niceCeil(roughStep);
+      const axisMax = Math.max(step, Math.ceil(maxValue / step) * step);
+      const ticks = [];
+
+      for (let v = 0; v <= axisMax + step * 0.5; v += step) {
+        ticks.push(v);
+      }
+
+      return { max: axisMax, ticks };
     };
 
     const setExcludedCount = (excluded) => {
