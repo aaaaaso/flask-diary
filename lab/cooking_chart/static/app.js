@@ -246,18 +246,22 @@ function playTimerAlarm() {
   const ctx = ensureTimerAudioContext();
   if (!ctx) return;
   const start = ctx.currentTime;
-  [0, 0.22, 0.44].forEach((offset, index) => {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.value = index === 1 ? 880 : 660;
-    gain.gain.setValueAtTime(0.0001, start + offset);
-    gain.gain.exponentialRampToValueAtTime(0.16, start + offset + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + offset + 0.18);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(start + offset);
-    osc.stop(start + offset + 0.2);
+  const phraseOffsets = [0, 0.72, 1.44];
+  phraseOffsets.forEach((phraseOffset) => {
+    [0, 0.22, 0.44].forEach((noteOffset, index) => {
+      const offset = phraseOffset + noteOffset;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = index === 1 ? 880 : 660;
+      gain.gain.setValueAtTime(0.0001, start + offset);
+      gain.gain.exponentialRampToValueAtTime(0.28, start + offset + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + offset + 0.18);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(start + offset);
+      osc.stop(start + offset + 0.2);
+    });
   });
 }
 
@@ -398,10 +402,18 @@ function renderTimers() {
       titleInput.className = "timer-title-input";
       titleInput.value = timer.title;
       titleInput.setAttribute("aria-label", `タイマー${timer.slot}のタイトル`);
-      titleInput.addEventListener("input", () => {
-        timer.title = titleInput.value;
-      });
+      const commitTitle = () => {
+        timer.title = titleInput.value.trim() || defaultTimerTitle(timer.slot);
+        titleInput.value = timer.title;
+      };
       titleInput.addEventListener("focus", ensureTimerAudioContext);
+      titleInput.addEventListener("blur", commitTitle);
+      titleInput.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" || event.isComposing) return;
+        event.preventDefault();
+        commitTitle();
+        titleInput.blur();
+      });
       topRow.appendChild(titleInput);
 
       if (timerState.timers.length > 1) {
@@ -474,15 +486,22 @@ function renderTimers() {
       item.appendChild(topRow);
       item.appendChild(mainRow);
 
-      if (timer.finished) {
-        const note = document.createElement("p");
-        note.className = "timer-note";
-        note.textContent = "時間になりました";
-        item.appendChild(note);
-      }
-
       timerListEl.appendChild(item);
     });
+
+  if (timerState.timers.length < TIMER_MAX_COUNT) {
+    const addInlineBtn = document.createElement("button");
+    addInlineBtn.type = "button";
+    addInlineBtn.className = "timer-add-inline-btn";
+    addInlineBtn.textContent = "+";
+    addInlineBtn.title = "タイマー追加";
+    addInlineBtn.setAttribute("aria-label", "タイマー追加");
+    addInlineBtn.addEventListener("click", () => {
+      ensureTimerAudioContext();
+      addTimer();
+    });
+    timerListEl.appendChild(addInlineBtn);
+  }
 
   if (addTimerBtn) addTimerBtn.disabled = timerState.timers.length >= TIMER_MAX_COUNT;
 }

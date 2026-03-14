@@ -892,18 +892,6 @@ button.active {
   padding: 0;
 }
 
-.timer-panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.timer-add-btn {
-  padding-inline: 12px;
-}
-
 .timer-list {
   display: flex;
   align-items: stretch;
@@ -921,8 +909,14 @@ button.active {
 }
 
 .timer-item.is-finished {
-  border-color: #d97706;
-  box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.12);
+  border-color: #d24b4b;
+  background: #fff2f2;
+  box-shadow: 0 0 0 2px rgba(210, 75, 75, 0.14);
+}
+
+.timer-item.is-finished .timer-title-input,
+.timer-item.is-finished .timer-time {
+  color: #b42318;
 }
 
 .timer-top-row {
@@ -940,6 +934,7 @@ button.active {
   background: transparent;
   font-weight: 700;
   padding: 4px 2px;
+  text-align: center;
 }
 
 .timer-title-input:focus {
@@ -959,6 +954,7 @@ button.active {
 .timer-main-row {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   flex-wrap: wrap;
 }
@@ -966,20 +962,23 @@ button.active {
 .timer-adjust-group {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  flex: 1 1 0;
 }
 
 .timer-adjust-btn {
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border-radius: 999px;
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1;
 }
 
 .timer-time {
   min-width: 110px;
+  text-align: center;
   font-size: 32px;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -988,8 +987,10 @@ button.active {
 
 .timer-actions {
   display: inline-flex;
+  justify-content: center;
   gap: 8px;
   flex-wrap: wrap;
+  flex: 1 1 0;
 }
 
 .timer-action-btn {
@@ -1005,6 +1006,34 @@ button.active {
   width: 20px;
   height: 20px;
   object-fit: contain;
+  opacity: 0.58;
+  transition: opacity 0.15s ease;
+}
+
+.timer-action-btn:hover img,
+.timer-action-btn:focus-visible img {
+  opacity: 0.78;
+}
+
+.timer-add-inline-btn {
+  flex: 0 1 calc((100% - 24px) / 3);
+  min-width: 280px;
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #c9c3af;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #8b846d;
+  font-size: 34px;
+  line-height: 1;
+}
+
+.timer-add-inline-btn:hover {
+  color: #6f684f;
+  border-color: #b7b093;
+  background: #ffffff;
 }
 
 .timer-note {
@@ -1075,7 +1104,6 @@ button.active {
     display: none;
   }
 
-  .timer-panel-header,
   .timer-main-row {
     align-items: flex-start;
     flex-direction: column;
@@ -1089,6 +1117,13 @@ button.active {
     flex-basis: auto;
     min-width: 0;
     width: 100%;
+  }
+
+  .timer-add-inline-btn {
+    flex-basis: auto;
+    min-width: 0;
+    width: 100%;
+    min-height: 84px;
   }
 
   .timer-time {
