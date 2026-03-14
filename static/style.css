@@ -898,8 +898,11 @@ h2 {
   }
 
   .timeline-date-slot {
+    align-self: center;
+    margin: 1em 0;
     min-width: 0;
     padding-left: 0;
+    text-align: center;
   }
 
   .timeline-date-slot:empty {
