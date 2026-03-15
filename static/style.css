@@ -666,15 +666,6 @@ h2 {
   overflow: hidden;
 }
 
-.timeline-compose-upload {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 20px 10px;
-  background: rgba(255, 255, 255, 0.92);
-  flex-wrap: wrap;
-}
-
 .timeline-image-input {
   position: absolute;
   width: 1px;
@@ -691,20 +682,24 @@ h2 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 32px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  background: rgba(255, 255, 255, 0.78);
-  color: #4d4d4d;
-  font-size: 0.74rem;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  background: transparent;
   cursor: pointer;
 }
 
-.timeline-image-help {
-  margin: 0;
-  font-size: 0.7rem;
-  color: #6f6f6f;
+.timeline-image-input-label img {
+  display: block;
+  width: 26px;
+  height: 26px;
+  opacity: 0.9;
+}
+
+.timeline-image-input-label-compose {
+  flex: 0 0 auto;
+  margin-right: auto;
 }
 
 .timeline-form-actions {
@@ -715,7 +710,7 @@ h2 {
   gap: 16px;
   flex-wrap: nowrap;
   border-top: none;
-  padding: 5px 20px 5px 12px;
+  padding: 8px 20px 8px 12px;
   background: rgba(255, 255, 255, 0.92);
   box-shadow: none;
 }
@@ -1008,13 +1003,18 @@ h2 {
     height: 92px;
   }
 
-  .timeline-compose-upload {
-    padding: 0 14px 10px;
-    gap: 8px;
-  }
-
   .timeline-form {
     width: 92%;
+  }
+
+  .timeline-form-actions {
+    justify-content: center;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  .timeline-image-input-label-compose {
+    margin-right: 0;
   }
 
   .timeline-editor-nav {

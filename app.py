@@ -18,9 +18,10 @@ from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
 try:
-    from PIL import Image, UnidentifiedImageError
+    from PIL import Image, ImageOps, UnidentifiedImageError
 except ImportError:
     Image = None
+    ImageOps = None
     UnidentifiedImageError = Exception
 
 try:
@@ -52,6 +53,9 @@ TOKYO_TZ = ZoneInfo("Asia/Tokyo")
 OGP_CACHE_TTL_SECONDS = 60 * 60 * 24
 FETCH_USER_AGENT = "Mozilla/5.0 (compatible; diary-timeline-bot/1.0; +https://diary.aaaaaso.com)"
 MYTIMELINE_IMAGE_MAX_BYTES = 8 * 1024 * 1024
+MYTIMELINE_IMAGE_MAX_DIMENSION = 1600
+MYTIMELINE_JPEG_QUALITY = 82
+MYTIMELINE_WEBP_QUALITY = 80
 MYTIMELINE_ALLOWED_IMAGE_FORMATS = {"JPEG", "PNG", "WEBP", "GIF"}
 DRIVE_UPLOAD_SCOPES = ("https://www.googleapis.com/auth/drive",)
 
@@ -165,13 +169,50 @@ def _normalize_uploaded_image(file_storage):
             image_format = (image.format or "").upper()
             if image_format not in MYTIMELINE_ALLOWED_IMAGE_FORMATS:
                 raise _timeline_image_error("画像は JPEG / PNG / WEBP / GIF のみ対応です。")
-            width, height = image.size
-            mime_type = Image.MIME.get(image_format, file_storage.mimetype or "application/octet-stream")
+            if image_format == "GIF":
+                width, height = image.size
+                normalized_bytes = raw_bytes
+                mime_type = Image.MIME.get(image_format, file_storage.mimetype or "application/octet-stream")
+            else:
+                working = ImageOps.exif_transpose(image) if ImageOps is not None else image.copy()
+                if working.mode not in {"RGB", "RGBA"}:
+                    if "A" in working.getbands():
+                        working = working.convert("RGBA")
+                    else:
+                        working = working.convert("RGB")
+
+                working.thumbnail(
+                    (MYTIMELINE_IMAGE_MAX_DIMENSION, MYTIMELINE_IMAGE_MAX_DIMENSION),
+                    Image.Resampling.LANCZOS,
+                )
+                width, height = working.size
+
+                output = io.BytesIO()
+                has_alpha = "A" in working.getbands()
+                if has_alpha:
+                    working.save(output, format="WEBP", quality=MYTIMELINE_WEBP_QUALITY, method=6)
+                    image_format = "WEBP"
+                else:
+                    if working.mode != "RGB":
+                        working = working.convert("RGB")
+                    working.save(
+                        output,
+                        format="JPEG",
+                        quality=MYTIMELINE_JPEG_QUALITY,
+                        optimize=True,
+                        progressive=True,
+                    )
+                    image_format = "JPEG"
+                normalized_bytes = output.getvalue()
+                mime_type = Image.MIME.get(image_format, file_storage.mimetype or "application/octet-stream")
     except UnidentifiedImageError as exc:
         raise _timeline_image_error("画像ファイルを読み取れませんでした。") from exc
 
+    if len(normalized_bytes) > MYTIMELINE_IMAGE_MAX_BYTES:
+        raise _timeline_image_error("圧縮後も画像サイズが大きすぎます。もう少し小さい画像を使ってください。")
+
     return {
-        "bytes": raw_bytes,
+        "bytes": normalized_bytes,
         "mime_type": mime_type,
         "width": int(width),
         "height": int(height),
@@ -1069,11 +1110,10 @@ def _timeline_delete_post(post_id: int) -> None:
             with conn.cursor() as cur:
                 cur.execute("DELETE FROM mytimeline_posts WHERE id = %s", (post_id,))
             conn.commit()
-        return
-
-    with _open_timeline_db() as conn:
-        conn.execute("DELETE FROM mytimeline_posts WHERE id = ?", (post_id,))
-        conn.commit()
+    else:
+        with _open_timeline_db() as conn:
+            conn.execute("DELETE FROM mytimeline_posts WHERE id = ?", (post_id,))
+            conn.commit()
     if existing and existing.get("image_drive_file_id"):
         _delete_drive_file(existing["image_drive_file_id"])
 

@@ -24,24 +24,17 @@
             placeholder="メモだからね、推敲しないこと"
             required
           ></textarea>
-          <div class="timeline-compose-upload">
-            <label class="timeline-image-input-label" for="timeline-image-input">画像を添付</label>
-            <input
-              id="timeline-image-input"
-              class="timeline-image-input"
-              type="file"
-              name="image"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-            >
-            <p class="timeline-image-help">
-              {% if image_upload_enabled %}
-                JPEG / PNG / WEBP / GIF、8MBまで
-              {% else %}
-                画像アップロード設定はまだ未完了
-              {% endif %}
-            </p>
-          </div>
+          <input
+            id="timeline-image-input"
+            class="timeline-image-input"
+            type="file"
+            name="image"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+          >
           <div class="timeline-form-actions">
+            <label class="timeline-image-input-label timeline-image-input-label-compose" for="timeline-image-input" aria-label="画像を添付">
+              <img src="{{ url_for('static', filename='photo_icon.png') }}" alt="" aria-hidden="true">
+            </label>
             <p id="timeline-char-count" class="timeline-char-count" aria-live="polite">0/100</p>
             <button type="submit" class="timeline-submit-btn" aria-label="投稿する">
               <img src="{{ url_for('static', filename='send_icon.png') }}" alt="" aria-hidden="true">
