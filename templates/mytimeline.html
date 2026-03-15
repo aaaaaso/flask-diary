@@ -21,6 +21,20 @@
               </div>
             </div>
             <p class="timeline-content">{{ post.content_html | safe }}</p>
+            {% if post.image_url %}
+              <div class="timeline-image-wrap">
+                <img
+                  class="timeline-post-image"
+                  src="{{ post.image_url }}"
+                  alt=""
+                  loading="lazy"
+                  {% if post.image_width and post.image_height %}
+                    width="{{ post.image_width }}"
+                    height="{{ post.image_height }}"
+                  {% endif %}
+                >
+              </div>
+            {% endif %}
             {% if post.link_previews %}
               <div class="timeline-link-previews">
                 {% for preview in post.link_previews %}

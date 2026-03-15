@@ -1,19 +1,38 @@
-from flask import Flask, render_template, abort, request, jsonify, redirect, url_for
+from flask import Flask, render_template, abort, request, jsonify, redirect, url_for, send_file
 from settings import TOTAL_PAGES, PAGE_IDS     # settings.pyから読む
 from notion_fetcher import fetch_diary_entries, clear_cache
 from lab import lab_bp
 import html
 import ipaddress
+import io
 import json
 import os
 import re
 import socket
 import sqlite3
+from contextlib import suppress
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from urllib.error import URLError, HTTPError
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
+
+try:
+    from PIL import Image, UnidentifiedImageError
+except ImportError:
+    Image = None
+    UnidentifiedImageError = Exception
+
+try:
+    from google.oauth2 import service_account
+    from googleapiclient.discovery import build
+    from googleapiclient.errors import HttpError
+    from googleapiclient.http import MediaIoBaseUpload
+except ImportError:
+    service_account = None
+    build = None
+    HttpError = None
+    MediaIoBaseUpload = None
 
 try:
     import psycopg
@@ -30,6 +49,9 @@ URL_PATTERN = re.compile(r"(https?://[^\s<>'\"`]+)")
 TOKYO_TZ = ZoneInfo("Asia/Tokyo")
 OGP_CACHE_TTL_SECONDS = 60 * 60 * 24
 FETCH_USER_AGENT = "Mozilla/5.0 (compatible; diary-timeline-bot/1.0; +https://diary.aaaaaso.com)"
+MYTIMELINE_IMAGE_MAX_BYTES = 8 * 1024 * 1024
+MYTIMELINE_ALLOWED_IMAGE_FORMATS = {"JPEG", "PNG", "WEBP", "GIF"}
+DRIVE_UPLOAD_SCOPES = ("https://www.googleapis.com/auth/drive",)
 
 
 def _timeline_database_url() -> str:
@@ -45,6 +67,127 @@ def _timeline_db_kind() -> str:
     if db_url.startswith(("postgres://", "postgresql://")):
         return "postgres"
     return "sqlite"
+
+
+def _timeline_drive_folder_id() -> str:
+    return os.getenv("MYTIMELINE_DRIVE_FOLDER_ID", "").strip()
+
+
+def _timeline_google_service_account_source():
+    raw_json = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "").strip()
+    if raw_json:
+        return ("json", raw_json)
+    raw_path = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "").strip()
+    if raw_path:
+        return ("file", raw_path)
+    return (None, "")
+
+
+def _timeline_image_upload_enabled() -> bool:
+    source_kind, source_value = _timeline_google_service_account_source()
+    return bool(_timeline_drive_folder_id() and source_kind and source_value)
+
+
+def _timeline_image_error(message: str) -> ValueError:
+    return ValueError(message)
+
+
+def _get_drive_service():
+    if service_account is None or build is None or MediaIoBaseUpload is None:
+        raise RuntimeError("Google Drive dependencies are not installed. Install requirements.txt first.")
+
+    source_kind, source_value = _timeline_google_service_account_source()
+    if not source_kind or not source_value:
+        raise RuntimeError("Google service account credentials are not configured.")
+
+    if source_kind == "json":
+        info = json.loads(source_value)
+        credentials = service_account.Credentials.from_service_account_info(info, scopes=DRIVE_UPLOAD_SCOPES)
+    else:
+        credentials = service_account.Credentials.from_service_account_file(source_value, scopes=DRIVE_UPLOAD_SCOPES)
+
+    return build("drive", "v3", credentials=credentials, cache_discovery=False)
+
+
+def _normalize_uploaded_image(file_storage):
+    if not file_storage or not getattr(file_storage, "filename", ""):
+        return None
+    if Image is None:
+        raise RuntimeError("Pillow is not installed. Install requirements.txt first.")
+
+    raw_bytes = file_storage.read()
+    file_storage.stream.seek(0)
+
+    if not raw_bytes:
+        return None
+    if len(raw_bytes) > MYTIMELINE_IMAGE_MAX_BYTES:
+        raise _timeline_image_error("画像は8MB以内にしてください。")
+
+    try:
+        with Image.open(io.BytesIO(raw_bytes)) as image:
+            image.verify()
+        with Image.open(io.BytesIO(raw_bytes)) as image:
+            image_format = (image.format or "").upper()
+            if image_format not in MYTIMELINE_ALLOWED_IMAGE_FORMATS:
+                raise _timeline_image_error("画像は JPEG / PNG / WEBP / GIF のみ対応です。")
+            width, height = image.size
+            mime_type = Image.MIME.get(image_format, file_storage.mimetype or "application/octet-stream")
+    except UnidentifiedImageError as exc:
+        raise _timeline_image_error("画像ファイルを読み取れませんでした。") from exc
+
+    return {
+        "bytes": raw_bytes,
+        "mime_type": mime_type,
+        "width": int(width),
+        "height": int(height),
+        "filename": os.path.basename(file_storage.filename or "upload"),
+    }
+
+
+def _upload_image_to_drive(image_payload: dict):
+    folder_id = _timeline_drive_folder_id()
+    if not folder_id:
+        raise RuntimeError("MYTIMELINE_DRIVE_FOLDER_ID is not configured.")
+
+    service = _get_drive_service()
+    timestamp = datetime.now(TOKYO_TZ).strftime("%Y%m%d-%H%M%S")
+    filename = image_payload.get("filename") or f"mytimeline-{timestamp}"
+    metadata = {
+        "name": f"mytimeline-{timestamp}-{filename}",
+        "parents": [folder_id],
+    }
+    media = MediaIoBaseUpload(
+        io.BytesIO(image_payload["bytes"]),
+        mimetype=image_payload["mime_type"],
+        resumable=False,
+    )
+    created = service.files().create(
+        body=metadata,
+        media_body=media,
+        fields="id",
+        supportsAllDrives=True,
+    ).execute()
+    return {
+        "drive_file_id": created["id"],
+        "mime_type": image_payload["mime_type"],
+        "width": image_payload["width"],
+        "height": image_payload["height"],
+    }
+
+
+def _delete_drive_file(file_id: str) -> None:
+    if not file_id or not _timeline_image_upload_enabled():
+        return
+    try:
+        service = _get_drive_service()
+        service.files().delete(fileId=file_id, supportsAllDrives=True).execute()
+    except Exception as exc:
+        app.logger.warning("Failed to delete Drive image %s: %s", file_id, exc)
+
+
+def _download_drive_file(file_id: str) -> bytes:
+    service = _get_drive_service()
+    return service.files().get_media(fileId=file_id, supportsAllDrives=True).execute()
 
 
 def _postgres_conninfo() -> str:
@@ -527,6 +670,7 @@ def _timeline_prepare_posts(posts):
         item["content_html"] = _linkify_content(display_content)
         item["link_previews"] = link_previews
         item["edit_datetime_local"] = edit_datetime_local
+        item["image_url"] = url_for("mytimeline_image", post_id=post["id"]) if post.get("image_drive_file_id") else ""
         prepared.append(item)
 
         if date_label:
@@ -544,6 +688,10 @@ def _init_timeline_table() -> None:
                       id BIGSERIAL PRIMARY KEY,
                       content TEXT NOT NULL,
                       tags TEXT NOT NULL DEFAULT '[]',
+                      image_drive_file_id TEXT NOT NULL DEFAULT '',
+                      image_mime_type TEXT NOT NULL DEFAULT '',
+                      image_width INTEGER,
+                      image_height INTEGER,
                       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                     )
                     """
@@ -552,6 +700,30 @@ def _init_timeline_table() -> None:
                     """
                     ALTER TABLE mytimeline_posts
                     ADD COLUMN IF NOT EXISTS tags TEXT NOT NULL DEFAULT '[]'
+                    """
+                )
+                cur.execute(
+                    """
+                    ALTER TABLE mytimeline_posts
+                    ADD COLUMN IF NOT EXISTS image_drive_file_id TEXT NOT NULL DEFAULT ''
+                    """
+                )
+                cur.execute(
+                    """
+                    ALTER TABLE mytimeline_posts
+                    ADD COLUMN IF NOT EXISTS image_mime_type TEXT NOT NULL DEFAULT ''
+                    """
+                )
+                cur.execute(
+                    """
+                    ALTER TABLE mytimeline_posts
+                    ADD COLUMN IF NOT EXISTS image_width INTEGER
+                    """
+                )
+                cur.execute(
+                    """
+                    ALTER TABLE mytimeline_posts
+                    ADD COLUMN IF NOT EXISTS image_height INTEGER
                     """
                 )
             conn.commit()
@@ -563,6 +735,10 @@ def _init_timeline_table() -> None:
                   id INTEGER PRIMARY KEY AUTOINCREMENT,
                   content TEXT NOT NULL,
                   tags TEXT NOT NULL DEFAULT '[]',
+                  image_drive_file_id TEXT NOT NULL DEFAULT '',
+                  image_mime_type TEXT NOT NULL DEFAULT '',
+                  image_width INTEGER,
+                  image_height INTEGER,
                   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )
                 """
@@ -576,6 +752,34 @@ def _init_timeline_table() -> None:
                     ADD COLUMN tags TEXT NOT NULL DEFAULT '[]'
                     """
                 )
+            if "image_drive_file_id" not in column_names:
+                conn.execute(
+                    """
+                    ALTER TABLE mytimeline_posts
+                    ADD COLUMN image_drive_file_id TEXT NOT NULL DEFAULT ''
+                    """
+                )
+            if "image_mime_type" not in column_names:
+                conn.execute(
+                    """
+                    ALTER TABLE mytimeline_posts
+                    ADD COLUMN image_mime_type TEXT NOT NULL DEFAULT ''
+                    """
+                )
+            if "image_width" not in column_names:
+                conn.execute(
+                    """
+                    ALTER TABLE mytimeline_posts
+                    ADD COLUMN image_width INTEGER
+                    """
+                )
+            if "image_height" not in column_names:
+                conn.execute(
+                    """
+                    ALTER TABLE mytimeline_posts
+                    ADD COLUMN image_height INTEGER
+                    """
+                )
             conn.commit()
 
 
@@ -586,7 +790,7 @@ def _timeline_list_posts(limit: int = 200):
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT id, content, tags, created_at
+                    SELECT id, content, tags, image_drive_file_id, image_mime_type, image_width, image_height, created_at
                     FROM mytimeline_posts
                     ORDER BY created_at DESC, id DESC
                     LIMIT %s
@@ -597,7 +801,7 @@ def _timeline_list_posts(limit: int = 200):
 
         posts = []
         for row in rows:
-            post_id, content, tags_raw, created_at = row
+            post_id, content, tags_raw, image_drive_file_id, image_mime_type, image_width, image_height, created_at = row
             try:
                 tags = json.loads(tags_raw or "[]")
             except (ValueError, TypeError):
@@ -606,6 +810,10 @@ def _timeline_list_posts(limit: int = 200):
                 "id": post_id,
                 "content": content,
                 "tags": tags,
+                "image_drive_file_id": image_drive_file_id or "",
+                "image_mime_type": image_mime_type or "",
+                "image_width": image_width,
+                "image_height": image_height,
                 "created_at": created_at,
             })
         return posts
@@ -613,7 +821,7 @@ def _timeline_list_posts(limit: int = 200):
     with _open_timeline_db() as conn:
         rows = conn.execute(
             """
-            SELECT id, content, tags, created_at
+            SELECT id, content, tags, image_drive_file_id, image_mime_type, image_width, image_height, created_at
             FROM mytimeline_posts
             ORDER BY created_at DESC, id DESC
             LIMIT ?
@@ -636,23 +844,35 @@ def _timeline_list_posts(limit: int = 200):
             "id": row["id"],
             "content": row["content"],
             "tags": tags,
+            "image_drive_file_id": row["image_drive_file_id"] or "",
+            "image_mime_type": row["image_mime_type"] or "",
+            "image_width": row["image_width"],
+            "image_height": row["image_height"],
             "created_at": parsed_created_at,
         })
     return posts
 
 
-def _timeline_insert_post(content: str, tags) -> None:
+def _timeline_insert_post(content: str, tags, image_meta=None) -> None:
     tags_json = json.dumps(tags, ensure_ascii=False)
+    image_meta = image_meta or {}
     _init_timeline_table()
     if _timeline_db_kind() == "postgres":
         with _open_timeline_db() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    INSERT INTO mytimeline_posts (content, tags)
-                    VALUES (%s, %s)
+                    INSERT INTO mytimeline_posts (content, tags, image_drive_file_id, image_mime_type, image_width, image_height)
+                    VALUES (%s, %s, %s, %s, %s, %s)
                     """,
-                    (content, tags_json),
+                    (
+                        content,
+                        tags_json,
+                        image_meta.get("drive_file_id", ""),
+                        image_meta.get("mime_type", ""),
+                        image_meta.get("width"),
+                        image_meta.get("height"),
+                    ),
                 )
             conn.commit()
         return
@@ -660,10 +880,17 @@ def _timeline_insert_post(content: str, tags) -> None:
     with _open_timeline_db() as conn:
         conn.execute(
             """
-            INSERT INTO mytimeline_posts (content, tags)
-            VALUES (?, ?)
+            INSERT INTO mytimeline_posts (content, tags, image_drive_file_id, image_mime_type, image_width, image_height)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (content, tags_json),
+            (
+                content,
+                tags_json,
+                image_meta.get("drive_file_id", ""),
+                image_meta.get("mime_type", ""),
+                image_meta.get("width"),
+                image_meta.get("height"),
+            ),
         )
         conn.commit()
 
@@ -678,8 +905,81 @@ def _parse_timeline_local_datetime(value: str):
     return local_dt.replace(tzinfo=TOKYO_TZ).astimezone(timezone.utc)
 
 
-def _timeline_update_post(post_id: int, content: str, tags, created_at_utc: datetime) -> None:
+def _timeline_get_post(post_id: int):
+    _init_timeline_table()
+    if _timeline_db_kind() == "postgres":
+        with _open_timeline_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id, content, tags, image_drive_file_id, image_mime_type, image_width, image_height, created_at
+                    FROM mytimeline_posts
+                    WHERE id = %s
+                    """,
+                    (post_id,),
+                )
+                row = cur.fetchone()
+        if not row:
+            return None
+        post_id, content, tags_raw, image_drive_file_id, image_mime_type, image_width, image_height, created_at = row
+        with suppress(ValueError, TypeError):
+            tags = json.loads(tags_raw or "[]")
+            return {
+                "id": post_id,
+                "content": content,
+                "tags": tags,
+                "image_drive_file_id": image_drive_file_id or "",
+                "image_mime_type": image_mime_type or "",
+                "image_width": image_width,
+                "image_height": image_height,
+                "created_at": created_at,
+            }
+        return {
+            "id": post_id,
+            "content": content,
+            "tags": [],
+            "image_drive_file_id": image_drive_file_id or "",
+            "image_mime_type": image_mime_type or "",
+            "image_width": image_width,
+            "image_height": image_height,
+            "created_at": created_at,
+        }
+
+    with _open_timeline_db() as conn:
+        row = conn.execute(
+            """
+            SELECT id, content, tags, image_drive_file_id, image_mime_type, image_width, image_height, created_at
+            FROM mytimeline_posts
+            WHERE id = ?
+            """,
+            (post_id,),
+        ).fetchone()
+    if not row:
+        return None
+    try:
+        tags = json.loads(row["tags"] or "[]")
+    except (ValueError, TypeError):
+        tags = []
+    created_at = row["created_at"]
+    try:
+        parsed_created_at = datetime.strptime(created_at, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+    except ValueError:
+        parsed_created_at = created_at
+    return {
+        "id": row["id"],
+        "content": row["content"],
+        "tags": tags,
+        "image_drive_file_id": row["image_drive_file_id"] or "",
+        "image_mime_type": row["image_mime_type"] or "",
+        "image_width": row["image_width"],
+        "image_height": row["image_height"],
+        "created_at": parsed_created_at,
+    }
+
+
+def _timeline_update_post(post_id: int, content: str, tags, created_at_utc: datetime, image_meta=None) -> None:
     tags_json = json.dumps(tags, ensure_ascii=False)
+    image_meta = image_meta or {}
     _init_timeline_table()
     if _timeline_db_kind() == "postgres":
         with _open_timeline_db() as conn:
@@ -687,10 +987,19 @@ def _timeline_update_post(post_id: int, content: str, tags, created_at_utc: date
                 cur.execute(
                     """
                     UPDATE mytimeline_posts
-                    SET content = %s, tags = %s, created_at = %s
+                    SET content = %s, tags = %s, image_drive_file_id = %s, image_mime_type = %s, image_width = %s, image_height = %s, created_at = %s
                     WHERE id = %s
                     """,
-                    (content, tags_json, created_at_utc, post_id),
+                    (
+                        content,
+                        tags_json,
+                        image_meta.get("drive_file_id", ""),
+                        image_meta.get("mime_type", ""),
+                        image_meta.get("width"),
+                        image_meta.get("height"),
+                        created_at_utc,
+                        post_id,
+                    ),
                 )
             conn.commit()
         return
@@ -700,15 +1009,25 @@ def _timeline_update_post(post_id: int, content: str, tags, created_at_utc: date
         conn.execute(
             """
             UPDATE mytimeline_posts
-            SET content = ?, tags = ?, created_at = ?
+            SET content = ?, tags = ?, image_drive_file_id = ?, image_mime_type = ?, image_width = ?, image_height = ?, created_at = ?
             WHERE id = ?
             """,
-            (content, tags_json, created_at_str, post_id),
+            (
+                content,
+                tags_json,
+                image_meta.get("drive_file_id", ""),
+                image_meta.get("mime_type", ""),
+                image_meta.get("width"),
+                image_meta.get("height"),
+                created_at_str,
+                post_id,
+            ),
         )
         conn.commit()
 
 
 def _timeline_delete_post(post_id: int) -> None:
+    existing = _timeline_get_post(post_id)
     _init_timeline_table()
     if _timeline_db_kind() == "postgres":
         with _open_timeline_db() as conn:
@@ -720,6 +1039,8 @@ def _timeline_delete_post(post_id: int) -> None:
     with _open_timeline_db() as conn:
         conn.execute("DELETE FROM mytimeline_posts WHERE id = ?", (post_id,))
         conn.commit()
+    if existing and existing.get("image_drive_file_id"):
+        _delete_drive_file(existing["image_drive_file_id"])
 
 
 def _init_tetris_ranking_table() -> None:
@@ -867,6 +1188,26 @@ def mytimeline():
     )
 
 
+@app.route("/mytimeline/image/<int:post_id>")
+def mytimeline_image(post_id: int):
+    post = _timeline_get_post(post_id)
+    if not post or not post.get("image_drive_file_id"):
+        abort(404)
+    try:
+        image_bytes = _download_drive_file(post["image_drive_file_id"])
+    except Exception as exc:
+        app.logger.warning("Failed to fetch Drive image for post %s: %s", post_id, exc)
+        abort(404)
+
+    response = send_file(
+        io.BytesIO(image_bytes),
+        mimetype=post.get("image_mime_type") or "application/octet-stream",
+        download_name=f"mytimeline-{post_id}",
+    )
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    return response
+
+
 @app.route("/mytimeline/edit/<token>", methods=["GET", "POST"])
 def mytimeline_edit(token: str):
     expected_token = _timeline_edit_token()
@@ -878,22 +1219,41 @@ def mytimeline_edit(token: str):
     if request.method == "POST":
         is_ajax = request.headers.get("X-Requested-With", "").lower() == "xmlhttprequest"
         raw_content = request.form.get("content", "").strip()
+        image_file = request.files.get("image")
         tags = _extract_tags(raw_content)
         content = _strip_tags_from_content(raw_content)
         validation_error = ""
+        image_meta = None
         if not content:
             validation_error = "投稿内容が空です。"
         elif len(content) > 100:
             validation_error = "投稿内容は100文字以内にしてください。"
         elif len(tags) > 3:
             validation_error = "タグは最大3つまでです。"
+        else:
+            try:
+                image_payload = _normalize_uploaded_image(image_file)
+                if image_payload and not _timeline_image_upload_enabled():
+                    validation_error = "画像アップロード設定が未完了です。"
+                elif image_payload:
+                    image_meta = _upload_image_to_drive(image_payload)
+            except ValueError as exc:
+                validation_error = str(exc)
+            except Exception as exc:
+                app.logger.warning("Failed to upload timeline image: %s", exc)
+                validation_error = "画像のアップロードに失敗しました。"
 
         if validation_error:
             if is_ajax:
                 return jsonify({"ok": False, "error": validation_error}), 400
             error_message = validation_error
         else:
-            _timeline_insert_post(content, tags)
+            try:
+                _timeline_insert_post(content, tags, image_meta=image_meta)
+            except Exception:
+                if image_meta and image_meta.get("drive_file_id"):
+                    _delete_drive_file(image_meta["drive_file_id"])
+                raise
             if is_ajax:
                 latest_posts = _timeline_prepare_posts(_timeline_list_posts(limit=1))
                 post_html = ""
@@ -918,6 +1278,7 @@ def mytimeline_edit(token: str):
         token=token,
         posted=posted,
         error_message=error_message,
+        image_upload_enabled=_timeline_image_upload_enabled(),
     )
 
 
@@ -931,6 +1292,11 @@ def mytimeline_update(token: str, post_id: int):
     raw_content = request.form.get("content", "").strip()
     raw_tags = request.form.get("tags", "").strip()
     raw_datetime = request.form.get("created_at_local", "").strip()
+    remove_image = request.form.get("remove_image") == "1"
+    image_file = request.files.get("image")
+    existing_post = _timeline_get_post(post_id)
+    if not existing_post:
+        abort(404)
 
     tags = _extract_tags(raw_tags)
     content = raw_content
@@ -944,8 +1310,45 @@ def mytimeline_update(token: str, post_id: int):
         return redirect(url_for("mytimeline_edit", token=token, q=search_query or None, error="タグは最大3つまでです。"))
     if not created_at_utc:
         return redirect(url_for("mytimeline_edit", token=token, q=search_query or None, error="日時の形式が不正です。"))
+    try:
+        image_payload = _normalize_uploaded_image(image_file)
+    except ValueError as exc:
+        return redirect(url_for("mytimeline_edit", token=token, q=search_query or None, error=str(exc)))
+    except Exception as exc:
+        app.logger.warning("Failed to read timeline image: %s", exc)
+        return redirect(url_for("mytimeline_edit", token=token, q=search_query or None, error="画像の読み込みに失敗しました。"))
 
-    _timeline_update_post(post_id, content, tags, created_at_utc)
+    current_image_meta = {
+        "drive_file_id": existing_post.get("image_drive_file_id", ""),
+        "mime_type": existing_post.get("image_mime_type", ""),
+        "width": existing_post.get("image_width"),
+        "height": existing_post.get("image_height"),
+    }
+    next_image_meta = dict(current_image_meta)
+    old_drive_file_id = current_image_meta.get("drive_file_id", "")
+    newly_uploaded_file_id = ""
+
+    if image_payload:
+        if not _timeline_image_upload_enabled():
+            return redirect(url_for("mytimeline_edit", token=token, q=search_query or None, error="画像アップロード設定が未完了です。"))
+        try:
+            next_image_meta = _upload_image_to_drive(image_payload)
+            newly_uploaded_file_id = next_image_meta.get("drive_file_id", "")
+        except Exception as exc:
+            app.logger.warning("Failed to replace timeline image: %s", exc)
+            return redirect(url_for("mytimeline_edit", token=token, q=search_query or None, error="画像のアップロードに失敗しました。"))
+    elif remove_image:
+        next_image_meta = {"drive_file_id": "", "mime_type": "", "width": None, "height": None}
+
+    try:
+        _timeline_update_post(post_id, content, tags, created_at_utc, image_meta=next_image_meta)
+    except Exception:
+        if newly_uploaded_file_id:
+            _delete_drive_file(newly_uploaded_file_id)
+        raise
+
+    if old_drive_file_id and old_drive_file_id != next_image_meta.get("drive_file_id", ""):
+        _delete_drive_file(old_drive_file_id)
     return redirect(url_for("mytimeline_edit", token=token, q=search_query or None))
 
 

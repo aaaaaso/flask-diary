@@ -3,3 +3,6 @@ markdown
 notion-client
 python-dotenv
 psycopg[binary]>=3.2,<4
+google-api-python-client
+google-auth
+Pillow

@@ -428,6 +428,20 @@ h2 {
   text-decoration-thickness: 1px;
 }
 
+.timeline-image-wrap {
+  margin-top: 12px;
+  margin-left: calc(var(--timeline-date-col) + var(--timeline-meta-gap));
+}
+
+.timeline-post-image {
+  display: block;
+  max-width: min(100%, 420px);
+  width: auto;
+  height: auto;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
 .timeline-link-previews {
   margin-top: 10px;
   margin-left: calc(var(--timeline-date-col) + var(--timeline-meta-gap));
@@ -652,6 +666,47 @@ h2 {
   overflow: hidden;
 }
 
+.timeline-compose-upload {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px 10px;
+  background: rgba(255, 255, 255, 0.92);
+  flex-wrap: wrap;
+}
+
+.timeline-image-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.timeline-image-input-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.78);
+  color: #4d4d4d;
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+
+.timeline-image-help {
+  margin: 0;
+  font-size: 0.7rem;
+  color: #6f6f6f;
+}
+
 .timeline-form-actions {
   width: 100%;
   display: flex;
@@ -820,6 +875,22 @@ h2 {
   border-color: rgba(0, 0, 0, 0.2);
 }
 
+.timeline-inline-image-controls {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.timeline-inline-remove-image {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: #5d5d5d;
+}
+
 .timeline-inline-edit-actions {
   margin-top: 8px;
   display: flex;
@@ -915,6 +986,7 @@ h2 {
     margin-left: 0;
   }
 
+  .timeline-image-wrap,
   .timeline-link-previews,
   .timeline-chip-row,
   .timeline-inline-edit {
@@ -934,6 +1006,11 @@ h2 {
 
   .timeline-form textarea {
     height: 92px;
+  }
+
+  .timeline-compose-upload {
+    padding: 0 14px 10px;
+    gap: 8px;
   }
 
   .timeline-form {

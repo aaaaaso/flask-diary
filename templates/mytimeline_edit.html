@@ -14,7 +14,7 @@
       {% if error_message %}
         <p class="timeline-error">{{ error_message }}</p>
       {% endif %}
-      <form method="post" class="timeline-form" id="timeline-compose-form" action="{{ url_for('mytimeline_edit', token=token, q=search_query or None) }}">
+      <form method="post" enctype="multipart/form-data" class="timeline-form" id="timeline-compose-form" action="{{ url_for('mytimeline_edit', token=token, q=search_query or None) }}">
         <div class="timeline-composer">
           <textarea
             id="content"
@@ -24,6 +24,23 @@
             placeholder="メモだからね、推敲しないこと"
             required
           ></textarea>
+          <div class="timeline-compose-upload">
+            <label class="timeline-image-input-label" for="timeline-image-input">画像を添付</label>
+            <input
+              id="timeline-image-input"
+              class="timeline-image-input"
+              type="file"
+              name="image"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+            >
+            <p class="timeline-image-help">
+              {% if image_upload_enabled %}
+                JPEG / PNG / WEBP / GIF、8MBまで
+              {% else %}
+                画像アップロード設定はまだ未完了
+              {% endif %}
+            </p>
+          </div>
           <div class="timeline-form-actions">
             <p id="timeline-char-count" class="timeline-char-count" aria-live="polite">0/100</p>
             <button type="submit" class="timeline-submit-btn" aria-label="投稿する">
