@@ -519,14 +519,11 @@ h2 {
   display: inline-block;
   min-width: var(--timeline-date-col);
   box-sizing: border-box;
-  padding: 5px 12px;
+  padding-left: 6px;
   font-size: 0.98rem;
   font-weight: 600;
   letter-spacing: 0.03em;
   color: #4b4b4b;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 999px;
-  line-height: 1.2;
 }
 
 .timeline-chip-row {
@@ -1008,12 +1005,12 @@ h2 {
 
   .timeline-date-slot,
   .timeline-time {
-    font-size: 0.9rem;
+    font-size: 0.72rem;
   }
 
   .timeline-date-slot {
     justify-self: center;
-    margin: 1em 0;
+    margin: 1.4em 0;
     min-width: 0;
     padding-left: 0;
     text-align: center;
