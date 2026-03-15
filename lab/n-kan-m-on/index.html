@@ -60,10 +60,36 @@
       justify-self: center;
       align-self: start;
       margin-top: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35em;
+      flex-wrap: wrap;
+      justify-content: center;
     }
 
     .lead.is-hidden {
       visibility: hidden;
+    }
+
+    .city-select {
+      appearance: none;
+      border: none;
+      border-bottom: 1px solid rgba(45, 43, 31, 0.2);
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      letter-spacing: inherit;
+      text-align: center;
+      width: auto;
+      min-width: 0;
+      padding: 0 3px 1px;
+      border-radius: 0;
+      cursor: pointer;
+    }
+
+    .city-select:focus {
+      outline: none;
+      border-bottom-color: rgba(45, 43, 31, 0.5);
     }
 
     .result-wrap {
@@ -249,7 +275,20 @@
 </head>
 <body>
   <main>
-    <div class="lead" id="lead">向こう1週間の東京は</div>
+    <div class="lead" id="lead">
+      <span>向こう1週間の</span>
+      <select class="city-select" id="citySelect" aria-label="主要都市を選択">
+        <option value="tokyo" selected>東京</option>
+        <option value="sapporo">札幌</option>
+        <option value="sendai">仙台</option>
+        <option value="nagoya">名古屋</option>
+        <option value="osaka">大阪</option>
+        <option value="hiroshima">広島</option>
+        <option value="fukuoka">福岡</option>
+        <option value="naha">那覇</option>
+      </select>
+      <span>は</span>
+    </div>
     <section class="result-wrap" aria-live="polite">
       <div>
         <p class="result is-loading" id="result">loading...</p>
@@ -262,17 +301,24 @@
   </main>
 
   <script>
-    const TOKYO = {
-      latitude: 35.6762,
-      longitude: 139.6503
+    const CITIES = {
+      tokyo: { label: "東京", latitude: 35.6762, longitude: 139.6503 },
+      sapporo: { label: "札幌", latitude: 43.0618, longitude: 141.3545 },
+      sendai: { label: "仙台", latitude: 38.2682, longitude: 140.8694 },
+      nagoya: { label: "名古屋", latitude: 35.1815, longitude: 136.9066 },
+      osaka: { label: "大阪", latitude: 34.6937, longitude: 135.5023 },
+      hiroshima: { label: "広島", latitude: 34.3853, longitude: 132.4553 },
+      fukuoka: { label: "福岡", latitude: 33.5902, longitude: 130.4017 },
+      naha: { label: "那覇", latitude: 26.2124, longitude: 127.6809 }
     };
 
     const resultEl = document.getElementById("result");
     const chartEl = document.getElementById("chart");
     const leadEl = document.getElementById("lead");
+    const citySelectEl = document.getElementById("citySelect");
     const previewMonth = null;
 
-    const kansuji = ["〇", "一", "二", "三", "四", "五", "六", "七"];
+    const kansuji = ["零", "一", "二", "三", "四", "五", "六", "七"];
 
     const toKansuji = (num) => kansuji[num] ?? String(num);
 
@@ -389,9 +435,11 @@
     };
 
     const loadWeather = async () => {
+      const city = CITIES[citySelectEl.value] ?? CITIES.tokyo;
+      chartEl.classList.remove("is-ready");
       const params = new URLSearchParams({
-        latitude: String(TOKYO.latitude),
-        longitude: String(TOKYO.longitude),
+        latitude: String(city.latitude),
+        longitude: String(city.longitude),
         daily: "temperature_2m_max,temperature_2m_min",
         forecast_days: "7",
         timezone: "Asia/Tokyo"
@@ -420,6 +468,7 @@
       resultEl.classList.toggle("is-message", label.isMessage);
       leadEl.classList.toggle("is-hidden", label.isMessage);
       resultEl.innerHTML = label.html;
+      chartEl.setAttribute("aria-label", `向こう1週間の${city.label}の最低気温と最高気温の推移`);
       renderChart(
         dates.map((date) => formatDay(date)),
         minTemps,
@@ -427,12 +476,21 @@
       );
     };
 
-    loadWeather().catch(() => {
+    const handleLoadError = () => {
       resultEl.classList.add("is-loading");
       resultEl.textContent = "取得失敗";
       chartEl.classList.remove("is-ready");
       chartEl.innerHTML = "";
+    };
+
+    citySelectEl.addEventListener("change", () => {
+      resultEl.classList.add("is-loading");
+      resultEl.classList.remove("is-message");
+      resultEl.textContent = "loading...";
+      loadWeather().catch(handleLoadError);
     });
+
+    loadWeather().catch(handleLoadError);
   </script>
 </body>
 </html>
