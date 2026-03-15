@@ -10,12 +10,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@400;700&family=Zen+Kaku+Gothic+New:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #e7e2d7;
-      --paper: rgba(249, 246, 238, 0.86);
-      --ink: #26211c;
-      --muted: rgba(38, 33, 28, 0.64);
-      --line: rgba(38, 33, 28, 0.12);
-      --shadow: rgba(59, 45, 34, 0.12);
+      --bg: #efefe7;
+      --ink: #2d2b1f;
+      --muted: rgba(45, 43, 31, 0.62);
+      --line: rgba(45, 43, 31, 0.12);
     }
 
     * {
@@ -32,25 +30,22 @@
       color: var(--ink);
       font-family: "Zen Kaku Gothic New", system-ui, sans-serif;
       background:
-        radial-gradient(1200px 680px at 20% 0%, rgba(255, 255, 255, 0.46), transparent 62%),
-        radial-gradient(920px 600px at 100% 100%, rgba(188, 176, 156, 0.38), transparent 58%),
-        linear-gradient(180deg, #ece7db 0%, #dfd8c9 100%);
+        linear-gradient(180deg, #f3f1ea 0%, #ecebdc 38%, #e8e8d6 100%);
       display: grid;
       place-items: center;
       padding: 24px;
     }
 
     main {
+      position: relative;
+      z-index: 1;
       width: min(720px, 100%);
       min-height: min(82dvh, 760px);
       padding: clamp(24px, 5vw, 48px);
-      border: 1px solid var(--line);
-      background: var(--paper);
-      box-shadow: 0 24px 80px var(--shadow);
-      backdrop-filter: blur(10px);
       display: grid;
-      grid-template-rows: auto 1fr auto;
-      gap: 12px;
+      grid-template-rows: auto auto auto;
+      align-content: center;
+      gap: 22px;
       text-align: center;
     }
 
@@ -70,6 +65,7 @@
     .result-wrap {
       display: grid;
       place-items: center;
+      gap: 28px;
     }
 
     .result {
@@ -85,6 +81,157 @@
       justify-self: center;
       align-self: end;
       margin-bottom: 4px;
+      font-size: clamp(9px, 1.1vw, 10px);
+      letter-spacing: 0.1em;
+    }
+
+    .credit a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .chart {
+      width: min(640px, 100%);
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+
+    .chart.is-ready {
+      opacity: 1;
+    }
+
+    .chart svg {
+      width: 100%;
+      height: auto;
+      display: block;
+      overflow: visible;
+    }
+
+    .chart-label,
+    .chart-day,
+    .chart-temp {
+      fill: var(--muted);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+    }
+
+    .chart-label {
+      font-size: 12px;
+    }
+
+    .chart-grid {
+      stroke: var(--line);
+      stroke-width: 1;
+    }
+
+    .chart-area {
+      fill: rgba(148, 191, 84, 0.16);
+      opacity: 0;
+      animation: chartAreaFade 0.9s ease 0.35s forwards;
+    }
+
+    .chart-line-max {
+      fill: none;
+      stroke: #86b347;
+      stroke-width: 2.4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .chart-line-min {
+      fill: none;
+      stroke: #a4a79d;
+      stroke-width: 2.4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .chart-line-max.is-animating {
+      animation: drawLine 1.25s ease forwards;
+    }
+
+    .chart-line-min.is-animating {
+      animation: drawLine 1.25s ease 0.1s forwards;
+    }
+
+    .chart-day {
+      opacity: 0;
+      animation: fadeUpIn 0.5s ease forwards;
+    }
+
+    .result.is-loading {
+      font-family: "Zen Kaku Gothic New", system-ui, sans-serif;
+      font-weight: 400;
+      font-size: clamp(12px, 1.6vw, 14px);
+      letter-spacing: 0.12em;
+      color: var(--muted);
+    }
+
+    .result-cool {
+      display: block;
+      font-size: 0.48em;
+      letter-spacing: 0.04em;
+      margin-top: 0.22em;
+      text-align: center;
+      color: rgba(45, 43, 31, 0.44);
+    }
+
+    .result-cool-join {
+      font-size: 0.7em;
+    }
+
+    @keyframes drawLine {
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
+
+    @keyframes chartAreaFade {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    @keyframes fadeUpIn {
+      from {
+        opacity: 0;
+        transform: translateY(4px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 18px;
+        min-height: 100dvh;
+      }
+
+      main {
+        width: 100%;
+        min-height: calc(100dvh - 36px);
+        padding: 20px 0;
+        gap: 16px;
+      }
+
+      .result-wrap {
+        gap: 12px;
+      }
+
+      .chart {
+        width: 90vw;
+        max-width: 90vw;
+      }
+
+      .chart-day,
+      .chart-temp {
+        font-size: 12px;
+      }
     }
   </style>
 </head>
@@ -93,10 +240,13 @@
     <div class="lead">向こう1週間の東京は</div>
     <section class="result-wrap" aria-live="polite">
       <div>
-        <p class="result" id="result">読込中</p>
+        <p class="result is-loading" id="result">loading...</p>
       </div>
+      <div class="chart" id="chart" aria-label="向こう1週間の東京の最低気温と最高気温の推移"></div>
     </section>
-    <div class="credit">Open-Meteo APIを使用しています。</div>
+    <div class="credit">
+      <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Weather data by Open-Meteo.com</a>
+    </div>
   </main>
 
   <script>
@@ -106,6 +256,7 @@
     };
 
     const resultEl = document.getElementById("result");
+    const chartEl = document.getElementById("chart");
 
     const kansuji = ["〇", "一", "二", "三", "四", "五", "六", "七"];
 
@@ -118,18 +269,98 @@
     };
 
     const buildLabel = ({ cold, warm, cool }) => {
-      const parts = [`${toKansuji(cold)}寒`, `${toKansuji(warm)}温`];
+      const main = `${toKansuji(cold)}寒${toKansuji(warm)}温`;
       if (cool > 0) {
-        parts.push(`${toKansuji(cool)}涼`);
+        return `${main}<span class="result-cool"><span class="result-cool-join">と</span>${toKansuji(cool)}涼</span>`;
       }
-      return parts.join("");
+      return main;
+    };
+
+    const buildPath = (points) => points.map((point, index) => {
+      const prefix = index === 0 ? "M" : "L";
+      return `${prefix}${point.x.toFixed(1)},${point.y.toFixed(1)}`;
+    }).join(" ");
+
+    const buildAreaPath = (upperPoints, lowerPoints) => {
+      const topPath = buildPath(upperPoints);
+      const bottomPath = lowerPoints
+        .slice()
+        .reverse()
+        .map((point) => `L${point.x.toFixed(1)},${point.y.toFixed(1)}`)
+        .join(" ");
+      return `${topPath} ${bottomPath} Z`;
+    };
+
+    const formatDay = (date) => {
+      const [, month, day] = date.split("-");
+      return `${Number(month)}/${Number(day)}`;
+    };
+
+    const renderChart = (days, minTemps, maxTemps) => {
+      const width = 640;
+      const height = 240;
+      const left = 34;
+      const right = 18;
+      const top = 16;
+      const bottom = 34;
+      const innerWidth = width - left - right;
+      const innerHeight = height - top - bottom;
+
+      const temps = [...minTemps, ...maxTemps];
+      const minValue = Math.floor(Math.min(...temps) - 1);
+      const maxValue = Math.ceil(Math.max(...temps) + 1);
+      const range = Math.max(1, maxValue - minValue);
+
+      const xAt = (index) => left + (innerWidth * index) / Math.max(1, days.length - 1);
+      const yAt = (value) => top + ((maxValue - value) / range) * innerHeight;
+
+      const maxPoints = maxTemps.map((temp, index) => ({ x: xAt(index), y: yAt(temp), temp }));
+      const minPoints = minTemps.map((temp, index) => ({ x: xAt(index), y: yAt(temp), temp }));
+      const maxPath = buildPath(maxPoints);
+      const minPath = buildPath(minPoints);
+
+      const guideTemps = Array.from({ length: 4 }, (_, index) => {
+        const ratio = index / 3;
+        return Math.round((maxValue - range * ratio) * 10) / 10;
+      });
+
+      chartEl.innerHTML = `
+        <svg viewBox="0 0 ${width} ${height}" role="img">
+          ${guideTemps.map((temp) => `
+            <g>
+              <line class="chart-grid" x1="${left}" y1="${yAt(temp)}" x2="${width - right}" y2="${yAt(temp)}"></line>
+              <text class="chart-temp" x="0" y="${yAt(temp) + 4}">${temp.toFixed(0)}℃</text>
+            </g>
+          `).join("")}
+          <path class="chart-area" d="${buildAreaPath(maxPoints, minPoints)}"></path>
+          <path class="chart-line-max" d="${maxPath}"></path>
+          <path class="chart-line-min" d="${minPath}"></path>
+          ${days.map((day, index) => `<text class="chart-day" x="${xAt(index)}" y="${height - 8}" text-anchor="middle" style="animation-delay:${0.5 + index * 0.05}s">${day}</text>`).join("")}
+        </svg>
+      `;
+      const maxPathEl = chartEl.querySelector(".chart-line-max");
+      const minPathEl = chartEl.querySelector(".chart-line-min");
+      if (maxPathEl) {
+        const length = maxPathEl.getTotalLength();
+        maxPathEl.style.strokeDasharray = String(length);
+        maxPathEl.style.strokeDashoffset = String(length);
+      }
+      if (minPathEl) {
+        const length = minPathEl.getTotalLength();
+        minPathEl.style.strokeDasharray = String(length);
+        minPathEl.style.strokeDashoffset = String(length);
+      }
+      chartEl.getBoundingClientRect();
+      maxPathEl?.classList.add("is-animating");
+      minPathEl?.classList.add("is-animating");
+      chartEl.classList.add("is-ready");
     };
 
     const loadWeather = async () => {
       const params = new URLSearchParams({
         latitude: String(TOKYO.latitude),
         longitude: String(TOKYO.longitude),
-        daily: "temperature_2m_max",
+        daily: "temperature_2m_max,temperature_2m_min",
         forecast_days: "7",
         timezone: "Asia/Tokyo"
       });
@@ -140,21 +371,32 @@
       }
 
       const data = await res.json();
-      const temps = data?.daily?.temperature_2m_max;
-      if (!Array.isArray(temps) || temps.length === 0) {
-        throw new Error("temperature_2m_max missing");
+      const maxTemps = data?.daily?.temperature_2m_max;
+      const minTemps = data?.daily?.temperature_2m_min;
+      const dates = data?.daily?.time;
+      if (!Array.isArray(maxTemps) || !Array.isArray(minTemps) || !Array.isArray(dates) || maxTemps.length === 0) {
+        throw new Error("daily weather data missing");
       }
 
       const counts = { cold: 0, warm: 0, cool: 0 };
-      temps.forEach((temp) => {
+      maxTemps.forEach((temp) => {
         counts[classify(temp)] += 1;
       });
 
-      resultEl.textContent = buildLabel(counts);
+      resultEl.classList.remove("is-loading");
+      resultEl.innerHTML = buildLabel(counts);
+      renderChart(
+        dates.map((date) => formatDay(date)),
+        minTemps,
+        maxTemps
+      );
     };
 
     loadWeather().catch(() => {
+      resultEl.classList.add("is-loading");
       resultEl.textContent = "取得失敗";
+      chartEl.classList.remove("is-ready");
+      chartEl.innerHTML = "";
     });
   </script>
 </body>
