@@ -25,6 +25,11 @@ except ImportError:
     UnidentifiedImageError = Exception
 
 try:
+    from pillow_heif import register_heif_opener
+except ImportError:
+    register_heif_opener = None
+
+try:
     from google.oauth2 import credentials as google_oauth_credentials
     from google.oauth2 import service_account
     from googleapiclient.discovery import build
@@ -56,8 +61,11 @@ MYTIMELINE_IMAGE_MAX_BYTES = 8 * 1024 * 1024
 MYTIMELINE_IMAGE_MAX_DIMENSION = 1600
 MYTIMELINE_JPEG_QUALITY = 82
 MYTIMELINE_WEBP_QUALITY = 80
-MYTIMELINE_ALLOWED_IMAGE_FORMATS = {"JPEG", "PNG", "WEBP", "GIF"}
+MYTIMELINE_ALLOWED_IMAGE_FORMATS = {"JPEG", "PNG", "WEBP", "GIF", "HEIF", "HEIC"}
 DRIVE_UPLOAD_SCOPES = ("https://www.googleapis.com/auth/drive",)
+
+if register_heif_opener is not None:
+    register_heif_opener()
 
 
 def _timeline_database_url() -> str:
