@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>三寒四温</title>
+  <meta name="description" content="向こう1週間の東京の最高気温を、寒・温・涼で数える。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@400;700&family=Zen+Kaku+Gothic+New:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #e7e2d7;
+      --paper: rgba(249, 246, 238, 0.86);
+      --ink: #26211c;
+      --muted: rgba(38, 33, 28, 0.64);
+      --line: rgba(38, 33, 28, 0.12);
+      --shadow: rgba(59, 45, 34, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Zen Kaku Gothic New", system-ui, sans-serif;
+      background:
+        radial-gradient(1200px 680px at 20% 0%, rgba(255, 255, 255, 0.46), transparent 62%),
+        radial-gradient(920px 600px at 100% 100%, rgba(188, 176, 156, 0.38), transparent 58%),
+        linear-gradient(180deg, #ece7db 0%, #dfd8c9 100%);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    main {
+      width: min(720px, 100%);
+      min-height: min(82dvh, 760px);
+      padding: clamp(24px, 5vw, 48px);
+      border: 1px solid var(--line);
+      background: var(--paper);
+      box-shadow: 0 24px 80px var(--shadow);
+      backdrop-filter: blur(10px);
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 12px;
+      text-align: center;
+    }
+
+    .lead,
+    .credit {
+      font-size: clamp(12px, 1.6vw, 14px);
+      letter-spacing: 0.12em;
+      color: var(--muted);
+    }
+
+    .lead {
+      justify-self: center;
+      align-self: start;
+      margin-top: 4px;
+    }
+
+    .result-wrap {
+      display: grid;
+      place-items: center;
+    }
+
+    .result {
+      margin: 0;
+      font-family: "Zen Old Mincho", serif;
+      font-weight: 700;
+      font-size: clamp(42px, 9vw, 88px);
+      letter-spacing: 0.06em;
+      line-height: 1.15;
+    }
+
+    .credit {
+      justify-self: center;
+      align-self: end;
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="lead">向こう1週間の東京は</div>
+    <section class="result-wrap" aria-live="polite">
+      <div>
+        <p class="result" id="result">読込中</p>
+      </div>
+    </section>
+    <div class="credit">Open-Meteo APIを使用しています。</div>
+  </main>
+
+  <script>
+    const TOKYO = {
+      latitude: 35.6762,
+      longitude: 139.6503
+    };
+
+    const resultEl = document.getElementById("result");
+
+    const kansuji = ["〇", "一", "二", "三", "四", "五", "六", "七"];
+
+    const toKansuji = (num) => kansuji[num] ?? String(num);
+
+    const classify = (temp) => {
+      if (temp < 12) return "cold";
+      if (temp >= 15) return "warm";
+      return "cool";
+    };
+
+    const buildLabel = ({ cold, warm, cool }) => {
+      const parts = [`${toKansuji(cold)}寒`, `${toKansuji(warm)}温`];
+      if (cool > 0) {
+        parts.push(`${toKansuji(cool)}涼`);
+      }
+      return parts.join("");
+    };
+
+    const loadWeather = async () => {
+      const params = new URLSearchParams({
+        latitude: String(TOKYO.latitude),
+        longitude: String(TOKYO.longitude),
+        daily: "temperature_2m_max",
+        forecast_days: "7",
+        timezone: "Asia/Tokyo"
+      });
+      const url = `https://api.open-meteo.com/v1/forecast?${params.toString()}`;
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      const temps = data?.daily?.temperature_2m_max;
+      if (!Array.isArray(temps) || temps.length === 0) {
+        throw new Error("temperature_2m_max missing");
+      }
+
+      const counts = { cold: 0, warm: 0, cool: 0 };
+      temps.forEach((temp) => {
+        counts[classify(temp)] += 1;
+      });
+
+      resultEl.textContent = buildLabel(counts);
+    };
+
+    loadWeather().catch(() => {
+      resultEl.textContent = "取得失敗";
+    });
+  </script>
+</body>
+</html>
