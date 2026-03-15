@@ -985,9 +985,8 @@ h2 {
   }
 
   .timeline-item-top {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: flex-end;
+    position: relative;
+    display: block;
     margin-bottom: 14px;
   }
 
@@ -996,6 +995,12 @@ h2 {
     grid-template-columns: 1fr;
     gap: 10px;
     min-width: 0;
+  }
+
+  .timeline-menu-wrap {
+    position: absolute;
+    right: 0;
+    bottom: 0;
   }
 
   .timeline-date-slot,
