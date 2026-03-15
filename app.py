@@ -388,16 +388,16 @@ def _is_public_fetchable_url(url: str) -> bool:
     return True
 
 
-def _linkify_content(content: str) -> str:
+def _linkify_text(text: str) -> str:
     parts = []
     last_index = 0
-    for match in URL_PATTERN.finditer(content):
+    for match in URL_PATTERN.finditer(text):
         start, end = match.span(1)
         raw = match.group(1)
         url = _clean_detected_url(raw)
         raw_visible = raw
 
-        parts.append(html.escape(content[last_index:start]))
+        parts.append(html.escape(text[last_index:start]))
 
         if url and _is_public_fetchable_url(url):
             safe_href = html.escape(url, quote=True)
@@ -413,8 +413,21 @@ def _linkify_content(content: str) -> str:
 
         last_index = end
 
-    parts.append(html.escape(content[last_index:]))
-    return "".join(parts).replace("\n", "<br>")
+    parts.append(html.escape(text[last_index:]))
+    return "".join(parts)
+
+
+def _linkify_content(content: str) -> str:
+    rendered_lines = []
+    for raw_line in content.splitlines():
+        stripped = raw_line.lstrip()
+        if stripped.startswith(">"):
+            quote_body = stripped[1:].lstrip()
+            quote_html = _linkify_text(quote_body)
+            rendered_lines.append(f'<span class="timeline-quote">{quote_html or "&nbsp;"}</span>')
+        else:
+            rendered_lines.append(_linkify_text(raw_line))
+    return "<br>".join(rendered_lines)
 
 
 def _remove_urls_from_content(content: str, urls_to_remove):
@@ -1299,15 +1312,16 @@ def mytimeline_edit(token: str):
         content = _strip_tags_from_content(raw_content)
         validation_error = ""
         image_meta = None
-        if not content:
-            validation_error = "投稿内容が空です。"
-        elif len(content) > 100:
+        image_payload = None
+        if len(content) > 100:
             validation_error = "投稿内容は100文字以内にしてください。"
         elif len(tags) > 3:
             validation_error = "タグは最大3つまでです。"
         else:
             try:
                 image_payload = _normalize_uploaded_image(image_file)
+                if not content and not image_payload:
+                    validation_error = "投稿内容が空です。"
                 if image_payload and not _timeline_image_upload_enabled():
                     validation_error = "画像アップロード設定が未完了です。"
                 elif image_payload:
@@ -1377,8 +1391,6 @@ def mytimeline_update(token: str, post_id: int):
     content = raw_content
     created_at_utc = _parse_timeline_local_datetime(raw_datetime)
 
-    if not content:
-        return redirect(url_for("mytimeline_edit", token=token, q=search_query or None, error="投稿内容が空です。"))
     if len(content) > 100:
         return redirect(url_for("mytimeline_edit", token=token, q=search_query or None, error="投稿内容は100文字以内にしてください。"))
     if len(tags) > 3:
@@ -1392,6 +1404,8 @@ def mytimeline_update(token: str, post_id: int):
     except Exception as exc:
         app.logger.warning("Failed to read timeline image: %s", exc)
         return redirect(url_for("mytimeline_edit", token=token, q=search_query or None, error="画像の読み込みに失敗しました。"))
+    if not content and not image_payload and not existing_post.get("image_drive_file_id"):
+        return redirect(url_for("mytimeline_edit", token=token, q=search_query or None, error="投稿内容が空です。"))
 
     current_image_meta = {
         "drive_file_id": existing_post.get("image_drive_file_id", ""),

@@ -428,6 +428,14 @@ h2 {
   text-decoration-thickness: 1px;
 }
 
+.timeline-quote {
+  display: block;
+  margin: 0.2em 0;
+  padding-left: 0.9em;
+  border-left: 2px solid rgba(0, 0, 0, 0.18);
+  color: rgba(0, 0, 0, 0.62);
+}
+
 .timeline-image-wrap {
   margin-top: 12px;
   margin-left: calc(var(--timeline-date-col) + var(--timeline-meta-gap));
@@ -666,6 +674,36 @@ h2 {
   overflow: hidden;
 }
 
+.timeline-compose-preview {
+  position: relative;
+  margin: 0 14px 8px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.timeline-compose-preview-img {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  object-fit: cover;
+}
+
+.timeline-compose-preview-clear {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #444;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
 .timeline-image-input {
   position: absolute;
   width: 1px;
@@ -692,9 +730,9 @@ h2 {
 
 .timeline-image-input-label img {
   display: block;
-  width: 26px;
-  height: 26px;
-  opacity: 0.9;
+  width: 21px;
+  height: 21px;
+  opacity: 0.8;
 }
 
 .timeline-image-input-label-compose {
@@ -740,14 +778,14 @@ h2 {
 }
 
 .timeline-submit-btn img {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   display: block;
-  opacity: 0.9;
+  opacity: 0.8;
 }
 
 .timeline-submit-btn {
-  margin-right: 14px;
+  margin-right: 18px;
 }
 
 .timeline-submit-btn:active {
@@ -947,7 +985,7 @@ h2 {
   }
 
   .timeline-item-top {
-    align-items: flex-start;
+    align-items: flex-end;
     margin-bottom: 14px;
   }
 
@@ -969,6 +1007,7 @@ h2 {
     min-width: 0;
     padding-left: 0;
     text-align: center;
+    width: 100%;
   }
 
   .timeline-date-slot:empty {
@@ -1003,18 +1042,12 @@ h2 {
     height: 92px;
   }
 
+  .timeline-compose-preview {
+    margin: 0 12px 8px;
+  }
+
   .timeline-form {
     width: 92%;
-  }
-
-  .timeline-form-actions {
-    justify-content: center;
-    padding-top: 12px;
-    padding-bottom: 12px;
-  }
-
-  .timeline-image-input-label-compose {
-    margin-right: 0;
   }
 
   .timeline-editor-nav {

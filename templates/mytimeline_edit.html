@@ -22,8 +22,11 @@
             rows="4"
             maxlength="100"
             placeholder="メモだからね、推敲しないこと"
-            required
           ></textarea>
+          <div id="timeline-image-preview" class="timeline-compose-preview" hidden>
+            <img id="timeline-image-preview-img" class="timeline-compose-preview-img" alt="">
+            <button id="timeline-image-clear" class="timeline-compose-preview-clear" type="button" aria-label="添付画像を外す">×</button>
+          </div>
           <input
             id="timeline-image-input"
             class="timeline-image-input"
@@ -103,13 +106,49 @@
     const charCountEl = document.getElementById('timeline-char-count');
     const timelineList = document.getElementById('timeline-list');
     const composeSubmitBtn = composeForm ? composeForm.querySelector('.timeline-submit-btn') : null;
+    const composeImageInput = document.getElementById('timeline-image-input');
+    const composeImagePreview = document.getElementById('timeline-image-preview');
+    const composeImagePreviewImg = document.getElementById('timeline-image-preview-img');
+    const composeImageClearBtn = document.getElementById('timeline-image-clear');
     let isSubmitting = false;
+    let composeImagePreviewUrl = '';
 
     const updateCharCount = () => {
       if (!contentEl || !charCountEl) return;
       charCountEl.textContent = `${contentEl.value.length}/100`;
     };
     updateCharCount();
+
+    const clearComposeImagePreview = () => {
+      if (composeImagePreviewUrl) {
+        URL.revokeObjectURL(composeImagePreviewUrl);
+        composeImagePreviewUrl = '';
+      }
+      if (composeImagePreviewImg) {
+        composeImagePreviewImg.removeAttribute('src');
+      }
+      if (composeImagePreview) {
+        composeImagePreview.hidden = true;
+      }
+      if (composeImageInput) {
+        composeImageInput.value = '';
+      }
+    };
+
+    const updateComposeImagePreview = () => {
+      if (!composeImageInput || !composeImagePreview || !composeImagePreviewImg) return;
+      const [file] = composeImageInput.files || [];
+      if (!file) {
+        clearComposeImagePreview();
+        return;
+      }
+      if (composeImagePreviewUrl) {
+        URL.revokeObjectURL(composeImagePreviewUrl);
+      }
+      composeImagePreviewUrl = URL.createObjectURL(file);
+      composeImagePreviewImg.src = composeImagePreviewUrl;
+      composeImagePreview.hidden = false;
+    };
 
     if (contentEl) {
       contentEl.addEventListener('input', updateCharCount);
@@ -119,6 +158,14 @@
           if (composeForm) composeForm.requestSubmit();
         }
       });
+    }
+
+    if (composeImageInput) {
+      composeImageInput.addEventListener('change', updateComposeImagePreview);
+    }
+
+    if (composeImageClearBtn) {
+      composeImageClearBtn.addEventListener('click', clearComposeImagePreview);
     }
 
     const closeAllMenus = () => {
@@ -194,7 +241,8 @@
         if (isSubmitting) return;
 
         const currentContent = contentEl ? contentEl.value.trim() : '';
-        if (!currentContent) return;
+        const hasImage = Boolean(composeImageInput && composeImageInput.files && composeImageInput.files.length);
+        if (!currentContent && !hasImage) return;
 
         isSubmitting = true;
         composeSubmitBtn.disabled = true;
@@ -225,6 +273,7 @@
           }
 
           composeForm.reset();
+          clearComposeImagePreview();
           updateCharCount();
           if (contentEl) contentEl.focus();
         } catch (err) {
