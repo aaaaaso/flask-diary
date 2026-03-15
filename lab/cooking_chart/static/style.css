@@ -907,7 +907,8 @@ button.active {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 12px;
+  align-items: center;
+  padding: 20px 18px;
   border: 1px solid #ddd8c5;
   border-radius: 12px;
   background: #ffffff;
@@ -930,7 +931,7 @@ button.active {
   justify-content: center;
   gap: 8px;
   width: 100%;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 .timer-title-input {
@@ -962,10 +963,10 @@ button.active {
 
 .timer-main-row {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px;
   width: 100%;
 }
 
@@ -973,8 +974,9 @@ button.active {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  flex: 1 1 0;
+  gap: 26px;
+  flex: 0 0 auto;
+  width: auto;
 }
 
 .timer-adjust-btn {
@@ -996,9 +998,9 @@ button.active {
 }
 
 .timer-time {
-  min-width: 110px;
+  min-width: 140px;
   text-align: center;
-  font-size: 32px;
+  font-size: 44px;
   line-height: 1;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
@@ -1007,9 +1009,9 @@ button.active {
 .timer-actions {
   display: inline-flex;
   justify-content: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  flex: 1 1 0;
+  gap: 22px;
+  flex-wrap: nowrap;
+  flex: 0 0 auto;
 }
 
 .timer-action-btn {
@@ -1041,18 +1043,18 @@ button.active {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px dashed #c9c3af;
+  border: 1px solid rgba(201, 195, 175, 0.4);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.72);
-  color: #8b846d;
+  background: rgba(255, 255, 255, 0.4);
+  color: rgba(139, 132, 109, 0.4);
   font-size: 34px;
   line-height: 1;
 }
 
 .timer-add-inline-btn:hover {
-  color: #6f684f;
-  border-color: #b7b093;
-  background: #ffffff;
+  color: rgba(111, 104, 79, 0.62);
+  border-color: rgba(183, 176, 147, 0.62);
+  background: rgba(255, 255, 255, 0.62);
 }
 
 .timer-note {
@@ -1147,7 +1149,7 @@ button.active {
 
   .timer-time {
     min-width: 0;
-    font-size: 28px;
+    font-size: 36px;
   }
 
   body[data-mode="view"] .app-shell {

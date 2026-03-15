@@ -181,7 +181,7 @@ function collectAncestorNodeIds(nodeId) {
 function toggleNodeCompleted(nodeId, el) {
   if (isEditable) return;
   if (completedNodeIds.has(nodeId)) {
-    completedNodeIds.delete(nodeId);
+    collectAncestorNodeIds(nodeId).forEach((id) => completedNodeIds.delete(id));
   } else {
     collectAncestorNodeIds(nodeId).forEach((id) => completedNodeIds.add(id));
   }
