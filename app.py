@@ -24,11 +24,13 @@ except ImportError:
     UnidentifiedImageError = Exception
 
 try:
+    from google.oauth2 import credentials as google_oauth_credentials
     from google.oauth2 import service_account
     from googleapiclient.discovery import build
     from googleapiclient.errors import HttpError
     from googleapiclient.http import MediaIoBaseUpload
 except ImportError:
+    google_oauth_credentials = None
     service_account = None
     build = None
     HttpError = None
@@ -83,7 +85,23 @@ def _timeline_google_service_account_source():
     return (None, "")
 
 
+def _timeline_google_oauth_config():
+    client_id = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "").strip()
+    client_secret = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", "").strip()
+    refresh_token = os.getenv("GOOGLE_OAUTH_REFRESH_TOKEN", "").strip()
+    if client_id and client_secret and refresh_token:
+        return {
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "refresh_token": refresh_token,
+        }
+    return None
+
+
 def _timeline_image_upload_enabled() -> bool:
+    oauth_config = _timeline_google_oauth_config()
+    if oauth_config:
+        return bool(_timeline_drive_folder_id())
     source_kind, source_value = _timeline_google_service_account_source()
     return bool(_timeline_drive_folder_id() and source_kind and source_value)
 
@@ -93,12 +111,29 @@ def _timeline_image_error(message: str) -> ValueError:
 
 
 def _get_drive_service():
-    if service_account is None or build is None or MediaIoBaseUpload is None:
+    if build is None or MediaIoBaseUpload is None:
         raise RuntimeError("Google Drive dependencies are not installed. Install requirements.txt first.")
+
+    oauth_config = _timeline_google_oauth_config()
+    if oauth_config:
+        if google_oauth_credentials is None:
+            raise RuntimeError("Google OAuth dependencies are not installed. Install requirements.txt first.")
+        credentials = google_oauth_credentials.Credentials(
+            token=None,
+            refresh_token=oauth_config["refresh_token"],
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=oauth_config["client_id"],
+            client_secret=oauth_config["client_secret"],
+            scopes=DRIVE_UPLOAD_SCOPES,
+        )
+        return build("drive", "v3", credentials=credentials, cache_discovery=False)
+
+    if service_account is None:
+        raise RuntimeError("Google service account dependencies are not installed. Install requirements.txt first.")
 
     source_kind, source_value = _timeline_google_service_account_source()
     if not source_kind or not source_value:
-        raise RuntimeError("Google service account credentials are not configured.")
+        raise RuntimeError("Google OAuth or service account credentials are not configured.")
 
     if source_kind == "json":
         info = json.loads(source_value)
