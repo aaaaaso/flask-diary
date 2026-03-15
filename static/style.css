@@ -985,15 +985,17 @@ h2 {
   }
 
   .timeline-item-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: flex-end;
     margin-bottom: 14px;
   }
 
   .timeline-meta {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: 1fr;
     gap: 10px;
+    min-width: 0;
   }
 
   .timeline-date-slot,
@@ -1002,12 +1004,12 @@ h2 {
   }
 
   .timeline-date-slot {
-    align-self: center;
+    justify-self: center;
     margin: 1em 0;
     min-width: 0;
     padding-left: 0;
     text-align: center;
-    width: 100%;
+    width: auto;
   }
 
   .timeline-date-slot:empty {
