@@ -30,7 +30,7 @@
       color: var(--ink);
       font-family: "Zen Kaku Gothic New", system-ui, sans-serif;
       background:
-        linear-gradient(180deg, #f3f1ea 0%, #ecebdc 38%, #e8e8d6 100%);
+        linear-gradient(180deg, #f6f4ef 0%, #f1efe5 38%, #ececde 100%);
       display: grid;
       place-items: center;
       padding: 24px;
@@ -60,6 +60,10 @@
       justify-self: center;
       align-self: start;
       margin-top: 4px;
+    }
+
+    .lead.is-hidden {
+      visibility: hidden;
     }
 
     .result-wrap {
@@ -167,9 +171,17 @@
       color: var(--muted);
     }
 
+    .result.is-message {
+      font-family: "Zen Kaku Gothic New", system-ui, sans-serif;
+      font-weight: 500;
+      font-size: clamp(21px, 4.5vw, 44px);
+      letter-spacing: 0.04em;
+      line-height: 1.4;
+    }
+
     .result-cool {
       display: block;
-      font-size: 0.48em;
+      font-size: 0.43em;
       letter-spacing: 0.04em;
       margin-top: 0.22em;
       text-align: center;
@@ -237,7 +249,7 @@
 </head>
 <body>
   <main>
-    <div class="lead">向こう1週間の東京は</div>
+    <div class="lead" id="lead">向こう1週間の東京は</div>
     <section class="result-wrap" aria-live="polite">
       <div>
         <p class="result is-loading" id="result">loading...</p>
@@ -257,6 +269,8 @@
 
     const resultEl = document.getElementById("result");
     const chartEl = document.getElementById("chart");
+    const leadEl = document.getElementById("lead");
+    const previewMonth = null;
 
     const kansuji = ["〇", "一", "二", "三", "四", "五", "六", "七"];
 
@@ -268,12 +282,30 @@
       return "cool";
     };
 
+    const getSeasonMessage = () => {
+      const month = previewMonth ?? (new Date().getMonth() + 1);
+      if (month === 5) {
+        return "もうあったかいね";
+      }
+      if (month >= 6 || month === 1) {
+        return "春はまだ先かも";
+      }
+      return null;
+    };
+
     const buildLabel = ({ cold, warm, cool }) => {
+      const seasonalMessage = getSeasonMessage();
+      if (seasonalMessage) {
+        return { html: seasonalMessage, isMessage: true };
+      }
       const main = `${toKansuji(cold)}寒${toKansuji(warm)}温`;
       if (cool > 0) {
-        return `${main}<span class="result-cool"><span class="result-cool-join">と</span>${toKansuji(cool)}涼</span>`;
+        return {
+          html: `${main}<span class="result-cool"><span class="result-cool-join">と</span>${toKansuji(cool)}涼</span>`,
+          isMessage: false
+        };
       }
-      return main;
+      return { html: main, isMessage: false };
     };
 
     const buildPath = (points) => points.map((point, index) => {
@@ -383,8 +415,11 @@
         counts[classify(temp)] += 1;
       });
 
+      const label = buildLabel(counts);
       resultEl.classList.remove("is-loading");
-      resultEl.innerHTML = buildLabel(counts);
+      resultEl.classList.toggle("is-message", label.isMessage);
+      leadEl.classList.toggle("is-hidden", label.isMessage);
+      resultEl.innerHTML = label.html;
       renderChart(
         dates.map((date) => formatDay(date)),
         minTemps,
