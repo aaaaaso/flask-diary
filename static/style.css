@@ -519,11 +519,14 @@ h2 {
   display: inline-block;
   min-width: var(--timeline-date-col);
   box-sizing: border-box;
-  padding-left: 6px;
+  padding: 5px 12px;
   font-size: 0.98rem;
   font-weight: 600;
   letter-spacing: 0.03em;
   color: #4b4b4b;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 999px;
+  line-height: 1.2;
 }
 
 .timeline-chip-row {
@@ -1098,6 +1101,11 @@ h2 {
   .timeline-inline-edit textarea {
     min-height: 74px;
     font-size: 0.74rem;
+  }
+
+  .timeline-inline-tags-input,
+  .timeline-inline-image-controls {
+    display: none;
   }
 
   .timeline-inline-edit-actions {
