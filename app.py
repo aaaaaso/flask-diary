@@ -75,6 +75,10 @@ def _timeline_edit_token() -> str:
     return os.getenv("MYTIMELINE_EDIT_TOKEN", "")
 
 
+def _diary_edit_token() -> str:
+    return os.getenv("DIARY_EDIT_TOKEN", "")
+
+
 def _timeline_db_kind() -> str:
     db_url = _timeline_database_url()
     if db_url.startswith(("postgres://", "postgresql://")):
@@ -488,7 +492,7 @@ def _fetch_diary_entries_for_window(page_no: int):
                     SELECT id, entry_date, body
                     FROM diary_entries
                     WHERE period_id = %s
-                    ORDER BY entry_date DESC, id DESC
+                    ORDER BY entry_date ASC, id ASC
                     """,
                     (period_id,),
                 )
@@ -508,7 +512,7 @@ def _fetch_diary_entries_for_window(page_no: int):
             SELECT id, entry_date, body
             FROM diary_entries
             WHERE period_id = ?
-            ORDER BY entry_date DESC, id DESC
+            ORDER BY entry_date ASC, id ASC
             """,
             (period_id,),
         ).fetchall()
@@ -521,6 +525,37 @@ def _fetch_diary_entries_for_window(page_no: int):
             "html": _render_diary_html(row["body"]),
         })
     return entries
+
+
+def _diary_upsert_entry(entry_date_str: str, body: str) -> None:
+    entry_date = datetime.strptime(entry_date_str, "%Y-%m-%d").date()
+    period_id = _compute_diary_period_id(entry_date)
+    _init_diary_table()
+
+    if _timeline_db_kind() == "postgres":
+        with _open_timeline_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM diary_entries WHERE entry_date = %s", (entry_date,))
+                cur.execute(
+                    """
+                    INSERT INTO diary_entries (period_id, entry_date, body, updated_at)
+                    VALUES (%s, %s, %s, NOW())
+                    """,
+                    (period_id, entry_date, body),
+                )
+            conn.commit()
+        return
+
+    with _open_timeline_db() as conn:
+        conn.execute("DELETE FROM diary_entries WHERE entry_date = ?", (entry_date_str,))
+        conn.execute(
+            """
+            INSERT INTO diary_entries (period_id, entry_date, body, updated_at)
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+            """,
+            (period_id, entry_date_str, body),
+        )
+        conn.commit()
 
 
 def _normalize_tag(tag: str) -> str:
@@ -1472,6 +1507,18 @@ def _diary_page_items():
     ]
 
 
+def _diary_preview_page_items(token: str):
+    total_pages = _diary_total_pages()
+    return [
+        {
+            "page_no": index,
+            "label": str(index),
+            "href": url_for("diary_edit", token=token, page=index if index > 1 else None),
+        }
+        for index in range(1, total_pages + 1)
+    ]
+
+
 def fetch_diary_by_page(page_no: int):
     try:
         return _fetch_diary_entries_for_window(page_no)
@@ -1506,6 +1553,59 @@ def page_n(page_no: int):
         current_page=page_no,
         total_pages=total_pages,
         diary_pages=_diary_page_items(),
+    )
+
+
+@app.route("/edit/<token>", methods=["GET", "POST"])
+def diary_edit(token: str):
+    expected = _diary_edit_token()
+    if not expected or token != expected:
+        abort(404)
+
+    preview_page = request.args.get("page", default=1, type=int) or 1
+    error_message = request.args.get("error", "").strip()
+    posted = request.args.get("posted", default=0, type=int) == 1
+
+    form_date = datetime.now(TOKYO_TZ).date().isoformat()
+    form_body = ""
+
+    if request.method == "POST":
+        form_date = request.form.get("entry_date", "").strip()
+        form_body = request.form.get("body", "").strip()
+        preview_page = request.form.get("page", type=int) or 1
+
+        if not form_date:
+            error_message = "日付を入力してください。"
+        elif not form_body:
+            error_message = "本文を入力してください。"
+        else:
+            try:
+                parsed_date = datetime.strptime(form_date, "%Y-%m-%d").date()
+                _compute_diary_period_id(parsed_date)
+            except ValueError:
+                error_message = f"日付は {DIARY_PERIOD_BASE_DATE} 以降の yyyy-mm-dd 形式で入力してください。"
+            else:
+                _diary_upsert_entry(form_date, form_body)
+                return redirect(url_for("diary_edit", token=token, posted=1))
+
+    total_pages = _diary_total_pages()
+    if total_pages <= 0:
+        preview_page = 1
+    elif preview_page < 1 or preview_page > total_pages:
+        preview_page = 1
+
+    diary = fetch_diary_by_page(preview_page) if total_pages > 0 else []
+    return render_template(
+        "diary_edit.html",
+        token=token,
+        diary=diary,
+        current_page=preview_page,
+        total_pages=total_pages,
+        diary_pages=_diary_preview_page_items(token),
+        error_message=error_message,
+        posted=posted,
+        form_date=form_date,
+        form_body=form_body,
     )
 
 

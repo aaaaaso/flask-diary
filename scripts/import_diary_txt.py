@@ -1,4 +1,5 @@
 import argparse
+import os
 import re
 import sqlite3
 from datetime import datetime
@@ -78,7 +79,36 @@ def init_diary_table(conn):
     conn.commit()
 
 
-def upsert_entries(entries, db_path: Path):
+def init_diary_table_postgres(conn):
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS diary_entries (
+              id BIGSERIAL PRIMARY KEY,
+              period_id INTEGER,
+              entry_date DATE NOT NULL,
+              body TEXT NOT NULL,
+              created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+              updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+            """
+        )
+        cur.execute(
+            """
+            CREATE INDEX IF NOT EXISTS diary_entries_period_id_idx
+            ON diary_entries (period_id DESC, entry_date DESC, id DESC)
+            """
+        )
+        cur.execute(
+            """
+            CREATE INDEX IF NOT EXISTS diary_entries_entry_date_idx
+            ON diary_entries (entry_date DESC, id DESC)
+            """
+        )
+    conn.commit()
+
+
+def upsert_entries_sqlite(entries, db_path: Path):
     with sqlite3.connect(db_path) as conn:
         init_diary_table(conn)
         for entry in entries:
@@ -95,6 +125,26 @@ def upsert_entries(entries, db_path: Path):
         conn.commit()
 
 
+def upsert_entries_postgres(entries, database_url: str):
+    import psycopg
+
+    with psycopg.connect(database_url) as conn:
+        init_diary_table_postgres(conn)
+        with conn.cursor() as cur:
+            for entry in entries:
+                entry_date = datetime.strptime(entry["entry_date"], "%Y-%m-%d").date()
+                period_id = compute_diary_period_id(entry_date)
+                cur.execute("DELETE FROM diary_entries WHERE entry_date = %s", (entry_date,))
+                cur.execute(
+                    """
+                    INSERT INTO diary_entries (period_id, entry_date, body, updated_at)
+                    VALUES (%s, %s, %s, NOW())
+                    """,
+                    (period_id, entry_date, entry["body"]),
+                )
+        conn.commit()
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -107,6 +157,11 @@ def main():
         default=str(DEFAULT_DB_PATH),
         help="SQLite database path to import into.",
     )
+    parser.add_argument(
+        "--database-url",
+        default="",
+        help="PostgreSQL connection URL. If omitted, uses DATABASE_URL from env when present.",
+    )
     args = parser.parse_args()
 
     source_path = Path(args.source)
@@ -118,7 +173,13 @@ def main():
         raise SystemExit("No diary entries found in source file.")
 
     db_path = Path(args.db)
-    upsert_entries(entries, db_path)
+    database_url = args.database_url.strip() or os.getenv("DATABASE_URL", "").strip()
+    if database_url:
+        upsert_entries_postgres(entries, database_url)
+        print(f"Imported {len(entries)} diary entries from {source_path} into PostgreSQL")
+        return
+
+    upsert_entries_sqlite(entries, db_path)
     print(f"Imported {len(entries)} diary entries from {source_path} into {db_path}")
 
 

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>日記編集</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='aos.css') }}">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  {% if current_page and total_pages %}
+    {% if current_page > 1 %}
+      <link rel="prev" href="{{ url_for('diary_edit', token=token, page=current_page - 1) }}">
+    {% endif %}
+    {% if current_page < total_pages %}
+      <link rel="next" href="{{ url_for('diary_edit', token=token, page=current_page + 1) }}">
+    {% endif %}
+  {% endif %}
+</head>
+
+<body>
+  <section class="diary-edit-panel" data-aos="fade-up">
+    <h1 class="diary-edit-title">日記編集</h1>
+    {% if posted %}
+      <p class="diary-edit-success">保存しました。</p>
+    {% endif %}
+    {% if error_message %}
+      <p class="timeline-error">{{ error_message }}</p>
+    {% endif %}
+    <form method="post" action="{{ url_for('diary_edit', token=token) }}" class="diary-edit-form">
+      <input type="hidden" name="page" value="{{ current_page }}">
+      <label class="diary-edit-label" for="entry_date">日付</label>
+      <input id="entry_date" name="entry_date" type="date" value="{{ form_date }}" required>
+      <label class="diary-edit-label" for="body">本文</label>
+      <textarea id="body" name="body" rows="8" required>{{ form_body }}</textarea>
+      <button type="submit" class="diary-edit-submit">送信</button>
+    </form>
+  </section>
+
+  <div class="container diary-preview-container">
+    {% if diary %}
+      {% for entry in diary %}
+        <div class="entry" data-aos="fade-up">
+          <h2>{{ entry.date }}</h2>
+          <div class="content">{{ entry.html | safe }}</div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="entry" data-aos="fade-up">
+        <h2>preview</h2>
+        <div class="content"><p class="diary-block">まだ日記がありません。</p></div>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="diary-divider" aria-hidden="true" data-aos="fade-up"></div>
+
+  <div class="pager" data-aos="fade-up" data-aos-once="true" aria-label="Pagination">
+    {% if current_page > 1 %}
+      <a class="pager-prev" href="{{ url_for('diary_edit', token=token, page=current_page - 1) }}" rel="prev">← 前へ</a>
+    {% endif %}
+
+    <nav class="pager-list" aria-label="Pages">
+      {% for page in diary_pages %}
+        {% if page.page_no == current_page %}
+          <span class="pager-item is-current" aria-current="page">{{ page.label }}</span>
+        {% else %}
+          <a class="pager-item" href="{{ page.href }}">{{ page.label }}</a>
+        {% endif %}
+      {% endfor %}
+    </nav>
+
+    {% if current_page < total_pages %}
+      <a class="pager-next" href="{{ url_for('diary_edit', token=token, page=current_page + 1) }}" rel="next">次へ →</a>
+    {% endif %}
+  </div>
+
+  <script src="{{ url_for('static', filename='aos.js') }}"></script>
+  <script>
+    AOS.init({
+      duration: 500,
+      easing: 'ease-in-out',
+      once: false
+    });
+  </script>
+</body>
+
+</html>
