@@ -1,6 +1,5 @@
 from flask import Flask, render_template, abort, request, jsonify, redirect, url_for, send_file
-from settings import TOTAL_PAGES, PAGE_IDS     # settings.pyから読む
-from notion_fetcher import fetch_diary_entries, clear_cache
+from settings import DIARY_PERIOD_BASE_DATE, DIARY_PERIOD_MONTH_SPAN
 from lab import lab_bp
 import html
 import ipaddress
@@ -292,6 +291,236 @@ def _open_timeline_db():
     conn = sqlite3.connect(SQLITE_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def _diary_period_base_date():
+    return datetime.strptime(DIARY_PERIOD_BASE_DATE, "%Y-%m-%d").date()
+
+
+def _compute_diary_period_id(entry_date) -> int:
+    if isinstance(entry_date, datetime):
+        value = entry_date.date()
+    else:
+        value = entry_date
+
+    base_date = _diary_period_base_date()
+    if value < base_date:
+        raise ValueError("entry_date must be on or after the configured diary base date.")
+
+    months_since_base = (value.year - base_date.year) * 12 + (value.month - base_date.month)
+    return (months_since_base // DIARY_PERIOD_MONTH_SPAN) + 1
+
+
+def _render_diary_html(body: str) -> str:
+    paragraphs = []
+    for line in (body or "").splitlines():
+        text = line.strip()
+        if not text:
+            continue
+        paragraphs.append(f"<p class='diary-block'>{html.escape(text)}</p>")
+    return "\n".join(paragraphs)
+
+
+def _format_diary_date_label(entry_date) -> str:
+    if isinstance(entry_date, datetime):
+        value = entry_date.date()
+    else:
+        value = entry_date
+    return f"{value.month}/{value.day}"
+
+
+def _list_diary_period_ids():
+    _init_diary_table()
+    if _timeline_db_kind() == "postgres":
+        with _open_timeline_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT DISTINCT period_id
+                    FROM diary_entries
+                    WHERE period_id IS NOT NULL
+                    ORDER BY period_id DESC
+                    """
+                )
+                rows = cur.fetchall()
+        return [int(row[0]) for row in rows]
+
+    with _open_timeline_db() as conn:
+        rows = conn.execute(
+            """
+            SELECT DISTINCT period_id
+            FROM diary_entries
+            WHERE period_id IS NOT NULL
+            ORDER BY period_id DESC
+            """
+        ).fetchall()
+    return [int(row["period_id"]) for row in rows]
+
+
+def _resolve_diary_period_id_for_page(page_no: int):
+    if page_no < 1:
+        return None
+    period_ids = _list_diary_period_ids()
+    if page_no > len(period_ids):
+        return None
+    return period_ids[page_no - 1]
+
+
+def _diary_total_pages() -> int:
+    return len(_list_diary_period_ids())
+
+
+def _init_diary_table() -> None:
+    if _timeline_db_kind() == "postgres":
+        with _open_timeline_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS diary_entries (
+                      id BIGSERIAL PRIMARY KEY,
+                      period_id INTEGER,
+                      entry_date DATE NOT NULL,
+                      body TEXT NOT NULL,
+                      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                    )
+                    """
+                )
+                cur.execute(
+                    """
+                    ALTER TABLE diary_entries
+                    ADD COLUMN IF NOT EXISTS period_id INTEGER
+                    """
+                )
+                cur.execute(
+                    """
+                    UPDATE diary_entries
+                    SET period_id = (
+                      (((EXTRACT(YEAR FROM entry_date)::INT - %s) * 12)
+                      + (EXTRACT(MONTH FROM entry_date)::INT - %s)) / %s
+                    ) + 1
+                    WHERE period_id IS NULL
+                    AND entry_date >= %s
+                    """,
+                    (
+                        _diary_period_base_date().year,
+                        _diary_period_base_date().month,
+                        DIARY_PERIOD_MONTH_SPAN,
+                        _diary_period_base_date(),
+                    ),
+                )
+                cur.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS diary_entries_period_id_idx
+                    ON diary_entries (period_id DESC, entry_date DESC, id DESC)
+                    """
+                )
+                cur.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS diary_entries_entry_date_idx
+                    ON diary_entries (entry_date DESC, id DESC)
+                    """
+                )
+            conn.commit()
+        return
+
+    with _open_timeline_db() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS diary_entries (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              period_id INTEGER,
+              entry_date TEXT NOT NULL,
+              body TEXT NOT NULL,
+              created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        columns = conn.execute("PRAGMA table_info(diary_entries)").fetchall()
+        column_names = {col["name"] for col in columns}
+        if "period_id" not in column_names:
+            conn.execute(
+                """
+                ALTER TABLE diary_entries
+                ADD COLUMN period_id INTEGER
+                """
+            )
+        base_date = _diary_period_base_date()
+        conn.execute(
+            """
+            UPDATE diary_entries
+            SET period_id = (((CAST(strftime('%Y', entry_date) AS INTEGER) - ?) * 12)
+              + (CAST(strftime('%m', entry_date) AS INTEGER) - ?)) / ? + 1
+            WHERE period_id IS NULL
+            AND entry_date >= ?
+            """,
+            (base_date.year, base_date.month, DIARY_PERIOD_MONTH_SPAN, base_date.isoformat()),
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS diary_entries_period_id_idx
+            ON diary_entries (period_id DESC, entry_date DESC, id DESC)
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS diary_entries_entry_date_idx
+            ON diary_entries (entry_date DESC, id DESC)
+            """
+        )
+        conn.commit()
+
+
+def _fetch_diary_entries_for_window(page_no: int):
+    period_id = _resolve_diary_period_id_for_page(page_no)
+    if period_id is None:
+        return [{
+            "date": "error",
+            "html": f"<p>ページ{page_no}に対応する日記がありません。</p>",
+        }]
+
+    if _timeline_db_kind() == "postgres":
+        with _open_timeline_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id, entry_date, body
+                    FROM diary_entries
+                    WHERE period_id = %s
+                    ORDER BY entry_date DESC, id DESC
+                    """,
+                    (period_id,),
+                )
+                rows = cur.fetchall()
+
+        return [
+            {
+                "date": _format_diary_date_label(entry_date),
+                "html": _render_diary_html(body),
+            }
+            for _, entry_date, body in rows
+        ]
+
+    with _open_timeline_db() as conn:
+        rows = conn.execute(
+            """
+            SELECT id, entry_date, body
+            FROM diary_entries
+            WHERE period_id = ?
+            ORDER BY entry_date DESC, id DESC
+            """,
+            (period_id,),
+        ).fetchall()
+
+    entries = []
+    for row in rows:
+        entry_date = datetime.strptime(row["entry_date"], "%Y-%m-%d").date()
+        entries.append({
+            "date": _format_diary_date_label(entry_date),
+            "html": _render_diary_html(row["body"]),
+        })
+    return entries
 
 
 def _normalize_tag(tag: str) -> str:
@@ -1231,44 +1460,53 @@ def _tetris_top3():
         for row in rows
     ]
 
-def fetch_diary_by_page(n: int):
-    page_id = PAGE_IDS.get(n)   # ← 直接PAGE_IDSから取得
+def _diary_page_items():
+    total_pages = _diary_total_pages()
+    return [
+        {
+            "page_no": index,
+            "label": str(index),
+            "href": "/" if index == 1 else f"/page{index}",
+        }
+        for index in range(1, total_pages + 1)
+    ]
 
-    if not page_id:
-        return [{
-            "date": "error",
-            "html": f"<p>ページ{n}の設定が settings.py に存在しません。</p>"
-        }]
 
+def fetch_diary_by_page(page_no: int):
     try:
-        return fetch_diary_entries(page_id)
-    except Exception as e:
+        return _fetch_diary_entries_for_window(page_no)
+    except Exception as exc:
         return [{
             "date": "error",
-            "html": f"<p>日記の取得に失敗しました。<br>{e}</p>"
+            "html": f"<p>日記の取得に失敗しました。<br>{html.escape(str(exc))}</p>",
         }]
 
 @app.route("/")
 def page1():
+    total_pages = _diary_total_pages()
     diary = fetch_diary_by_page(1)
-    return render_template("index.html", diary=diary, current_page=1, total_pages=TOTAL_PAGES)
+    return render_template(
+        "index.html",
+        diary=diary,
+        current_page=1,
+        total_pages=total_pages,
+        diary_pages=_diary_page_items(),
+    )
 
 @app.route("/page<int:page_no>")
 def page_n(page_no: int):
-    if page_no < 1 or page_no > TOTAL_PAGES:
+    total_pages = _diary_total_pages()
+    if page_no < 1 or page_no > total_pages:
         abort(404)
 
     diary = fetch_diary_by_page(page_no)
-    return render_template("index.html", diary=diary, current_page=page_no, total_pages=TOTAL_PAGES)
-
-@app.route("/admin/clear-cache")
-def admin_clear_cache():
-    key = request.args.get("key", "")
-    expected = os.getenv("ADMIN_CLEAR_CACHE_KEY", "")
-    if not expected or key != expected:
-        abort(403)
-    clear_cache()
-    return jsonify({"status": "ok"})
+    return render_template(
+        "index.html",
+        diary=diary,
+        current_page=page_no,
+        total_pages=total_pages,
+        diary_pages=_diary_page_items(),
+    )
 
 
 @app.route("/mytimeline")

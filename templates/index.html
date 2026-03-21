@@ -84,12 +84,11 @@
     {% endif %}
 
     <nav class="pager-list" aria-label="Pages">
-      {% for n in range(1, total_pages + 1) %}
-        {% set href = '/' if n == 1 else '/page' ~ n %}
-        {% if n == current_page %}
-          <span class="pager-item is-current" aria-current="page">{{ n }}</span>
+      {% for page in diary_pages %}
+        {% if page.page_no == current_page %}
+          <span class="pager-item is-current" aria-current="page">{{ page.label }}</span>
         {% else %}
-          <a class="pager-item" href="{{ href }}">{{ n }}</a>
+          <a class="pager-item" href="{{ page.href }}">{{ page.label }}</a>
         {% endif %}
       {% endfor %}
     </nav>
