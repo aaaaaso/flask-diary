@@ -1012,9 +1012,10 @@ h2 {
 }
 
 .diary-compose {
+  --diary-compose-surface: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--diary-compose-surface);
   backdrop-filter: blur(16px) saturate(145%);
   -webkit-backdrop-filter: blur(16px) saturate(145%);
   overflow: hidden;
@@ -1038,14 +1039,16 @@ h2 {
 }
 
 .diary-compose-actions {
+  width: 100%;
+  box-sizing: border-box;
   justify-content: flex-end;
   gap: 12px;
   padding: 10px 24px 12px 20px;
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--diary-compose-surface);
 }
 
 .diary-compose-submit {
-  margin-right: 4px;
+  margin-right: 0;
   flex: 0 0 auto;
 }
 
