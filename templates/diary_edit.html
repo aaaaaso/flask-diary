@@ -30,7 +30,7 @@
       <input id="entry_date" name="entry_date" type="date" value="{{ form_date }}" required>
       <label class="diary-edit-label" for="body">本文</label>
       <div class="diary-compose">
-        <textarea id="body" name="body" rows="8" placeholder="何をどう書こう" required>{{ form_body }}</textarea>
+        <textarea id="body" name="body" rows="8" required>{{ form_body }}</textarea>
         <div class="timeline-form-actions diary-compose-actions">
           <p id="diary-char-count" class="timeline-char-count" aria-live="polite">0文字</p>
           <button type="submit" class="timeline-submit-btn diary-compose-submit" aria-label="送信">
@@ -127,11 +127,21 @@
 
     const diaryBodyEl = document.getElementById('body');
     const diaryCharCountEl = document.getElementById('diary-char-count');
+    const diaryPlaceholders = [
+      '何を、どう書こう？',
+      '忘れたくないこと',
+      'ふつうの日々のだいじなこと'
+    ];
 
     const updateDiaryCharCount = () => {
       if (!diaryBodyEl || !diaryCharCountEl) return;
       diaryCharCountEl.textContent = `${diaryBodyEl.value.length}文字`;
     };
+
+    if (diaryBodyEl && !diaryBodyEl.value) {
+      const randomIndex = Math.floor(Math.random() * diaryPlaceholders.length);
+      diaryBodyEl.placeholder = diaryPlaceholders[randomIndex];
+    }
 
     updateDiaryCharCount();
     if (diaryBodyEl) {
