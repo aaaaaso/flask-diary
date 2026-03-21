@@ -1038,11 +1038,15 @@ h2 {
 }
 
 .diary-compose-actions {
-  padding-right: 16px;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 10px 24px 12px 20px;
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .diary-compose-submit {
-  margin-right: 0;
+  margin-right: 4px;
+  flex: 0 0 auto;
 }
 
 .diary-edit-submit {
@@ -1074,6 +1078,16 @@ h2 {
 
 .diary-preview-link:hover {
   text-decoration: underline;
+}
+
+.diary-compose .timeline-char-count {
+  color: #6b6b6b;
+}
+
+.diary-compose .timeline-submit-btn {
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .diary-edit-entry {

@@ -645,6 +645,21 @@ def _diary_update_entry(entry_id: int, entry_date_str: str, body: str) -> None:
         conn.commit()
 
 
+def _diary_delete_entry(entry_id: int) -> None:
+    _init_diary_table()
+
+    if _timeline_db_kind() == "postgres":
+        with _open_timeline_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM diary_entries WHERE id = %s", (entry_id,))
+            conn.commit()
+        return
+
+    with _open_timeline_db() as conn:
+        conn.execute("DELETE FROM diary_entries WHERE id = ?", (entry_id,))
+        conn.commit()
+
+
 def _normalize_tag(tag: str) -> str:
     return tag.strip().lstrip("#").lower()
 
@@ -1727,6 +1742,17 @@ def diary_edit_update(token: str, entry_id: int):
         )
 
     _diary_update_entry(entry_id, entry_date, body)
+    return redirect(url_for("diary_edit", token=token, page=preview_page, posted=1))
+
+
+@app.route("/edit/<token>/delete/<int:entry_id>", methods=["POST"])
+def diary_edit_delete(token: str, entry_id: int):
+    expected = _diary_edit_token()
+    if not expected or token != expected:
+        abort(404)
+
+    preview_page = request.args.get("page", default=1, type=int) or 1
+    _diary_delete_entry(entry_id)
     return redirect(url_for("diary_edit", token=token, page=preview_page, posted=1))
 
 

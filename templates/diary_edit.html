@@ -7,6 +7,7 @@
   <title>日記編集</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='aos.css') }}">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='diary_icon.png') }}">
   <meta name="robots" content="noindex,nofollow,noarchive">
   {% if current_page and total_pages %}
     {% if current_page > 1 %}
@@ -20,7 +21,6 @@
 
 <body>
   <section class="diary-edit-panel" data-aos="fade-up">
-    <h1 class="diary-edit-title">日記編集</h1>
     {% if posted %}
       <p class="diary-edit-success">保存しました。</p>
     {% endif %}
@@ -33,7 +33,7 @@
       <input id="entry_date" name="entry_date" type="date" value="{{ form_date }}" required>
       <label class="diary-edit-label" for="body">本文</label>
       <div class="diary-compose">
-        <textarea id="body" name="body" rows="8" required>{{ form_body }}</textarea>
+        <textarea id="body" name="body" rows="8" placeholder="何をどう書こう" required>{{ form_body }}</textarea>
         <div class="timeline-form-actions diary-compose-actions">
           <p id="diary-char-count" class="timeline-char-count" aria-live="polite">0文字</p>
           <button type="submit" class="timeline-submit-btn diary-compose-submit" aria-label="送信">
@@ -67,6 +67,9 @@
                   class="timeline-edit-btn"
                   data-diary-edit-toggle="{{ entry.id }}"
                 >編集</button>
+                <form method="post" action="{{ url_for('diary_edit_delete', token=token, entry_id=entry.id, page=current_page) }}">
+                  <button type="submit" class="timeline-delete-btn">削除</button>
+                </form>
               </div>
             </div>
           </div>
