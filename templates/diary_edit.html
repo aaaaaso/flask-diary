@@ -32,17 +32,59 @@
       <label class="diary-edit-label" for="entry_date">日付</label>
       <input id="entry_date" name="entry_date" type="date" value="{{ form_date }}" required>
       <label class="diary-edit-label" for="body">本文</label>
-      <textarea id="body" name="body" rows="8" required>{{ form_body }}</textarea>
-      <button type="submit" class="diary-edit-submit">送信</button>
+      <div class="diary-compose">
+        <textarea id="body" name="body" rows="8" required>{{ form_body }}</textarea>
+        <div class="timeline-form-actions diary-compose-actions">
+          <p id="diary-char-count" class="timeline-char-count" aria-live="polite">0文字</p>
+          <button type="submit" class="timeline-submit-btn diary-compose-submit" aria-label="送信">
+            <img src="{{ url_for('static', filename='send_icon.png') }}" alt="" aria-hidden="true">
+          </button>
+        </div>
+      </div>
     </form>
   </section>
 
+  <div class="diary-preview-link-wrap" data-aos="fade-up">
+    <a class="diary-preview-link" href="{{ '/' if current_page == 1 else '/page' ~ current_page }}">閲覧ページをみる</a>
+  </div>
+
   <div class="container diary-preview-container">
-    {% if diary %}
-      {% for entry in diary %}
-        <div class="entry" data-aos="fade-up">
-          <h2>{{ entry.date }}</h2>
+    {% if diary_records %}
+      {% for entry in diary_records %}
+        <div class="entry diary-edit-entry" data-aos="fade-up">
+          <div class="diary-entry-head">
+            <h2>{{ entry.date }}</h2>
+            <div class="timeline-menu-wrap">
+              <button
+                type="button"
+                class="timeline-menu-toggle"
+                aria-label="日記メニュー"
+                aria-expanded="false"
+              >⋯</button>
+              <div class="timeline-menu">
+                <button
+                  type="button"
+                  class="timeline-edit-btn"
+                  data-diary-edit-toggle="{{ entry.id }}"
+                >編集</button>
+              </div>
+            </div>
+          </div>
           <div class="content">{{ entry.html | safe }}</div>
+          <form
+            method="post"
+            action="{{ url_for('diary_edit_update', token=token, entry_id=entry.id, page=current_page) }}"
+            class="diary-inline-edit"
+            data-diary-edit-form="{{ entry.id }}"
+          >
+            <label class="diary-edit-label" for="edit-entry-date-{{ entry.id }}">日付</label>
+            <input id="edit-entry-date-{{ entry.id }}" name="entry_date" type="date" value="{{ entry.entry_date }}" required>
+            <label class="diary-edit-label" for="edit-entry-body-{{ entry.id }}">本文</label>
+            <textarea id="edit-entry-body-{{ entry.id }}" name="body" rows="8" required>{{ entry.body }}</textarea>
+            <div class="diary-inline-edit-actions">
+              <button type="submit" class="diary-edit-submit">保存</button>
+            </div>
+          </form>
         </div>
       {% endfor %}
     {% else %}
@@ -81,6 +123,84 @@
       duration: 500,
       easing: 'ease-in-out',
       once: false
+    });
+
+    const diaryBodyEl = document.getElementById('body');
+    const diaryCharCountEl = document.getElementById('diary-char-count');
+
+    const updateDiaryCharCount = () => {
+      if (!diaryBodyEl || !diaryCharCountEl) return;
+      diaryCharCountEl.textContent = `${diaryBodyEl.value.length}文字`;
+    };
+
+    updateDiaryCharCount();
+    if (diaryBodyEl) {
+      diaryBodyEl.addEventListener('input', updateDiaryCharCount);
+      diaryBodyEl.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+          const form = diaryBodyEl.closest('form');
+          if (form) {
+            event.preventDefault();
+            form.requestSubmit();
+          }
+        }
+      });
+    }
+
+    const closeDiaryMenus = () => {
+      document.querySelectorAll('.timeline-menu-wrap.is-open').forEach((wrap) => {
+        wrap.classList.remove('is-open');
+        const btn = wrap.querySelector('.timeline-menu-toggle');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+      });
+    };
+
+    const closeDiaryEditForms = () => {
+      document.querySelectorAll('[data-diary-edit-form].is-open').forEach((form) => {
+        form.classList.remove('is-open');
+      });
+    };
+
+    document.querySelectorAll('.timeline-menu-toggle').forEach((toggle) => {
+      toggle.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const wrap = toggle.closest('.timeline-menu-wrap');
+        if (!wrap) return;
+        const willOpen = !wrap.classList.contains('is-open');
+        closeDiaryMenus();
+        if (willOpen) {
+          wrap.classList.add('is-open');
+          toggle.setAttribute('aria-expanded', 'true');
+        }
+      });
+    });
+
+    document.querySelectorAll('[data-diary-edit-toggle]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const id = button.getAttribute('data-diary-edit-toggle');
+        const form = document.querySelector(`[data-diary-edit-form="${id}"]`);
+        if (!form) return;
+        const willOpen = !form.classList.contains('is-open');
+        closeDiaryEditForms();
+        if (willOpen) {
+          form.classList.add('is-open');
+          const textarea = form.querySelector('textarea');
+          if (textarea) textarea.focus();
+        }
+        closeDiaryMenus();
+      });
+    });
+
+    document.querySelectorAll('[data-diary-edit-form]').forEach((form) => {
+      form.addEventListener('click', (event) => {
+        event.stopPropagation();
+      });
+    });
+
+    document.addEventListener('click', () => {
+      closeDiaryMenus();
+      closeDiaryEditForms();
     });
   </script>
 </body>

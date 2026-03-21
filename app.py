@@ -527,6 +527,60 @@ def _fetch_diary_entries_for_window(page_no: int):
     return entries
 
 
+def _fetch_diary_entry_records_for_page(page_no: int):
+    period_id = _resolve_diary_period_id_for_page(page_no)
+    if period_id is None:
+        return []
+
+    if _timeline_db_kind() == "postgres":
+        with _open_timeline_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id, entry_date, body
+                    FROM diary_entries
+                    WHERE period_id = %s
+                    ORDER BY entry_date ASC, id ASC
+                    """,
+                    (period_id,),
+                )
+                rows = cur.fetchall()
+
+        return [
+            {
+                "id": entry_id,
+                "date": _format_diary_date_label(entry_date),
+                "entry_date": entry_date.isoformat(),
+                "body": body,
+                "html": _render_diary_html(body),
+            }
+            for entry_id, entry_date, body in rows
+        ]
+
+    with _open_timeline_db() as conn:
+        rows = conn.execute(
+            """
+            SELECT id, entry_date, body
+            FROM diary_entries
+            WHERE period_id = ?
+            ORDER BY entry_date ASC, id ASC
+            """,
+            (period_id,),
+        ).fetchall()
+
+    records = []
+    for row in rows:
+        entry_date = datetime.strptime(row["entry_date"], "%Y-%m-%d").date()
+        records.append({
+            "id": row["id"],
+            "date": _format_diary_date_label(entry_date),
+            "entry_date": entry_date.isoformat(),
+            "body": row["body"],
+            "html": _render_diary_html(row["body"]),
+        })
+    return records
+
+
 def _diary_upsert_entry(entry_date_str: str, body: str) -> None:
     entry_date = datetime.strptime(entry_date_str, "%Y-%m-%d").date()
     period_id = _compute_diary_period_id(entry_date)
@@ -554,6 +608,39 @@ def _diary_upsert_entry(entry_date_str: str, body: str) -> None:
             VALUES (?, ?, ?, CURRENT_TIMESTAMP)
             """,
             (period_id, entry_date_str, body),
+        )
+        conn.commit()
+
+
+def _diary_update_entry(entry_id: int, entry_date_str: str, body: str) -> None:
+    entry_date = datetime.strptime(entry_date_str, "%Y-%m-%d").date()
+    period_id = _compute_diary_period_id(entry_date)
+    _init_diary_table()
+
+    if _timeline_db_kind() == "postgres":
+        with _open_timeline_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM diary_entries WHERE entry_date = %s AND id <> %s", (entry_date, entry_id))
+                cur.execute(
+                    """
+                    UPDATE diary_entries
+                    SET period_id = %s, entry_date = %s, body = %s, updated_at = NOW()
+                    WHERE id = %s
+                    """,
+                    (period_id, entry_date, body, entry_id),
+                )
+            conn.commit()
+        return
+
+    with _open_timeline_db() as conn:
+        conn.execute("DELETE FROM diary_entries WHERE entry_date = ? AND id <> ?", (entry_date_str, entry_id))
+        conn.execute(
+            """
+            UPDATE diary_entries
+            SET period_id = ?, entry_date = ?, body = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (period_id, entry_date_str, body, entry_id),
         )
         conn.commit()
 
@@ -1595,10 +1682,12 @@ def diary_edit(token: str):
         preview_page = 1
 
     diary = fetch_diary_by_page(preview_page) if total_pages > 0 else []
+    diary_records = _fetch_diary_entry_records_for_page(preview_page) if total_pages > 0 else []
     return render_template(
         "diary_edit.html",
         token=token,
         diary=diary,
+        diary_records=diary_records,
         current_page=preview_page,
         total_pages=total_pages,
         diary_pages=_diary_preview_page_items(token),
@@ -1607,6 +1696,38 @@ def diary_edit(token: str):
         form_date=form_date,
         form_body=form_body,
     )
+
+
+@app.route("/edit/<token>/update/<int:entry_id>", methods=["POST"])
+def diary_edit_update(token: str, entry_id: int):
+    expected = _diary_edit_token()
+    if not expected or token != expected:
+        abort(404)
+
+    preview_page = request.args.get("page", default=1, type=int) or 1
+    entry_date = request.form.get("entry_date", "").strip()
+    body = request.form.get("body", "").strip()
+
+    if not entry_date:
+        return redirect(url_for("diary_edit", token=token, page=preview_page, error="日付を入力してください。"))
+    if not body:
+        return redirect(url_for("diary_edit", token=token, page=preview_page, error="本文を入力してください。"))
+
+    try:
+        parsed_date = datetime.strptime(entry_date, "%Y-%m-%d").date()
+        _compute_diary_period_id(parsed_date)
+    except ValueError:
+        return redirect(
+            url_for(
+                "diary_edit",
+                token=token,
+                page=preview_page,
+                error=f"日付は {DIARY_PERIOD_BASE_DATE} 以降の yyyy-mm-dd 形式で入力してください。",
+            )
+        )
+
+    _diary_update_entry(entry_id, entry_date, body)
+    return redirect(url_for("diary_edit", token=token, page=preview_page, posted=1))
 
 
 @app.route("/mytimeline")
