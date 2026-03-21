@@ -21,9 +21,6 @@
 
 <body>
   <section class="diary-edit-panel" data-aos="fade-up">
-    {% if posted %}
-      <p class="diary-edit-success">保存しました。</p>
-    {% endif %}
     {% if error_message %}
       <p class="timeline-error">{{ error_message }}</p>
     {% endif %}
