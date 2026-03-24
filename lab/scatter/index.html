@@ -709,7 +709,18 @@
       };
     };
 
-    const renderScatter = (points, xLabel, yLabel, jitterOn, lineEval, labelHeader, showTrendline, figureSize) => {
+    const renderScatter = (
+      points,
+      xLabel,
+      yLabel,
+      jitterOn,
+      lineEval,
+      labelHeader,
+      showTrendline,
+      figureSize,
+      xUpper,
+      yUpper
+    ) => {
       const container = document.getElementById("scatterChart");
       if (points.length === 0) {
         container.innerHTML = '<div class="muted">描写できる点がありません。</div>';
@@ -726,10 +737,12 @@
       const minY = 0;
       const maxXData = Math.max(...points.map((p) => p.x));
       const maxYData = Math.max(...points.map((p) => p.y));
-      const xStep = niceStep(maxXData);
-      const yStep = niceStep(maxYData);
-      const maxX = Math.max(xStep, Math.ceil(Math.max(maxXData, 0) / xStep) * xStep);
-      const maxY = Math.max(yStep, Math.ceil(Math.max(maxYData, 0) / yStep) * yStep);
+      const maxXVisible = Number.isFinite(xUpper) ? Math.max(maxXData, xUpper) : maxXData;
+      const maxYVisible = Number.isFinite(yUpper) ? Math.max(maxYData, yUpper) : maxYData;
+      const xStep = niceStep(maxXVisible);
+      const yStep = niceStep(maxYVisible);
+      const maxX = Math.max(xStep, Math.ceil(Math.max(maxXVisible, 0) / xStep) * xStep);
+      const maxY = Math.max(yStep, Math.ceil(Math.max(maxYVisible, 0) / yStep) * yStep);
 
       const spanX = maxX - minX;
       const spanY = maxY - minY;
@@ -1051,7 +1064,18 @@
           : "";
       }
 
-      renderScatter(plotted, xLabel, yLabel, jitterOn, lineEval, labelHeader, showTrendline, figureSize);
+      renderScatter(
+        plotted,
+        xLabel,
+        yLabel,
+        jitterOn,
+        lineEval,
+        labelHeader,
+        showTrendline,
+        figureSize,
+        xUpper,
+        yUpper
+      );
     };
 
     const debounce = (fn, wait = 180) => {
