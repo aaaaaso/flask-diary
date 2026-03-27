@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>yorushika lyrics analytics</title>
+  <meta name="description" content="ヨルシカの歌詞に登場する動詞に占める「命令」や「要求」の言葉の割合。">
+  <style>
+    :root {
+      --bg: #ffffff;
+      --text: #1e2421;
+      --order: #333333;
+      --request: #cccccc;
+      --request-edge: #cccccc;
+      --grid: rgba(64, 138, 113, 0.12);
+      --zero-line: #777777;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .page {
+      width: min(1240px, calc(100vw - 24px));
+      margin: 16px auto;
+      padding: 4px 0 12px;
+    }
+
+    .chart-section + .chart-section {
+      margin-top: 44px;
+    }
+
+    .legend {
+      display: flex;
+      gap: 18px;
+      align-items: center;
+      margin: 0 0 14px 230px;
+      font-size: 24px;
+      color: #4f5a55;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .legend-swatch {
+      width: 18px;
+      height: 10px;
+      flex: 0 0 auto;
+    }
+
+    .legend-swatch.order {
+      background: var(--order);
+    }
+
+    .legend-swatch.request {
+      background: var(--request);
+      box-shadow: inset 0 0 0 1px var(--request-edge);
+    }
+
+    .chart-shell {
+      overflow: hidden;
+    }
+
+    .chart {
+      position: relative;
+      width: 88%;
+      padding: 4px 8px 6px 0;
+    }
+
+    .chart::before {
+      content: "";
+      position: absolute;
+      top: 28px;
+      bottom: 0;
+      left: 230px;
+      width: calc(100% - 230px);
+      background:
+        linear-gradient(90deg, transparent calc(100% - 1px), var(--grid) calc(100% - 1px), var(--grid) 100%) 0 0 / 100% 100%,
+        linear-gradient(90deg, var(--zero-line) 0, var(--zero-line) 2px, transparent 2px) 0 0 / 100% 100%,
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 10% 100%;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .axis {
+      position: relative;
+      display: grid;
+      grid-template-columns: 220px minmax(620px, 1fr);
+      gap: 10px;
+      padding-bottom: 8px;
+      margin-bottom: 4px;
+    }
+
+    .ticks {
+      position: relative;
+      height: 20px;
+      z-index: 3;
+      overflow: visible;
+    }
+
+    .tick {
+      position: absolute;
+      top: 0;
+      transform: translateX(-50%);
+      font-size: 18px;
+      color: #6a746f;
+      line-height: 1;
+      font-family: Futura, "Avenir Next", Avenir, sans-serif;
+      font-weight: 500;
+    }
+
+    .row {
+      position: relative;
+      display: grid;
+      grid-template-columns: 220px minmax(620px, 1fr);
+      gap: 10px;
+      align-items: center;
+      padding: 2px 0;
+    }
+
+    .chart.album-chart::before {
+      background:
+        linear-gradient(90deg, transparent calc(100% - 1px), var(--grid) calc(100% - 1px), var(--grid) 100%) 0 0 / 100% 100%,
+        linear-gradient(90deg, var(--zero-line) 0, var(--zero-line) 2px, transparent 2px) 0 0 / 100% 100%,
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 50% 100%;
+    }
+
+    .chart.album-chart {
+      width: 96%;
+    }
+
+    .chart.album-chart .row {
+      padding: 12px 0;
+    }
+
+    .chart.album-chart .bar-wrap {
+      height: 18px;
+    }
+
+    .title {
+      font-size: 13px;
+      line-height: 1.15;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: right;
+    }
+
+    .bar-wrap {
+      position: relative;
+      height: 12px;
+      z-index: 1;
+    }
+
+    .bar-stack {
+      display: flex;
+      height: 100%;
+      min-width: 0;
+      border-radius: 0 8px 8px 0;
+      overflow: hidden;
+    }
+
+    .segment {
+      height: 100%;
+      min-width: 0;
+    }
+
+    .segment.round-right {
+      border-radius: 0 2px 2px 0;
+    }
+
+    .segment.order {
+      background: var(--order);
+    }
+
+    .segment.request {
+      background: var(--request);
+      box-shadow: inset 1px 0 0 var(--request-edge), inset 0 0 0 1px var(--request-edge);
+    }
+
+    @media (max-width: 900px) {
+      .page {
+        width: calc(100vw - 16px);
+        margin: 8px auto;
+        padding: 2px 0 10px;
+      }
+
+      .chart {
+        padding: 4px 6px 6px 0;
+      }
+
+      .legend {
+        margin-left: 188px;
+        gap: 12px;
+        font-size: 18px;
+      }
+
+      .chart::before {
+        left: 188px;
+        width: calc(100% - 188px);
+      }
+
+      .axis,
+      .row {
+        grid-template-columns: 180px minmax(520px, 1fr);
+        gap: 8px;
+      }
+
+      .tick {
+        font-size: 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="chart-section">
+      <div class="legend" aria-label="凡例">
+        <span class="legend-item"><span class="legend-swatch order"></span>何かに対して明確に命令している</span>
+        <span class="legend-item"><span class="legend-swatch request"></span>何かに対して行為や状態を要求している</span>
+      </div>
+      <div class="chart-shell">
+        <div class="chart" id="song-chart"></div>
+      </div>
+    </section>
+    <section class="chart-section">
+      <div class="legend" aria-label="凡例">
+        <span class="legend-item"><span class="legend-swatch order"></span>何かに対して明確に命令している</span>
+        <span class="legend-item"><span class="legend-swatch request"></span>何かに対して行為や状態を要求している</span>
+      </div>
+      <div class="chart-shell">
+        <div class="chart album-chart" id="album-chart"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="./data.js"></script>
+  <script>
+    function renderChart(chart, data, scaleMax) {
+      const tickValues = Array.from({ length: scaleMax / 10 + 1 }, (_, index) => index * 10);
+      const axis = document.createElement("div");
+      axis.className = "axis";
+      axis.innerHTML = `
+        <div></div>
+        <div class="ticks" aria-hidden="true">
+          ${tickValues
+            .map((tick) => `<span class="tick" style="left:${(tick / scaleMax) * 100}%">${tick}%</span>`)
+            .join("")}
+        </div>
+      `;
+      chart.appendChild(axis);
+
+      data.forEach(([title, , order, request]) => {
+        const row = document.createElement("div");
+        row.className = "row";
+        const total = order + request;
+        const orderWidth = (order / scaleMax) * 100;
+        const requestWidth = (request / scaleMax) * 100;
+
+        row.innerHTML = `
+          <div class="title">${title}</div>
+          <div class="bar-wrap" role="img" aria-label="${title} 命令 ${order}% 要求 ${request}% 合計 ${total}%">
+            <div class="bar-stack">
+              <div class="segment order ${request === 0 ? "round-right" : ""}" style="width:${orderWidth}%"></div>
+              <div class="segment request ${request > 0 ? "round-right" : ""}" style="width:${requestWidth}%"></div>
+            </div>
+          </div>
+        `;
+
+        chart.appendChild(row);
+      });
+    }
+
+    const songChart = document.getElementById("song-chart");
+    const albumChart = document.getElementById("album-chart");
+
+    renderChart(
+      songChart,
+      song_data.map(([title, , , order, request]) => [title, null, order, request]),
+      100
+    );
+
+    renderChart(
+      albumChart,
+      album_data.map(([album, , order, request]) => [album, null, order, request]),
+      20
+    );
+  </script>
+</body>
+</html>
