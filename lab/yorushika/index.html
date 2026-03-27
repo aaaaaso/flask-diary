@@ -164,11 +164,15 @@
     }
 
     .bar-stack {
+      position: relative;
       display: flex;
       height: 100%;
       min-width: 0;
       border-radius: 0 8px 8px 0;
       overflow: hidden;
+      transform-origin: left center;
+      transform: scaleX(0.02);
+      animation: bar-grow 820ms cubic-bezier(.21, 1, .3, 1) 120ms both;
     }
 
     .segment {
@@ -187,6 +191,27 @@
     .segment.request {
       background: var(--request);
       box-shadow: inset 1px 0 0 var(--request-edge), inset 0 0 0 1px var(--request-edge);
+    }
+
+    @keyframes bar-grow {
+      0% {
+        transform: scaleX(0);
+      }
+
+      70% {
+        transform: scaleX(1.02);
+      }
+
+      100% {
+        transform: scaleX(1);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .bar-stack {
+        animation: none;
+        transform: none;
+      }
     }
 
     @media (max-width: 900px) {
