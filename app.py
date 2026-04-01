@@ -7,6 +7,7 @@ import io
 import json
 import os
 import re
+import secrets
 import socket
 import sqlite3
 from contextlib import suppress
@@ -24,8 +25,9 @@ except ImportError:
     UnidentifiedImageError = Exception
 
 try:
-    from pillow_heif import register_heif_opener
+    from pillow_heif import open_heif, register_heif_opener
 except ImportError:
+    open_heif = None
     register_heif_opener = None
 
 try:
@@ -62,6 +64,7 @@ MYTIMELINE_JPEG_QUALITY = 82
 MYTIMELINE_WEBP_QUALITY = 80
 MYTIMELINE_ALLOWED_IMAGE_FORMATS = {"JPEG", "PNG", "WEBP", "GIF", "HEIF", "HEIC"}
 DRIVE_UPLOAD_SCOPES = ("https://www.googleapis.com/auth/drive",)
+LOCAL_TIMELINE_UPLOAD_DIR = os.path.join(app.root_path, "timeline_uploads")
 
 if register_heif_opener is not None:
     register_heif_opener()
@@ -114,15 +117,15 @@ def _timeline_google_oauth_config():
 
 
 def _timeline_image_upload_enabled() -> bool:
-    oauth_config = _timeline_google_oauth_config()
-    if oauth_config:
-        return bool(_timeline_drive_folder_id())
-    source_kind, source_value = _timeline_google_service_account_source()
-    return bool(_timeline_drive_folder_id() and source_kind and source_value)
+    return Image is not None
+
+
+class TimelineImageError(ValueError):
+    pass
 
 
 def _timeline_image_error(message: str) -> ValueError:
-    return ValueError(message)
+    return TimelineImageError(message)
 
 
 def _get_drive_service():
@@ -173,13 +176,26 @@ def _normalize_uploaded_image(file_storage):
     if len(raw_bytes) > MYTIMELINE_IMAGE_MAX_BYTES:
         raise _timeline_image_error("画像は8MB以内にしてください。")
 
+    image_extension = os.path.splitext(file_storage.filename or "")[1].lower()
+    force_heif = image_extension in {".heic", ".heif"} or (file_storage.mimetype or "").lower() in {"image/heic", "image/heif"}
+
     try:
-        with Image.open(io.BytesIO(raw_bytes)) as image:
-            image.verify()
-        with Image.open(io.BytesIO(raw_bytes)) as image:
-            image_format = (image.format or "").upper()
+        if force_heif:
+            if open_heif is None:
+                raise _timeline_image_error("HEIC / HEIF を扱う設定が不足しています。")
+            image = open_heif(io.BytesIO(raw_bytes)).to_pillow()
+            image_format = "HEIF"
+        else:
+            with Image.open(io.BytesIO(raw_bytes)) as verified:
+                image_format = (verified.format or "").upper()
+                verified.verify()
+            image = Image.open(io.BytesIO(raw_bytes))
+            if not image_format:
+                image_format = (image.format or "").upper()
+
+        with image:
             if image_format not in MYTIMELINE_ALLOWED_IMAGE_FORMATS:
-                raise _timeline_image_error("画像は JPEG / PNG / WEBP / GIF のみ対応です。")
+                raise _timeline_image_error("画像は JPEG / PNG / WEBP / GIF / HEIC / HEIF のみ対応です。")
             if image_format == "GIF":
                 width, height = image.size
                 normalized_bytes = raw_bytes
@@ -216,7 +232,9 @@ def _normalize_uploaded_image(file_storage):
                     image_format = "JPEG"
                 normalized_bytes = output.getvalue()
                 mime_type = Image.MIME.get(image_format, file_storage.mimetype or "application/octet-stream")
-    except UnidentifiedImageError as exc:
+    except TimelineImageError:
+        raise
+    except (UnidentifiedImageError, ValueError, EOFError, SyntaxError, RuntimeError, OSError) as exc:
         raise _timeline_image_error("画像ファイルを読み取れませんでした。") from exc
 
     if len(normalized_bytes) > MYTIMELINE_IMAGE_MAX_BYTES:
@@ -262,8 +280,52 @@ def _upload_image_to_drive(image_payload: dict):
     }
 
 
-def _delete_drive_file(file_id: str) -> None:
-    if not file_id or not _timeline_image_upload_enabled():
+def _timeline_local_image_filename(mime_type: str) -> str:
+    if mime_type == "image/webp":
+        extension = ".webp"
+    elif mime_type == "image/gif":
+        extension = ".gif"
+    else:
+        extension = ".jpg"
+    timestamp = datetime.now(TOKYO_TZ).strftime("%Y%m%d-%H%M%S")
+    return f"mytimeline-{timestamp}-{secrets.token_hex(8)}{extension}"
+
+
+def _timeline_local_image_path(file_id: str) -> str:
+    filename = file_id.removeprefix("local:")
+    safe_name = os.path.basename(filename)
+    return os.path.join(LOCAL_TIMELINE_UPLOAD_DIR, safe_name)
+
+
+def _store_image_locally(image_payload: dict):
+    os.makedirs(LOCAL_TIMELINE_UPLOAD_DIR, exist_ok=True)
+    filename = _timeline_local_image_filename(image_payload.get("mime_type", ""))
+    target_path = os.path.join(LOCAL_TIMELINE_UPLOAD_DIR, filename)
+    with open(target_path, "wb") as f:
+        f.write(image_payload["bytes"])
+    return {
+        "drive_file_id": f"local:{filename}",
+        "mime_type": image_payload["mime_type"],
+        "width": image_payload["width"],
+        "height": image_payload["height"],
+    }
+
+
+def _store_timeline_image(image_payload: dict):
+    if _timeline_drive_folder_id():
+        try:
+            return _upload_image_to_drive(image_payload)
+        except Exception as exc:
+            app.logger.warning("Drive upload failed; falling back to local storage: %s", exc)
+    return _store_image_locally(image_payload)
+
+
+def _delete_timeline_image(file_id: str) -> None:
+    if not file_id:
+        return
+    if file_id.startswith("local:"):
+        with suppress(FileNotFoundError):
+            os.remove(_timeline_local_image_path(file_id))
         return
     try:
         service = _get_drive_service()
@@ -272,7 +334,10 @@ def _delete_drive_file(file_id: str) -> None:
         app.logger.warning("Failed to delete Drive image %s: %s", file_id, exc)
 
 
-def _download_drive_file(file_id: str) -> bytes:
+def _download_timeline_image(file_id: str) -> bytes:
+    if file_id.startswith("local:"):
+        with open(_timeline_local_image_path(file_id), "rb") as f:
+            return f.read()
     service = _get_drive_service()
     return service.files().get_media(fileId=file_id, supportsAllDrives=True).execute()
 
@@ -1502,7 +1567,7 @@ def _timeline_delete_post(post_id: int) -> None:
             conn.execute("DELETE FROM mytimeline_posts WHERE id = ?", (post_id,))
             conn.commit()
     if existing and existing.get("image_drive_file_id"):
-        _delete_drive_file(existing["image_drive_file_id"])
+        _delete_timeline_image(existing["image_drive_file_id"])
 
 
 def _init_tetris_ranking_table() -> None:
@@ -1775,9 +1840,9 @@ def mytimeline_image(post_id: int):
     if not post or not post.get("image_drive_file_id"):
         abort(404)
     try:
-        image_bytes = _download_drive_file(post["image_drive_file_id"])
+        image_bytes = _download_timeline_image(post["image_drive_file_id"])
     except Exception as exc:
-        app.logger.warning("Failed to fetch Drive image for post %s: %s", post_id, exc)
+        app.logger.warning("Failed to fetch timeline image for post %s: %s", post_id, exc)
         abort(404)
 
     response = send_file(
@@ -1818,7 +1883,7 @@ def mytimeline_edit(token: str):
                 if image_payload and not _timeline_image_upload_enabled():
                     validation_error = "画像アップロード設定が未完了です。"
                 elif image_payload:
-                    image_meta = _upload_image_to_drive(image_payload)
+                    image_meta = _store_timeline_image(image_payload)
             except ValueError as exc:
                 validation_error = str(exc)
             except Exception as exc:
@@ -1834,7 +1899,7 @@ def mytimeline_edit(token: str):
                 _timeline_insert_post(content, tags, image_meta=image_meta)
             except Exception:
                 if image_meta and image_meta.get("drive_file_id"):
-                    _delete_drive_file(image_meta["drive_file_id"])
+                    _delete_timeline_image(image_meta["drive_file_id"])
                 raise
             if is_ajax:
                 latest_posts = _timeline_prepare_posts(_timeline_list_posts(limit=1))
@@ -1914,7 +1979,7 @@ def mytimeline_update(token: str, post_id: int):
         if not _timeline_image_upload_enabled():
             return redirect(url_for("mytimeline_edit", token=token, q=search_query or None, error="画像アップロード設定が未完了です。"))
         try:
-            next_image_meta = _upload_image_to_drive(image_payload)
+            next_image_meta = _store_timeline_image(image_payload)
             newly_uploaded_file_id = next_image_meta.get("drive_file_id", "")
         except Exception as exc:
             app.logger.warning("Failed to replace timeline image: %s", exc)
@@ -1926,11 +1991,11 @@ def mytimeline_update(token: str, post_id: int):
         _timeline_update_post(post_id, content, tags, created_at_utc, image_meta=next_image_meta)
     except Exception:
         if newly_uploaded_file_id:
-            _delete_drive_file(newly_uploaded_file_id)
+            _delete_timeline_image(newly_uploaded_file_id)
         raise
 
     if old_drive_file_id and old_drive_file_id != next_image_meta.get("drive_file_id", ""):
-        _delete_drive_file(old_drive_file_id)
+        _delete_timeline_image(old_drive_file_id)
     return redirect(url_for("mytimeline_edit", token=token, q=search_query or None))
 
 
