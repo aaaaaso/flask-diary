@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Camera OCR Tool</title>
+    <meta name="description" content="撮影、トリミング、OCR、ラベル保存を行うツール。" />
+    <link rel="stylesheet" href="./static/style.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <p class="eyebrow">Camera OCR Tool</p>
+        <h1>撮って、切って、読ませて、保存する</h1>
+        <p class="lead">カメラ起動から OCR 保存までをひとつの画面で進める。</p>
+      </section>
+
+      <section class="panel control-panel">
+        <div class="button-row">
+          <button id="start-camera-button" type="button">カメラ起動</button>
+          <button id="capture-button" type="button" disabled>撮影する</button>
+          <button id="crop-button" type="button" disabled>選択範囲を切り出す</button>
+          <button id="ocr-button" type="button" disabled>OCR 実行</button>
+        </div>
+        <p id="status" class="status" aria-live="polite"></p>
+      </section>
+
+      <section class="workspace">
+        <div class="panel stage-panel">
+          <div class="stage-header">
+            <strong>撮影エリア</strong>
+            <span>ドラッグで範囲選択</span>
+          </div>
+          <div id="camera-stage" class="camera-stage">
+            <video id="video" autoplay playsinline muted></video>
+            <canvas id="capture-canvas" class="hidden"></canvas>
+            <div id="selection" class="selection hidden"></div>
+          </div>
+        </div>
+
+        <aside class="panel result-panel">
+          <div class="result-block">
+            <label class="field">
+              <span>ラベル</span>
+              <input id="label-input" type="text" maxlength="80" placeholder="例: レシート 2026-04-01" />
+            </label>
+          </div>
+
+          <div class="result-block">
+            <div class="preview-header">
+              <strong>トリミング結果</strong>
+            </div>
+            <canvas id="crop-preview" class="crop-preview"></canvas>
+          </div>
+
+          <div class="result-block">
+            <label class="field">
+              <span>抽出テキスト</span>
+              <textarea id="ocr-text" rows="10" placeholder="OCR 結果がここに入ります"></textarea>
+            </label>
+          </div>
+
+          <div class="button-row bottom-row">
+            <button id="save-button" type="button" disabled>保存する</button>
+          </div>
+        </aside>
+      </section>
+
+      <section class="panel history-panel">
+        <div class="history-head">
+          <strong>保存済み</strong>
+          <button id="refresh-button" type="button">更新</button>
+        </div>
+        <ul id="records-list" class="records-list"></ul>
+      </section>
+    </main>
+
+    <script src="./static/app.js"></script>
+  </body>
+</html>
