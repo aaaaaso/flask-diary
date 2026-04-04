@@ -646,6 +646,49 @@ def _fetch_diary_entry_records_for_page(page_no: int):
     return records
 
 
+def _fetch_all_diary_entry_records():
+    _init_diary_table()
+
+    if _timeline_db_kind() == "postgres":
+        with _open_timeline_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id, entry_date, body
+                    FROM diary_entries
+                    ORDER BY entry_date ASC, id ASC
+                    """
+                )
+                rows = cur.fetchall()
+
+        return [
+            {
+                "id": str(entry_id),
+                "date": entry_date.isoformat(),
+                "diary": body,
+            }
+            for entry_id, entry_date, body in rows
+        ]
+
+    with _open_timeline_db() as conn:
+        rows = conn.execute(
+            """
+            SELECT id, entry_date, body
+            FROM diary_entries
+            ORDER BY entry_date ASC, id ASC
+            """
+        ).fetchall()
+
+    return [
+        {
+            "id": str(row["id"]),
+            "date": row["entry_date"],
+            "diary": row["body"],
+        }
+        for row in rows
+    ]
+
+
 def _diary_upsert_entry(entry_date_str: str, body: str) -> None:
     entry_date = datetime.strptime(entry_date_str, "%Y-%m-%d").date()
     period_id = _compute_diary_period_id(entry_date)
@@ -1776,6 +1819,17 @@ def diary_edit(token: str):
         form_date=form_date,
         form_body=form_body,
     )
+
+
+@app.route("/edit/<token>/export.json")
+def diary_edit_export_json(token: str):
+    expected = _diary_edit_token()
+    if not expected or token != expected:
+        abort(404)
+
+    return jsonify({
+        "items": _fetch_all_diary_entry_records(),
+    })
 
 
 @app.route("/edit/<token>/update/<int:entry_id>", methods=["POST"])

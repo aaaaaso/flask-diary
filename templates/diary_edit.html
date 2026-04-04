@@ -43,6 +43,7 @@
 
   <div class="diary-preview-link-wrap" data-aos="fade-up">
     <a class="diary-preview-link" href="{{ '/' if current_page == 1 else '/page' ~ current_page }}">閲覧ページをみる</a>
+    <a class="diary-preview-link" href="{{ url_for('diary_edit_export_json', token=token) }}" target="_blank" rel="noopener noreferrer">JSONをみる</a>
   </div>
 
   <div class="container diary-preview-container">
