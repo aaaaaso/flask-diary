@@ -49,6 +49,7 @@ except ImportError:
     psycopg = None
 
 app = Flask(__name__)
+app.json.ensure_ascii = False
 
 app.register_blueprint(lab_bp)
 
