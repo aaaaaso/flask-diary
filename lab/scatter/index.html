@@ -368,7 +368,7 @@
           </div>
           <div>
             <label for="highlightExpr">条件にあてはまるデータを強調</label>
-            <input type="text" id="highlightExpr" placeholder="例: y>x" />
+            <input type="text" id="highlightExpr" placeholder="例: y>x / is_pickup_blog = TRUE" />
           </div>
           <div>
             <label for="filterExpr">条件でフィルタ</label>
@@ -424,7 +424,11 @@
     const parseFilterValue = (raw, removeComma) => {
       const maybeNum = parseCellNumber(raw, removeComma);
       if (Number.isFinite(maybeNum)) return maybeNum;
-      return raw.trim();
+      const trimmed = raw.trim();
+      if (/^true$/i.test(trimmed)) return true;
+      if (/^false$/i.test(trimmed)) return false;
+      if (/^null$/i.test(trimmed)) return null;
+      return trimmed;
     };
 
     const splitRow = (line) => {
@@ -488,14 +492,57 @@
       .replace(/__AND__/g, "&&")
       .replace(/__OR__/g, "||");
 
+    const normalizeEqualsOperator = (rawExpr) => rawExpr
+      .replace(/!==/g, "__STRICT_NE__")
+      .replace(/!=/g, "__NE__")
+      .replace(/===/g, "__STRICT_EQ__")
+      .replace(/==/g, "__EQ__")
+      .replace(/<=/g, "__LE__")
+      .replace(/>=/g, "__GE__")
+      .replace(/=/g, "===")
+      .replace(/__STRICT_NE__/g, "!==")
+      .replace(/__NE__/g, "!=")
+      .replace(/__STRICT_EQ__/g, "===")
+      .replace(/__EQ__/g, "==")
+      .replace(/__LE__/g, "<=")
+      .replace(/__GE__/g, ">=");
+
+    const normalizeConditionKeywords = (rawExpr) => rawExpr
+      .replace(/\bTRUE\b/gi, "true")
+      .replace(/\bFALSE\b/gi, "false")
+      .replace(/\bNULL\b/gi, "null");
+
+    const normalizeConditionExpr = (rawExpr, allowImplicitMultiplication = false) => {
+      let expr = normalizeConditionKeywords(normalizeEqualsOperator(normalizeFilterExpr(String(rawExpr || "").trim())));
+      if (allowImplicitMultiplication) expr = normalizeImplicitMultiplication(expr);
+      return expr;
+    };
+
     const normalizeImplicitMultiplication = (rawExpr) => String(rawExpr || "")
       .replace(/(\d)\s*([A-Za-z(])/g, "$1*$2")
       .replace(/([A-Za-z)])\s*(\d)/g, "$1*$2")
       .replace(/([xy)])\s*([xy(])/gi, "$1*$2");
 
+    const buildColumnArgMap = (headers, maxCols, reservedNames = []) => {
+      const argNames = [];
+      const colToArg = [];
+      const reserved = new Set(reservedNames);
+      for (let i = 0; i < Math.min(maxCols, MAX_COLUMNS); i += 1) {
+        const colArg = `col${i + 1}`;
+        argNames.push(colArg);
+        colToArg[i] = [colArg];
+        const header = headers[i] || "";
+        if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(header) && header !== colArg && !reserved.has(header)) {
+          argNames.push(header);
+          colToArg[i].push(header);
+        }
+      }
+      return { argNames, colToArg };
+    };
+
     const buildFilterEvaluator = (rawExpr, headers, maxCols) => {
       if (!rawExpr || rawExpr.trim() === "") return null;
-      const expr = normalizeFilterExpr(rawExpr.trim());
+      const expr = normalizeConditionExpr(rawExpr);
       const allowedChars = /^[\w\s<>=!&|().,+\-*/%"'[\]]+$/;
       if (!allowedChars.test(expr)) {
         throw new Error("filter条件に使えない文字が含まれています。");
@@ -504,18 +551,7 @@
         throw new Error("filter条件に使えないキーワードが含まれています。");
       }
 
-      const argNames = [];
-      const colToArg = [];
-      for (let i = 0; i < Math.min(maxCols, MAX_COLUMNS); i += 1) {
-        const colArg = `col${i + 1}`;
-        argNames.push(colArg);
-        colToArg[i] = [colArg];
-        const header = headers[i] || "";
-        if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(header) && header !== colArg) {
-          argNames.push(header);
-          colToArg[i].push(header);
-        }
-      }
+      const { argNames, colToArg } = buildColumnArgMap(headers, maxCols);
 
       const tokens = expr.match(/[A-Za-z_][A-Za-z0-9_]*/g) || [];
       const allowedNames = new Set(argNames.concat(["true", "false", "null"]));
@@ -576,9 +612,9 @@
       };
     };
 
-    const buildHighlightEvaluator = (rawExpr) => {
+    const buildHighlightEvaluator = (rawExpr, headers, maxCols) => {
       if (!rawExpr || rawExpr.trim() === "") return null;
-      const expr = normalizeImplicitMultiplication(normalizeFilterExpr(rawExpr.trim()));
+      const expr = normalizeConditionExpr(rawExpr, true);
       const allowedChars = /^[\w\s<>=!&|().,+\-*/%"'[\]]+$/;
       if (!allowedChars.test(expr)) {
         throw new Error("強調条件に使えない文字が含まれています。");
@@ -586,16 +622,31 @@
       if (/\b(this|Function|constructor|globalThis|window|document|eval)\b/.test(expr)) {
         throw new Error("強調条件に使えないキーワードが含まれています。");
       }
+      const { argNames: columnArgNames, colToArg } = buildColumnArgMap(headers, maxCols, ["x", "y"]);
+      const argNames = ["x", "y"].concat(columnArgNames);
       const tokens = expr.match(/[A-Za-z_][A-Za-z0-9_]*/g) || [];
-      const allowedNames = new Set(["x", "y", "true", "false", "null"]);
+      const allowedNames = new Set(argNames.concat(["true", "false", "null"]));
       for (const t of tokens) {
         if (!allowedNames.has(t)) {
-          throw new Error(`強調条件の変数 "${t}" を解釈できません。x と y を使ってください。`);
+          throw new Error(`強調条件の変数 "${t}" を解釈できません。x / y またはカラム名を使ってください。`);
         }
       }
       // eslint-disable-next-line no-new-func
-      const fn = new Function("x", "y", `return (${expr});`);
-      return (x, y) => Boolean(fn(x, y));
+      const fn = new Function(...argNames, `return (${expr});`);
+      return (values, point = {}) => {
+        const valueMap = {
+          x: point.x,
+          y: point.y,
+        };
+        for (let i = 0; i < colToArg.length; i += 1) {
+          const v = values[i];
+          for (const name of colToArg[i]) {
+            valueMap[name] = v;
+          }
+        }
+        const args = argNames.map((name) => valueMap[name]);
+        return Boolean(fn(...args));
+      };
     };
 
     const niceStep = (maxValue, targetTicks = 6) => {
@@ -1008,7 +1059,7 @@
       }
       let highlightEval = null;
       try {
-        highlightEval = buildHighlightEvaluator(highlightExpr);
+        highlightEval = buildHighlightEvaluator(highlightExpr, mergedHeaders, mergedMaxCols);
       } catch (e) {
         errorEl.textContent = e instanceof Error ? e.message : "強調条件の解釈に失敗しました。";
         return;
@@ -1050,7 +1101,7 @@
         if (Number.isFinite(yUpper) && r.y > yUpper) return false;
         return true;
       }).map((r) => {
-        const highlight = highlightEval ? highlightEval(r.x, r.y) : false;
+        const highlight = highlightEval ? highlightEval(r.filterValues, { x: r.x, y: r.y }) : false;
         if (selectedLabelCol < 0 || !Number.isInteger(selectedLabelCol)) return { ...r, label: "", highlight };
         const rawLabel = r.cells[selectedLabelCol] ?? "";
         return { ...r, label: rawLabel, highlight };
