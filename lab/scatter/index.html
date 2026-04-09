@@ -368,7 +368,7 @@
           </div>
           <div>
             <label for="highlightExpr">条件にあてはまるデータを強調</label>
-            <input type="text" id="highlightExpr" placeholder="例: y>x / is_pickup_blog = TRUE" />
+            <input type="text" id="highlightExpr" placeholder="例: y>x" />
           </div>
           <div>
             <label for="filterExpr">条件でフィルタ</label>
@@ -819,7 +819,7 @@
       }
 
       const radiusFor = buildBubbleRadiusAccessor(points);
-      const dots = points
+      const pointMarks = points
         .map((p, idx) => {
           const jx = jitterOffset(idx, jitterX);
           const jy = jitterOffset(idx + 999, jitterY);
@@ -830,8 +830,15 @@
           const sizeText = Number.isFinite(p.sizeValue) && p.sizeValue > 0 ? ` size=${formatNum(p.sizeValue)}` : "";
           const title = `${labelText}(${formatNum(p.x)}, ${formatNum(p.y)})${sizeText}`;
           const fill = p.highlight ? "#44A194" : "#3b3f45";
-          return `<circle class="scatter-point" cx="${cx}" cy="${cy}" r="${radius}" fill="${fill}" opacity="0.78" data-tip="${escapeXml(title)}"><title>${escapeXml(title)}</title></circle>`;
-        })
+          return {
+            highlight: p.highlight,
+            svg: `<circle class="scatter-point" cx="${cx}" cy="${cy}" r="${radius}" fill="${fill}" opacity="0.78" data-tip="${escapeXml(title)}"><title>${escapeXml(title)}</title></circle>`,
+          };
+        });
+      const dots = pointMarks
+        .filter((mark) => !mark.highlight)
+        .concat(pointMarks.filter((mark) => mark.highlight))
+        .map((mark) => mark.svg)
         .join("");
 
       const buildFunctionPath = (fn, stroke, strokeWidth, dasharray = "") => {
