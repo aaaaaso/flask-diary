@@ -153,10 +153,7 @@
     }
 
     .chart-box {
-      border: 1px solid var(--ring);
-      border-radius: 8px;
       padding: 14px;
-      background: #fafafa;
     }
 
     .chart-title {
@@ -219,6 +216,13 @@
       align-items: start;
     }
 
+    .highlight-controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 160px;
+      gap: 12px;
+      align-items: end;
+    }
+
     .scatter-tooltip {
       position: absolute;
       z-index: 2;
@@ -247,6 +251,16 @@
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 720px) {
+      .advanced-settings {
+        grid-template-columns: 1fr;
+      }
+
+      .highlight-controls {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -368,7 +382,10 @@
           </div>
           <div>
             <label for="highlightExpr">条件にあてはまるデータを強調</label>
-            <input type="text" id="highlightExpr" placeholder="例: y>x" />
+            <div class="highlight-controls">
+              <input type="text" id="highlightExpr" placeholder="例: y>x" />
+              <input type="text" id="highlightColor" aria-label="強調色" />
+            </div>
           </div>
           <div>
             <label for="filterExpr">条件でフィルタ</label>
@@ -397,6 +414,7 @@
 
   <script>
     const MAX_COLUMNS = 30;
+    const DEFAULT_HIGHLIGHT_COLOR = "#44A194";
     let hasShownTooManyColumnsAlert = false;
 
     const formatNum = (v) => {
@@ -767,6 +785,7 @@
       jitterOn,
       lineEval,
       labelHeader,
+      highlightColor,
       showTrendline,
       figureSize,
       xUpper,
@@ -829,7 +848,7 @@
           const labelText = labelHeader && p.label ? `${p.label} ` : "";
           const sizeText = Number.isFinite(p.sizeValue) && p.sizeValue > 0 ? ` size=${formatNum(p.sizeValue)}` : "";
           const title = `${labelText}(${formatNum(p.x)}, ${formatNum(p.y)})${sizeText}`;
-          const fill = p.highlight ? "#44A194" : "#3b3f45";
+          const fill = p.highlight ? highlightColor : "#3b3f45";
           return {
             highlight: p.highlight,
             svg: `<circle class="scatter-point" cx="${cx}" cy="${cy}" r="${radius}" fill="${fill}" opacity="0.78" data-tip="${escapeXml(title)}"><title>${escapeXml(title)}</title></circle>`,
@@ -915,6 +934,7 @@
       const plotTitle = document.getElementById("plotTitle").value.trim();
       const figsizeRaw = document.getElementById("figsize").value.trim();
       const highlightExpr = document.getElementById("highlightExpr").value.trim();
+      const highlightColor = document.getElementById("highlightColor").value.trim() || DEFAULT_HIGHLIGHT_COLOR;
       const hasHeader = document.getElementById("hasHeader").checked;
       const swapAxes = document.getElementById("swapAxes").checked;
       const jitterOn = document.getElementById("jitter").checked;
@@ -1129,6 +1149,7 @@
         jitterOn,
         lineEval,
         labelHeader,
+        highlightColor,
         showTrendline,
         figureSize,
         xUpper,
@@ -1146,6 +1167,12 @@
 
     const debouncedBuild = debounce(build, 180);
 
+    const highlightColorInput = document.getElementById("highlightColor");
+    if (highlightColorInput) {
+      highlightColorInput.value = DEFAULT_HIGHLIGHT_COLOR;
+      highlightColorInput.placeholder = DEFAULT_HIGHLIGHT_COLOR;
+    }
+
     document.getElementById("dataInput").addEventListener("input", debouncedBuild);
     document.getElementById("hasHeader").addEventListener("change", build);
     document.getElementById("plotTitle").addEventListener("input", debouncedBuild);
@@ -1160,6 +1187,7 @@
     document.getElementById("labelColumn").addEventListener("change", build);
     document.getElementById("sizeColumn").addEventListener("change", build);
     document.getElementById("highlightExpr").addEventListener("input", debouncedBuild);
+    document.getElementById("highlightColor").addEventListener("input", debouncedBuild);
     document.getElementById("filterExpr").addEventListener("input", debouncedBuild);
     document.getElementById("lineFormula").addEventListener("input", debouncedBuild);
     document.getElementById("xUpper").addEventListener("input", debouncedBuild);
